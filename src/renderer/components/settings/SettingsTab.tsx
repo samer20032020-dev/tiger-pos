@@ -5,7 +5,7 @@ import {
   UserPlus, Users, Coins, Building2, Save,
   Trash2, Edit2, Ban, Check, X, Phone, MapPin,
   CheckCircle, Percent, Shield, Globe, RefreshCw,
-  ExternalLink, ShieldCheck, FileText, Award, Sparkles,
+  ExternalLink, FileText, Award, Sparkles,
   AlertTriangle, ArrowUpCircle, Key, Keyboard, Unlock
 } from 'lucide-react';
 import { User, SystemSettings, UpdateCheckResult } from '../../../shared/types';
@@ -54,9 +54,6 @@ export const SettingsTab: React.FC = () => {
   // Cash Drawer Shortcut State
   const [cashDrawerShortcut, setCashDrawerShortcut] = useState<string>(() => localStorage.getItem('tiger_cash_drawer_shortcut') || 'F12');
   const [isRecordingKey, setIsRecordingKey] = useState(false);
-
-  // Legal Agreement Modal
-  const [isAgreementOpen, setIsAgreementOpen] = useState(false);
 
   // New User Form state
   const [newFullName, setNewFullName] = useState('');
@@ -1221,119 +1218,9 @@ export const SettingsTab: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 text-[10.5px]">
-          <button
-            type="button"
-            onClick={() => setIsAgreementOpen(true)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/80 hover:bg-orange-50 dark:bg-slate-800/60 dark:hover:bg-orange-950/30 text-slate-600 hover:text-orange-600 dark:text-slate-300 dark:hover:text-orange-400 border border-slate-200/70 dark:border-slate-700/60 transition font-medium"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-orange-500" />
-            <span>اتفاقية الاستخدام والسياسات</span>
-          </button>
           <span className="text-slate-400 font-mono text-[10px]">© 2026</span>
         </div>
       </footer>
-
-      {/* ===================================================================== */}
-      {/* MODAL: END-USER LICENSE AGREEMENT & LEGAL POLICIES                   */}
-      {/* ===================================================================== */}
-      {isAgreementOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 flex items-center justify-center font-bold">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-sm text-slate-800 dark:text-white">
-                    اتفاقية ترخيص واستخدام النظام والسياسات القانونية
-                  </h3>
-                  <p className="text-[10px] text-slate-400">
-                    الشروط المعتمدة لإدارة وتشغيل نظام TIGER في محلات ومراكز الهواتف
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAgreementOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
-                <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                  <span>1. الخصوصية والأمان المحلي (100% Offline):</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  جميع سجلات المبيعات، الصيانة، وقواعد البيانات مشفرة ومحفوظة محلياً على القرص الصلب للجهاز فقط، ولا يتم إرسال أو تسريب أي بيانات محاسبية أو أرقام هواتف خارج جهازك نهائياً.
-                </p>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
-                <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                  <span>2. إخلاء مسؤولية الصيانة القانوني (مهلة 40 يوماً):</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  يلتزم المحل بإصدار إيصال استلام رسمي لكل جهاز. يعتبر العميل متنازلاً عن جهازه ويحق للمحل التصرف فيه بعد مرور 40 يوماً من تاريخ الإنجاز دون استلام، لتغطية تكاليف قطع الغيار وأجور الفحص.
-                </p>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
-                <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                  <span>3. النسخ الاحتياطي الدوري:</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  يُوصى بأخذ نسخة احتياطية دورية أسبوعياً على فلاشة USB خارجية لضمان سلامة العمليات والفواتير في حال حدوث أي عطل فني في نظام تشغيل الويندوز.
-                </p>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
-                <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                  <span>4. التحديثات والترقية السحابية:</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  ترقية النظام عبر GitHub مصممة ذاتياً للحفاظ على سلامة قاعدة البيانات السابقة بالكامل دون المساس بأي فواتير أو حسابات مسجلة مسبقاً.
-                </p>
-              </div>
-
-              <div className="p-3.5 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent rounded-2xl border border-orange-200 dark:border-orange-900/60 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold shrink-0">
-                  <Award className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-[11px] text-slate-700 dark:text-slate-300 font-bold">
-                    تم عمل وتطوير البرنامج بالكامل بواسطة: د. سامر محمد
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-mono">
-                    TIGER SYSTEM • Developed & Architected by Dr. Samer Mohammad
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsAgreementOpen(false)}
-                className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2 rounded-xl text-xs font-bold transition"
-              >
-                إغلاق
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );
