@@ -1,0 +1,97 @@
+{
+  "name": "tiger-pos-system",
+  "version": "1.0.0",
+  "description": "TIGER - نظام إدارة المحل المكتبي الذكي",
+  "main": "dist-electron/main/main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "build:vite": "vite build",
+    "build:electron": "tsc -p tsconfig.node.json",
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env ELECTRON_IS_DEV=1 electron .\"",
+    "build": "vite build && tsc -p tsconfig.node.json",
+    "start": "electron .",
+    "dist": "npm run build && electron-builder --win --x64",
+    "dist:portable": "npm run build && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.tiger.pos",
+    "productName": "TIGER",
+    "copyright": "TIGER",
+    "publish": null,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "node_modules/sql.js/dist/**/*",
+      "node_modules/sql.js/dist/sql-wasm.wasm",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+        "to": "sql-wasm.wasm"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TIGER",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "TIGER-Setup.exe",
+      "uninstallDisplayName": "TIGER",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "TIGER-Portable.exe"
+    },
+    "asar": true,
+    "compression": "maximum"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "jsbarcode": "^3.11.6",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.13.3",
+    "sql.js": "^1.12.0",
+    "zustand": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/jsbarcode": "^3.11.4",
+    "@types/node": "^20.17.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/sql.js": "^1.4.9",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^26.18.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1"
+  }
+}
