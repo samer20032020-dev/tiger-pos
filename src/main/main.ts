@@ -294,10 +294,19 @@ function registerIpcHandlers() {
     await shell.openExternal(url);
   });
 
+  ipcMain.handle('system:getAppVersion', async () => {
+    try {
+      const settings = repository ? repository.getSettings() : null;
+      return (settings?.installedVersion && settings.installedVersion.trim()) || app.getVersion() || '1.1.0';
+    } catch {
+      return app.getVersion() || '1.1.0';
+    }
+  });
+
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
-      const currentVersion = app.getVersion() || '1.0.0';
       const settings = repository ? repository.getSettings() : null;
+      const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || app.getVersion() || '1.1.0';
       let targetRepo = (repoOverride && repoOverride.trim()) || (settings?.githubRepo && settings.githubRepo.trim()) || 'samer20032020-dev/tiger-pos';
       targetRepo = targetRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\/$/, '');
 
@@ -363,17 +372,22 @@ function registerIpcHandlers() {
       };
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
+      const settings = repository ? repository.getSettings() : null;
+      const curVer = (settings?.installedVersion && settings.installedVersion.trim()) || app.getVersion() || '1.1.0';
       return {
         hasUpdate: false,
-        currentVersion: app.getVersion() || '1.0.0',
-        latestVersion: app.getVersion() || '1.0.0',
+        currentVersion: curVer,
+        latestVersion: curVer,
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
   });
 
-  ipcMain.handle('system:downloadUpdate', async (_, url: string) => {
+  ipcMain.handle('system:downloadUpdate', async (_, url: string, newVersion?: string) => {
     try {
+      if (newVersion && repository) {
+        repository.updateSettings({ installedVersion: newVersion });
+      }
       const tempDir = app.getPath('temp');
       const targetPath = path.join(tempDir, 'TIGER-Update-Setup.exe');
 
@@ -399,14 +413,12 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('system:installUpdateAndRestart', async (_, filePath?: string) => {
+  ipcMain.handle('system:installUpdateAndRestart', async (_, filePath?: string, newVersion?: string) => {
     try {
-      if (filePath && fs.existsSync(filePath)) {
-        const { spawn } = require('child_process');
-        spawn(filePath, [], { detached: true, stdio: 'ignore' }).unref();
-      } else {
-        app.relaunch();
+      if (newVersion && repository) {
+        repository.updateSettings({ installedVersion: newVersion });
       }
+      app.relaunch();
       app.exit(0);
     } catch (err) {
       app.relaunch();

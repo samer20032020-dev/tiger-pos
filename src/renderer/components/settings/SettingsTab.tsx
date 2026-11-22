@@ -76,10 +76,15 @@ export const SettingsTab: React.FC = () => {
       setBackups(bks);
       setUsers(usrs);
       if (window.tigerAPI?.getAppVersion) {
-        const v = await window.tigerAPI.getAppVersion();
-        if (v) setAppVersion(v);
+        try {
+          const v = await window.tigerAPI.getAppVersion();
+          if (v) setAppVersion(v);
+        } catch {}
       }
       if (stgs) {
+        if (stgs.installedVersion) {
+          setAppVersion(stgs.installedVersion);
+        }
         const symbol = (stgs.currencySymbol && stgs.currencySymbol.trim()) ? stgs.currencySymbol.trim() : 'د.أ';
         setCurrencySymbol(symbol);
         const isStandard = POPULAR_CURRENCIES.some(c => c.symbol === symbol);
@@ -200,6 +205,9 @@ export const SettingsTab: React.FC = () => {
     try {
       const res = await window.tigerAPI.checkGithubUpdate(githubRepo);
       setUpdateInfo(res);
+      if (res.currentVersion) {
+        setAppVersion(res.currentVersion);
+      }
       if (res.hasUpdate) {
         addToast(`🎉 يتوفر تحديث جديد للنظام (${res.latestVersion})!`, 'info');
       } else if (res.error) {
@@ -217,20 +225,22 @@ export const SettingsTab: React.FC = () => {
   const handleSimulateUpdate = () => {
     setCheckingUpdate(true);
     setUpdateInfo(null);
+    setUpdateReadyToRestart(false);
     setTimeout(() => {
       setCheckingUpdate(false);
+      const nextVer = appVersion === '1.0.0' ? '1.1.0' : '1.2.0';
       const simulated: UpdateCheckResult = {
         hasUpdate: true,
-        currentVersion: '1.0.0',
-        latestVersion: '1.1.0',
-        releaseName: 'إصدار الترقية السحابي TIGER v1.1.0',
-        releaseNotes: '✨ ميزات وتحسينات الإصدار الجديد v1.1.0:\n• إضافة ميزات جديدة لكشوفات الذمم ومطابقة الصندوق.\n• تسريع وتحديث محرك الطباعة الحرارية للفواتير.\n• تحديث هيكل قاعدة البيانات تلقائياً مع الحفاظ على كافة الفواتير والزبائن والديون بنسبة 100% بدون أي مساس.',
+        currentVersion: appVersion,
+        latestVersion: nextVer,
+        releaseName: `إصدار الترقية السحابي TIGER v${nextVer}`,
+        releaseNotes: `✨ ميزات وتحسينات الإصدار الجديد v${nextVer}:\n• تحديث صياغة رسائل الواتساب لجهاز الصيانة الجاهز.\n• تحسينات إضافية على سرعة الطباعة الحرارية للفواتير.\n• تحديث قاعدة البيانات تلقائياً مع الحفاظ على كافة الفواتير والزبائن والديون 100%.`,
         downloadUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
         htmlUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
         publishedAt: new Date().toISOString()
       };
       setUpdateInfo(simulated);
-      addToast('🎉 تم اكتشاف إصدار جديد (v1.1.0) بنجاح!', 'info');
+      addToast(`🎉 تم اكتشاف إصدار جديد (v${nextVer}) بنجاح!`, 'info');
     }, 600);
   };
 
@@ -244,13 +254,15 @@ export const SettingsTab: React.FC = () => {
       setTimeout(() => setDownloadProgress(55), 400);
       setTimeout(() => setDownloadProgress(85), 900);
 
-      const res = await window.tigerAPI.downloadUpdate(updateInfo.downloadUrl || '', updateInfo.latestVersion);
+      const targetVer = updateInfo.latestVersion || '1.1.0';
+      const res = await window.tigerAPI.downloadUpdate(updateInfo.downloadUrl || '', targetVer);
       setDownloadProgress(100);
       setTimeout(() => {
         setDownloadingUpdate(false);
         if (res.success) {
           setUpdateReadyToRestart(true);
           setDownloadedFilePath(res.filePath);
+          setAppVersion(targetVer);
           addToast('✅ تم تنزيل التحديث بنجاح! اضغط إعادة التشغيل للبدء بالإصدار الجديد', 'success');
         } else {
           addToast(res.error || 'فشل تنزيل التحديث', 'error');
@@ -264,7 +276,8 @@ export const SettingsTab: React.FC = () => {
 
   const handleRestartNow = async () => {
     addToast('🔄 جاري إعادة تشغيل البرنامج لتطبيق التحديث...', 'info');
-    await window.tigerAPI.installUpdateAndRestart(downloadedFilePath, updateInfo?.latestVersion);
+    const targetVer = updateInfo?.latestVersion || '1.1.0';
+    await window.tigerAPI.installUpdateAndRestart(downloadedFilePath, targetVer);
   };
 
   const handleCreateBackup = async () => {
@@ -1109,7 +1122,7 @@ export const SettingsTab: React.FC = () => {
                   title="تجربة ظهور إشعار التحديث الجديد وملاحظات الإصدار v1.1.0"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>تجربة تحديث (v1.1.0)</span>
+                  <span>تجربة تحديث (v{appVersion === '1.0.0' ? '1.1.0' : '1.2.0'})</span>
                 </button>
               </div>
             </div>
