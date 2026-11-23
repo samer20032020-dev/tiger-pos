@@ -29,3 +29,6 @@ build/*.zip
 .DS_Store
 Thumbs.db
 desktop.ini
+*.docx
+voice_notes/
+build/code_artifact.html

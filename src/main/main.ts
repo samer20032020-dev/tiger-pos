@@ -304,18 +304,29 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.1';
+      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.2';
     } catch {
-      return '0.6.1';
+      return '0.6.2';
     }
   });
 
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.1';
+      const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.2';
       const latestVersion = '0.6.2';
-      const hasUpdate = (currentVersion !== latestVersion);
+      const cmp = (a: string, b: string) => {
+        const pa = a.split('.').map(n => parseInt(n, 10) || 0);
+        const pb = b.split('.').map(n => parseInt(n, 10) || 0);
+        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+          const na = pa[i] || 0;
+          const nb = pb[i] || 0;
+          if (na > nb) return 1;
+          if (na < nb) return -1;
+        }
+        return 0;
+      };
+      const hasUpdate = cmp(latestVersion, currentVersion) > 0;
 
       return {
         hasUpdate,
@@ -330,7 +341,7 @@ function registerIpcHandlers() {
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.1';
+      const curVer = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.2';
       return {
         hasUpdate: false,
         currentVersion: curVer,
@@ -388,18 +399,21 @@ function registerIpcHandlers() {
         } catch {}
       }
 
-      const { spawn } = require('child_process');
-      const targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
-
-      const child = spawn(targetExe, [], {
-        detached: true,
-        stdio: 'ignore'
-      });
-      child.unref();
+      try {
+        app.relaunch();
+      } catch {
+        const { spawn } = require('child_process');
+        const targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+        const child = spawn(targetExe, [], {
+          detached: true,
+          stdio: 'ignore'
+        });
+        child.unref();
+      }
 
       setTimeout(() => {
         app.exit(0);
-      }, 350);
+      }, 300);
     } catch (err) {
       try {
         app.relaunch();

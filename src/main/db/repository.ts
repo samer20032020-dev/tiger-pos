@@ -23,7 +23,7 @@ export class TigerRepository {
       storeAddress: '',
       githubRepo: 'samer20032020-dev/tiger-pos',
       cashDrawerShortcut: 'F12',
-      installedVersion: '0.6.1'
+      installedVersion: '0.6.2'
     };
     for (const r of rows) {
       if (r.key === 'currencyDecimals') {
@@ -1119,7 +1119,7 @@ export class TigerRepository {
     });
   }
 
-  public payInstallment(paymentId: string, voucherNumber: string, receivedBy = 'أحمد الكاشير'): void {
+  public payInstallment(paymentId: string, voucherNumber: string, receivedBy = 'الكاشير'): void {
     this.db.transaction(() => {
       const pmt = this.db.queryOne('SELECT * FROM installment_payments WHERE id = ?', [paymentId]);
       if (!pmt) throw new Error('الدفعة غير موجودة');

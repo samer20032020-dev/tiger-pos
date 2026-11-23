@@ -465,7 +465,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    placeholder="مثال: أحمد الزعبي"
+                    placeholder=""
                     value={quickName}
                     onChange={(e) => setQuickName(e.target.value)}
                     className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs font-bold text-slate-900 dark:text-white"

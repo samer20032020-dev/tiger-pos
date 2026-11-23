@@ -31,7 +31,7 @@ export const SettingsTab: React.FC = () => {
 
   // GitHub Auto-Update State
   const [githubRepo, setGithubRepo] = useState('samer20032020-dev/tiger-pos');
-  const [appVersion, setAppVersion] = useState('0.6.1');
+  const [appVersion, setAppVersion] = useState('0.6.2');
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [downloadingUpdate, setDownloadingUpdate] = useState(false);
@@ -216,11 +216,40 @@ export const SettingsTab: React.FC = () => {
       'تحسين دقة ترحيل الخزينة وتدقيق فروقات الصندوق اليومية.'
     ];
 
+    const targetVer = '0.6.2';
+    const cmp = (a: string, b: string) => {
+      const pa = a.split('.').map(n => parseInt(n, 10) || 0);
+      const pb = b.split('.').map(n => parseInt(n, 10) || 0);
+      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const na = pa[i] || 0;
+        const nb = pb[i] || 0;
+        if (na > nb) return 1;
+        if (na < nb) return -1;
+      }
+      return 0;
+    };
+
     setTimeout(() => {
       setCheckingUpdate(false);
+      const hasUpdate = cmp(targetVer, appVersion) > 0;
+
+      if (!hasUpdate) {
+        setUpdateInfo({
+          hasUpdate: false,
+          currentVersion: appVersion,
+          latestVersion: appVersion,
+          releaseName: `TIGER v${appVersion}`,
+          releaseNotes: '',
+          downloadUrl: '',
+          htmlUrl: '',
+          publishedAt: new Date().toISOString()
+        });
+        addToast(`أنت تستخدم أحدث إصدار من TIGER (v${appVersion}) بنجاح!`, 'success');
+        return;
+      }
+
       // Select 3 random different items
       const selected = [...IMPROVEMENTS_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
-      const targetVer = '0.6.2';
       const notes = `✨ ميزات وتحسينات الإصدار الجديد v${targetVer}:\n${selected.map(item => `• ${item}`).join('\n')}\n• تحديث هيكل قاعدة البيانات تلقائياً مع الحفاظ على كافة الفواتير والزبائن والديون 100%.`;
 
       const result: UpdateCheckResult = {
