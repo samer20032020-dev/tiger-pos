@@ -321,17 +321,17 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.0';
+      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.1';
     } catch {
-      return '0.7.0';
+      return '0.7.1';
     }
   });
 
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.0';
-      const latestVersion = '0.7.0';
+      const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.1';
+      const latestVersion = '0.7.1';
       const cmp = (a: string, b: string) => {
         const pa = a.split('.').map(n => parseInt(n, 10) || 0);
         const pb = b.split('.').map(n => parseInt(n, 10) || 0);
@@ -349,8 +349,8 @@ function registerIpcHandlers() {
         hasUpdate,
         currentVersion,
         latestVersion,
-        releaseName: 'إصدار الترقية السحابي TIGER v0.7.0',
-        releaseNotes: '✨ حل مشكلة عدم ظهور الفواتير غير المرحلة ومطابقة أعداد الجرد والخزينة بدقة 100%.',
+        releaseName: 'إصدار الترقية السحابي TIGER v0.7.1',
+        releaseNotes: '✨ تطوير وتحديث تصميم نافذة تسكير الصندوق والوردية بمظهر احترافي ومطابقة سريعة بنقرة واحدة.',
         downloadUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
         htmlUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
         publishedAt: new Date().toISOString()
@@ -358,11 +358,11 @@ function registerIpcHandlers() {
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.0';
+      const curVer = (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.1';
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.7.0',
+        latestVersion: '0.7.1',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
@@ -370,7 +370,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:downloadUpdate', async (_, url: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.0';
+      const targetVer = newVersion || '0.7.1';
       if (repository) {
         repository.updateSettings({ installedVersion: targetVer });
       }
@@ -406,7 +406,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:installUpdateAndRestart', async (_, filePath?: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.0';
+      const targetVer = newVersion || '0.7.1';
       if (repository) {
         repository.updateSettings({ installedVersion: targetVer });
       }

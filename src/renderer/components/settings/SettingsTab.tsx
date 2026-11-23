@@ -213,6 +213,7 @@ export const SettingsTab: React.FC = () => {
 
     // Dynamic pool of improvements
     const IMPROVEMENTS_POOL = [
+      'تحديث وتطوير تصميم نافذة تسكير الصندوق وإغلاق الوردية بمظهر فاخر وسلس مع زر المطابقة السريعة.',
       'حل مشكلة عدم ظهور الفواتير غير المرحلة ومطابقة أعداد الجرد والخزينة بدقة 100%.',
       'تفعيل شريط وتمرير الفأرة (Scroll Down) بسلاسة كاملة في جميع شاشات وجداول النظام.',
       'نقل رسائل وتنبيهات النظام لتظهر في أسفل الشاشة لعدم حجب أشرطة وقوائم البيع.',
@@ -230,7 +231,7 @@ export const SettingsTab: React.FC = () => {
       'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.'
     ];
 
-    const targetVer = '0.7.0';
+    const targetVer = '0.7.1';
     const cmp = (a: string, b: string) => {
       const pa = a.split('.').map(n => parseInt(n, 10) || 0);
       const pb = b.split('.').map(n => parseInt(n, 10) || 0);
