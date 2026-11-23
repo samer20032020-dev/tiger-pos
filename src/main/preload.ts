@@ -50,6 +50,7 @@ export interface TigerAPI {
   getAllInvoices: (limit?: number) => Promise<Invoice[]>;
   getInvoiceDetails: (invoiceId: string) => Promise<Invoice | null>;
   postInvoices: (invoiceIds: string[]) => Promise<{ count: number }>;
+  settleAndResetDailyDrawer: () => Promise<{ invoiceCount: number; repairCount: number; expenseCount: number }>;
 
   // Repair Center
   getAllRepairTickets: (status?: string) => Promise<RepairTicket[]>;
@@ -152,6 +153,7 @@ const tigerAPI: TigerAPI = {
   getAllInvoices: (limit) => ipcRenderer.invoke('db:getAllInvoices', limit),
   getInvoiceDetails: (invoiceId) => ipcRenderer.invoke('db:getInvoiceDetails', invoiceId),
   postInvoices: (invoiceIds) => ipcRenderer.invoke('db:postInvoices', invoiceIds),
+  settleAndResetDailyDrawer: () => ipcRenderer.invoke('db:settleAndResetDailyDrawer'),
 
   // Repair
   getAllRepairTickets: (status) => ipcRenderer.invoke('db:getAllRepairTickets', status),

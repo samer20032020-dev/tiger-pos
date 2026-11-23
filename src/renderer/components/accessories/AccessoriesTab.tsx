@@ -61,8 +61,20 @@ export const AccessoriesTab: React.FC = () => {
     if (n.includes('تحويلة') || n.includes('محول') || n.includes('هب') || n.includes('adapter') || n.includes('hub') || n.includes('otg') || n.includes('وصلة')) {
       return 'محولات وتوصيلات';
     }
-    if (g.includes('صيان') || n.includes('شاشة صيانة') || n.includes('فلاتة') || n.includes('اي سي') || n.includes('لحام') || n.includes('بورد')) {
-      return 'قطع غيار وشاشات صيانة';
+    if (n.includes('شاشة') || n.includes('lcd') || n.includes('screen') || n.includes('oled') || n.includes('شاشه')) {
+      return 'شاشات صيانة (LCD)';
+    }
+    if (n.includes('باك') || n.includes('هاوسنج') || n.includes('back glass') || n.includes('housing') || n.includes('ظهر')) {
+      return 'باكات وهاوسنج آيفون (iPhone Backs)';
+    }
+    if (n.includes('جدلة') || n.includes('فلكس') || n.includes('كونكتر') || n.includes('مدخل شحن') || n.includes('قاعدة شحن') || n.includes('sub board') || n.includes('charging flex') || n.includes('ui')) {
+      return 'جدلات وكونكترات شحن (UI)';
+    }
+    if (n.includes('بطارية صيانة') || (n.includes('بطارية') && (n.includes('ايفون') || n.includes('سامسونج') || n.includes('شاومي') || n.includes('هونر') || n.includes('تغيير')))) {
+      return 'بطاريات صيانة (Battery)';
+    }
+    if (g.includes('صيان') || n.includes('اي سي') || n.includes('لحام') || n.includes('بورد') || n.includes('مادة صيانة')) {
+      return 'قطع غيار ومواد صيانة';
     }
     return 'أخرى';
   };
@@ -289,6 +301,24 @@ export const AccessoriesTab: React.FC = () => {
             <option value="all">جميع التصنيفات ({accessories.length})</option>
             {ACCESSORY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+
+          {/* Repair Parts Quick Filter Button */}
+          <button
+            onClick={() => {
+              if (selectedCategory.includes('صيانة') || selectedCategory.includes('UI') || selectedCategory.includes('باكات')) {
+                setSelectedCategory('all');
+              } else {
+                setSelectedCategory('شاشات صيانة (LCD)');
+              }
+            }}
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+              selectedCategory.includes('صيانة') || selectedCategory.includes('UI') || selectedCategory.includes('باكات')
+                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            <span>🔧 قطع الصيانة</span>
+          </button>
 
           {/* Critical Shortage <= 2 Beacon Filter Button */}
           <button

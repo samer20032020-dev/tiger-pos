@@ -34,7 +34,9 @@ export const ReportsTab: React.FC = () => {
   // Settlement tab states
   const [postingFilter, setPostingFilter] = useState<PostingFilter>('unposted');
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
-  const [startingCashInput, setStartingCashInput] = useState<string>('50');
+  const [startingCashInput, setStartingCashInput] = useState<string>('');
+  const [receiptsOverrideInput, setReceiptsOverrideInput] = useState<string>('');
+  const [expectedOverrideInput, setExpectedOverrideInput] = useState<string>('');
   const [actualCashInput, setActualCashInput] = useState<string>('');
 
   const startingCash = parseFloat(startingCashInput) || 0;
@@ -170,7 +172,10 @@ export const ReportsTab: React.FC = () => {
     .filter(r => !r.isPosted)
     .reduce((sum, r) => sum + (r.advancePayment || 0) + (r.status === 'delivered' ? Math.max(0, r.finalCost - r.advancePayment) : 0), 0);
 
-  const totalExpectedDrawerCash = startingCash + unpostedCash + unpostedRepairsCash;
+  const autoReceipts = unpostedCash + unpostedRepairsCash;
+  const effectiveReceipts = receiptsOverrideInput.trim() !== '' ? (parseFloat(receiptsOverrideInput) || 0) : autoReceipts;
+  const autoExpectedDrawerCash = startingCash + effectiveReceipts;
+  const totalExpectedDrawerCash = expectedOverrideInput.trim() !== '' ? (parseFloat(expectedOverrideInput) || 0) : autoExpectedDrawerCash;
   const cashDifference = actualCash - totalExpectedDrawerCash;
 
   // Filtered transactions for the ledger table
@@ -230,6 +235,28 @@ export const ReportsTab: React.FC = () => {
       await loadReportData();
     } catch (err: any) {
       addToast(err.message || 'فشل ترحيل العمليات', 'error');
+    } finally {
+      setPostingLoading(false);
+    }
+  };
+
+  const handleSettleAndResetDrawer = async () => {
+    if (!confirm('هل أنت متأكد من ترحيل وإغلاق الصندوق وتصفير اليومية بالكامل؟\nسيتم نقل كافة العمليات وتذاكر الصيانة للأرشيف وتصفير الصندوق والمؤشرات بالكامل لبدء يوم جديد.')) {
+      return;
+    }
+
+    setPostingLoading(true);
+    try {
+      const res = await window.tigerAPI.settleAndResetDailyDrawer();
+      addToast(`تم ترحيل الصندوق بنجاح (${res.invoiceCount} فواتير، ${res.repairCount} صيانة)! تم تصفير كافة المؤشرات لبدء يوم جديد.`, 'success');
+      setStartingCashInput('');
+      setReceiptsOverrideInput('');
+      setExpectedOverrideInput('');
+      setActualCashInput('');
+      setSelectedInvoiceIds([]);
+      await loadReportData();
+    } catch (err: any) {
+      addToast(err.message || 'فشل ترحيل وتصفير الصندوق', 'error');
     } finally {
       setPostingLoading(false);
     }
@@ -301,24 +328,24 @@ export const ReportsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Universal Date Filter Bar (Audios 4 & 7) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 flex items-center justify-center font-bold">
-              <Calendar className="w-4 h-4" />
+      {/* Universal Date Filter Bar (+25% Bigger, Ultra Clear & Vibrant) */}
+      <div className="bg-white dark:bg-slate-900 border-2 border-orange-500/30 dark:border-orange-500/20 rounded-3xl p-5 shadow-md space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-bold shadow-md shadow-orange-500/30">
+              <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs font-black text-slate-800 dark:text-white block">
+              <span className="text-sm font-black text-slate-900 dark:text-white block">
                 تصفية الفترة الزمنية للتقارير والعمليات
               </span>
-              <span className="text-[10px] text-slate-400 block">
+              <span className="text-xs text-slate-400 block font-medium">
                 اختر الفترة أو حدد تاريخاً حراً (متاح للشفتات المسائية وما بعد منتصف الليل)
               </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/60">
+          <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-2 rounded-2xl border border-slate-200 dark:border-slate-700/60">
             {[
               { id: 'today', label: 'اليوم' },
               { id: 'yesterday_today', label: 'أمس واليوم (48 ساعة)' },
@@ -331,10 +358,10 @@ export const ReportsTab: React.FC = () => {
                 key={f.id}
                 type="button"
                 onClick={() => setTimeFilter(f.id as TimeFilter)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`px-4 py-2 rounded-xl text-sm font-black transition ${
                   timeFilter === f.id
-                    ? 'bg-orange-500 text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30 ring-2 ring-orange-400/50'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
                 {f.label}
@@ -344,26 +371,26 @@ export const ReportsTab: React.FC = () => {
         </div>
 
         {timeFilter === 'custom' && (
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-4 text-xs animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-600 dark:text-slate-300 font-bold">من تاريخ:</span>
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-6 text-sm animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <span className="text-slate-900 dark:text-white font-black text-sm">من تاريخ:</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-mono text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+                className="bg-slate-50 dark:bg-slate-950 border-2 border-orange-500/60 rounded-2xl px-4 py-2 font-mono text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 shadow-sm"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-600 dark:text-slate-300 font-bold">إلى تاريخ:</span>
+            <div className="flex items-center gap-3">
+              <span className="text-slate-900 dark:text-white font-black text-sm">إلى تاريخ:</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-mono text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+                className="bg-slate-50 dark:bg-slate-950 border-2 border-orange-500/60 rounded-2xl px-4 py-2 font-mono text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 shadow-sm"
               />
             </div>
-            <span className="text-[11px] text-orange-600 dark:text-orange-400 font-bold">
+            <span className="text-xs text-orange-600 dark:text-orange-400 font-black bg-orange-50 dark:bg-orange-950/40 px-3 py-1.5 rounded-xl border border-orange-200 dark:border-orange-800/40">
               ✓ يتم عرض وتحديث الحسابات بين هذين التاريخين فوراً
             </span>
           </div>
@@ -441,37 +468,36 @@ export const ReportsTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Master Posting Button */}
+              {/* Master Posting & Day Reset Button */}
               <button
-                onClick={() => handlePostTransactions()}
-                disabled={postingLoading || unpostedInvoices.length === 0}
-                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30"
+                type="button"
+                onClick={() => handleSettleAndResetDrawer()}
+                disabled={postingLoading}
+                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-6 py-3 rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xl shadow-orange-500/40 hover:shadow-orange-500/60 ring-2 ring-orange-400/40 cursor-pointer shrink-0"
               >
                 <ArrowDownToLine className="w-4 h-4" />
                 <span>
                   {postingLoading
-                    ? 'جاري الترحيل...'
-                    : selectedInvoiceIds.length > 0
-                    ? `ترحيل المحدد (${selectedInvoiceIds.length}) وإغلاق الصندوق`
-                    : `ترحيل جميع غير المرحل (${unpostedInvoices.length}) وإغلاق الخزينة`}
+                    ? 'جاري الترحيل وتصفير الصندوق...'
+                    : `ترحيل الصندوق وتصفير اليومية بالكامل (${unpostedInvoices.length} فواتير)`}
                 </span>
               </button>
             </div>
 
-            {/* Reconciliation Equation: Starting + Today Sales = Expected vs Actual */}
+            {/* Reconciliation Equation: Starting + Today Sales = Expected vs Actual (Fully Editable With Glowing Highlights) */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
               
               {/* 1. Starting Cash */}
-              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-1">
+              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-1.5 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-400 block">الرصيد الافتتاحي (الصبح):</label>
+                  <label className="text-xs font-bold text-slate-300 block">الرصيد الافتتاحي (الصبح):</label>
                   {startingCashInput && (
                     <button
                       type="button"
                       onClick={() => setStartingCashInput('')}
-                      className="text-[10px] text-slate-400 hover:text-red-400"
+                      className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
                     >
-                      مسح
+                      مسح (0)
                     </button>
                   )}
                 </div>
@@ -480,7 +506,7 @@ export const ReportsTab: React.FC = () => {
                     type="text"
                     inputMode="decimal"
                     dir="ltr"
-                    placeholder="50.000"
+                    placeholder="0.000"
                     value={startingCashInput}
                     onChange={(e) => {
                       const val = e.target.value.replace(/[^0-9.]/g, '');
@@ -488,38 +514,96 @@ export const ReportsTab: React.FC = () => {
                       const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
                       setStartingCashInput(sanitized);
                     }}
-                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-1.5 text-sm font-mono font-bold text-white focus:outline-none focus:border-orange-500 select-text text-left"
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-black text-white focus:outline-none focus:border-orange-500 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block">المبلغ الذي بدأ به الدرج (يمكنك تغييره بأي وقت)</span>
+                <span className="text-[10px] text-slate-400 block">المبلغ الذي بدأ به الدرج (عدله بحرية)</span>
               </div>
 
-              {/* 2. Today's Cash Flow */}
-              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-1">
-                <span className="text-[11px] font-bold text-slate-400 block">+ مقبوضات اليوم النقدية:</span>
-                <div className="text-lg font-black font-mono text-emerald-400 pt-1">
-                  +{formatJOD(unpostedCash + unpostedRepairsCash)}
-                </div>
-                <span className="text-[10px] text-slate-400 block">مبيعات ({formatJOD(unpostedCash)}) + صيانة</span>
-              </div>
-
-              {/* 3. Expected Total */}
-              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-1">
-                <span className="text-[11px] font-bold text-slate-400 block">= الكاش المفترض بالدرج:</span>
-                <div className="text-lg font-black font-mono text-orange-400 pt-1">
-                  {formatJOD(totalExpectedDrawerCash)}
-                </div>
-                <span className="text-[10px] text-slate-400 block">المجموع الحسابي المطلوب</span>
-              </div>
-
-              {/* 4. Actual Cash Input & Difference */}
-              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-1">
+              {/* 2. Today's Cash Flow (Editable / Overridable) */}
+              <div className="bg-slate-800/80 border border-emerald-500/40 rounded-2xl p-4 space-y-1.5 shadow-[0_0_15px_rgba(16,185,129,0.2)] ring-1 ring-emerald-500/30">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-400 block">الكاش الفعلي بعد العد بالدرج:</label>
+                  <span className="text-xs font-bold text-emerald-300 block">+ مقبوضات اليوم النقدية:</span>
+                  {receiptsOverrideInput !== '' && (
+                    <button
+                      type="button"
+                      onClick={() => setReceiptsOverrideInput('')}
+                      className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
+                      title="استعادة الحساب التلقائي"
+                    >
+                      استعادة التلقائي
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
+                    placeholder={formatJOD(autoReceipts)}
+                    value={receiptsOverrideInput !== '' ? receiptsOverrideInput : (autoReceipts > 0 ? autoReceipts.toFixed(3) : '')}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, '');
+                      const parts = val.split('.');
+                      const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
+                      setReceiptsOverrideInput(sanitized);
+                    }}
+                    className="w-full bg-slate-900 border border-emerald-500/50 rounded-xl px-3 py-2 text-sm font-mono font-black text-emerald-400 focus:outline-none focus:border-emerald-400 select-text text-left"
+                  />
+                  <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
+                </div>
+                <span className="text-[10px] text-slate-400 block">مبيعات ({formatJOD(unpostedCash)}) + صيانة ({formatJOD(unpostedRepairsCash)})</span>
+              </div>
+
+              {/* 3. Expected Total (Glowing Prominent / Editable) */}
+              <div className="bg-slate-800/90 border-2 border-orange-500 rounded-2xl p-4 space-y-1.5 shadow-[0_0_20px_rgba(249,115,22,0.35)] ring-2 ring-orange-500/60">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-orange-300 block">= الكاش المفترض بالدرج:</span>
+                  {expectedOverrideInput !== '' && (
+                    <button
+                      type="button"
+                      onClick={() => setExpectedOverrideInput('')}
+                      className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
+                      title="استعادة الحساب التلقائي"
+                    >
+                      استعادة التلقائي
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
+                    placeholder={formatJOD(autoExpectedDrawerCash)}
+                    value={expectedOverrideInput !== '' ? expectedOverrideInput : (autoExpectedDrawerCash > 0 ? autoExpectedDrawerCash.toFixed(3) : '')}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, '');
+                      const parts = val.split('.');
+                      const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
+                      setExpectedOverrideInput(sanitized);
+                    }}
+                    className="w-full bg-slate-900 border border-orange-500/60 rounded-xl px-3 py-2 text-base font-mono font-black text-orange-400 focus:outline-none focus:border-orange-400 select-text text-left"
+                  />
+                  <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
+                </div>
+                <span className="text-[10px] text-slate-400 block">المجموع الحسابي المطلوب (افتتاحي + مقبوضات)</span>
+              </div>
+
+              {/* 4. Actual Cash Input & Difference (Glowing Status) */}
+              <div className={`bg-slate-800/80 rounded-2xl p-4 space-y-1.5 transition ${
+                hasActualCashEntered && Math.abs(cashDifference) > 0.005 && cashDifference < 0
+                  ? 'border-2 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.35)] ring-2 ring-red-500/50'
+                  : hasActualCashEntered && Math.abs(cashDifference) < 0.005
+                  ? 'border-2 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.35)] ring-2 ring-emerald-500/50'
+                  : 'border border-slate-700'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-300 block">الكاش الفعلي بعد العد بالدرج:</label>
                   <button
                     type="button"
-                    onClick={() => setActualCashInput(totalExpectedDrawerCash.toFixed(3))}
+                    onClick={() => setActualCashInput(totalExpectedDrawerCash > 0 ? totalExpectedDrawerCash.toFixed(3) : '0.000')}
                     className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
                     title="تعبئة الكاش الفعلي ليطابق المفترض"
                   >
@@ -539,7 +623,7 @@ export const ReportsTab: React.FC = () => {
                       const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
                       setActualCashInput(sanitized);
                     }}
-                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-1.5 text-sm font-mono font-bold text-white focus:outline-none focus:border-orange-500 select-text text-left"
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-bold text-white focus:outline-none focus:border-orange-500 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
                 </div>
@@ -547,16 +631,16 @@ export const ReportsTab: React.FC = () => {
                   {!hasActualCashEntered ? (
                     <span className="text-slate-400">أدخل المبلغ الفعلي للمطابقة</span>
                   ) : Math.abs(cashDifference) < 0.005 ? (
-                    <span className="text-emerald-400 flex items-center gap-1">
+                    <span className="text-emerald-400 font-black flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       متطابق تماماً بدون أي فارق!
                     </span>
                   ) : cashDifference > 0 ? (
-                    <span className="text-blue-400">
+                    <span className="text-blue-400 font-black">
                       يوجد فائض بالدرج: +{formatJOD(cashDifference)}
                     </span>
                   ) : (
-                    <span className="text-red-400 flex items-center gap-1">
+                    <span className="text-red-400 font-black flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5" />
                       يوجد عجز ونقص: {formatJOD(cashDifference)}
                     </span>
@@ -828,17 +912,15 @@ export const ReportsTab: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handlePostTransactions()}
-                disabled={postingLoading || unpostedInvoices.length === 0}
-                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-lg shadow-orange-500/30 shrink-0"
+                onClick={() => handleSettleAndResetDrawer()}
+                disabled={postingLoading}
+                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-6 py-3 rounded-2xl text-xs font-black transition flex items-center gap-2 shadow-lg shadow-orange-500/30 shrink-0 cursor-pointer"
               >
                 <ArrowDownToLine className="w-4 h-4" />
                 <span>
                   {postingLoading
-                    ? 'جاري الترحيل...'
-                    : selectedInvoiceIds.length > 0
-                    ? `ترحيل المحدد (${selectedInvoiceIds.length}) وإغلاق الصندوق`
-                    : `ترحيل كافة العمليات (${unpostedInvoices.length}) وإغلاق الخزينة`}
+                    ? 'جاري الترحيل وتصفير الصندوق...'
+                    : `ترحيل الصندوق وتصفير اليومية بالكامل (${unpostedInvoices.length} فواتير)`}
                 </span>
               </button>
             </div>

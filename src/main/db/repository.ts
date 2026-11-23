@@ -929,6 +929,28 @@ export class TigerRepository {
     });
   }
 
+  public settleAndResetDailyDrawer(): { invoiceCount: number; repairCount: number; expenseCount: number } {
+    const now = new Date().toISOString();
+    return this.db.transaction(() => {
+      const invRes = this.db.run('UPDATE invoices SET is_posted = 1, posted_at = ? WHERE is_posted = 0', [now]);
+      const repRes = this.db.run('UPDATE repair_tickets SET is_posted = 1, posted_at = ? WHERE is_posted = 0 OR is_posted IS NULL', [now]);
+      const expRes = this.db.run('UPDATE expenses SET is_posted = 1, posted_at = ? WHERE is_posted = 0 OR is_posted IS NULL', [now]);
+      
+      const openShift = this.db.queryOne('SELECT * FROM shifts WHERE status = "open" ORDER BY opened_at DESC LIMIT 1');
+      if (openShift) {
+        this.db.run('UPDATE shifts SET closed_at = ?, status = "closed", note = COALESCE(note, "") || " [تم ترحيل وتصفير الصندوق]" WHERE id = ?', [now, openShift.id]);
+      }
+
+      this.logAudit('invoices_posted', 'system', 'المدير', `ترحيل شامل وإغلاق اليومية وتصفير الصندوق بالكامل (${invRes.changes || 0} فواتير، ${repRes.changes || 0} صيانة، ${expRes.changes || 0} مصاريف)`);
+
+      return {
+        invoiceCount: invRes.changes || 0,
+        repairCount: repRes.changes || 0,
+        expenseCount: expRes.changes || 0
+      };
+    });
+  }
+
   public getInvoiceDetails(invoiceId: string): Invoice | null {
     const r = this.db.queryOne('SELECT * FROM invoices WHERE id = ?', [invoiceId]);
     if (!r) return null;

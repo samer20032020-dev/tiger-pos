@@ -9,6 +9,7 @@ import { REPAIR_STATUS_LABELS, formatJOD } from '../../../shared/constants';
 import { RepairTicketModal } from './RepairTicketModal';
 import { RepairPartsModal } from './RepairPartsModal';
 import { RepairDeviceStickerModal } from './RepairDeviceStickerModal';
+import { RepairInventoryModal } from './RepairInventoryModal';
 import { PatternLockInput } from '../common/PatternLockInput';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { sendWhatsAppMessage, buildRepairWhatsAppMessage } from '../../utils/whatsapp';
@@ -24,6 +25,7 @@ export const RepairsTab: React.FC = () => {
 
   // Modals
   const [isCreateOpen, setCreateOpen] = useState(false);
+  const [isRepairInventoryOpen, setRepairInventoryOpen] = useState(false);
   const [partsTicket, setPartsTicket] = useState<RepairTicket | null>(null);
   const [patternTicket, setPatternTicket] = useState<RepairTicket | null>(null);
   const [stickerTicket, setStickerTicket] = useState<RepairTicket | null>(null);
@@ -174,13 +176,24 @@ export const RepairsTab: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-orange-600/30 transition"
-        >
-          <Plus className="w-4 h-4" />
-          استلام جهاز صيانة جديد
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setRepairInventoryOpen(true)}
+            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 shadow-sm transition"
+          >
+            <Wrench className="w-4 h-4 text-orange-500" />
+            <span>مخزون وقطع الصيانة</span>
+          </button>
+
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-orange-600/30 transition"
+          >
+            <Plus className="w-4 h-4" />
+            استلام جهاز صيانة جديد
+          </button>
+        </div>
       </div>
 
       {/* Spare Parts Stock Alert Beacon Banner */}
@@ -492,6 +505,12 @@ export const RepairsTab: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Repair Parts Inventory Modal */}
+      <RepairInventoryModal
+        isOpen={isRepairInventoryOpen}
+        onClose={() => setRepairInventoryOpen(false)}
+        onSuccess={loadTickets}
+      />
     </div>
   );
 };

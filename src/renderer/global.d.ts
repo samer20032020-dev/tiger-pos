@@ -35,6 +35,7 @@ export interface TigerAPI {
   getAllInvoices: (limit?: number) => Promise<Invoice[]>;
   getInvoiceDetails: (invoiceId: string) => Promise<Invoice | null>;
   postInvoices: (invoiceIds: string[]) => Promise<{ count: number }>;
+  settleAndResetDailyDrawer: () => Promise<{ invoiceCount: number; repairCount: number; expenseCount: number }>;
   getAllRepairTickets: (status?: string) => Promise<RepairTicket[]>;
   getRepairTicketDetails: (ticketId: string) => Promise<RepairTicket | null>;
   createRepairTicket: (data: Omit<RepairTicket, 'id' | 'ticketNumber' | 'createdAt'>) => Promise<RepairTicket>;
