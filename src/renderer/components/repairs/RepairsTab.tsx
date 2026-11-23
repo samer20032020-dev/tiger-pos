@@ -179,8 +179,8 @@ export const RepairsTab: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setRepairInventoryOpen(true)}
-            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 shadow-sm transition"
+            onClick={() => setActiveTab('repair_parts')}
+            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 shadow-sm transition cursor-pointer"
           >
             <Wrench className="w-4 h-4 text-orange-500" />
             <span>مخزون وقطع الصيانة</span>

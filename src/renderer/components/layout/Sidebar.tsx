@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   LayoutDashboard, ShoppingCart, Smartphone, Package, 
   Wrench, CalendarClock, Truck, Receipt, FileSpreadsheet, 
-  ShieldAlert, Settings, LogOut, Users, AlertCircle
+  ShieldAlert, Settings, LogOut, Users, AlertCircle, Cpu
 } from 'lucide-react';
 import { useAppStore, NavTab } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
@@ -36,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'phones', label: 'الهواتف & IMEI', icon: Smartphone },
     { id: 'accessories', label: 'الإكسسوارات', icon: Package, badge: lowStockCount > 0 ? lowStockCount : undefined },
     { id: 'repairs', label: 'الصيانة', icon: Wrench, badge: activeRepairsCount > 0 ? activeRepairsCount : undefined },
+    { id: 'repair_parts', label: 'قطع الصيانة', icon: Cpu },
     { id: 'customers', label: 'العملاء', icon: Users },
     { id: 'installments', label: 'الأقساط', icon: CalendarClock, tag: 'قريباً' },
     { id: 'suppliers', label: 'الموردين', icon: Truck, adminOnly: true },

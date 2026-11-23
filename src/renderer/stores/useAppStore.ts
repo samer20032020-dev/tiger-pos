@@ -7,6 +7,7 @@ export type NavTab =
   | 'phones'
   | 'accessories'
   | 'repairs'
+  | 'repair_parts'
   | 'installments'
   | 'customers'
   | 'suppliers'

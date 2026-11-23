@@ -1,10 +1,34 @@
 export const REPAIR_PART_CATEGORIES = [
-  'بطاريات صيانة (Battery)',
-  'شاشات صيانة (LCD)',
+  'شاشات الصيانة',
+  'بطاريات الصيانة',
+  'باكات وظواهر',
   'جدلات وكونكترات شحن (UI)',
-  'باكات وهاوسنج آيفون (iPhone Backs)',
   'قطع غيار ومواد صيانة'
 ];
+
+export const isRepairCategory = (category: string = '', name: string = ''): boolean => {
+  const c = (category || '').toLowerCase();
+  const n = (name || '').toLowerCase();
+  return (
+    c.includes('صيانة') ||
+    c.includes('شاشات') ||
+    c.includes('شاشة') ||
+    c.includes('بطاريات صيانة') ||
+    c.includes('باك') ||
+    c.includes('ظواهر') ||
+    c.includes('هاوسنج') ||
+    c.includes('ui') ||
+    c.includes('جدلات') ||
+    c.includes('كونكتر') ||
+    c.includes('قطع غيار') ||
+    n.includes('شاشة') ||
+    n.includes('بطارية') ||
+    n.includes('باك') ||
+    n.includes('هاوسنج') ||
+    n.includes('جدلة') ||
+    n.includes('كونكتر')
+  );
+};
 
 export const ACCESSORY_CATEGORIES = [
   'شواحن وكوابل',
@@ -12,7 +36,6 @@ export const ACCESSORY_CATEGORIES = [
   'شاشات حماية (سكرينات)',
   'سماعات وإيربودز',
   'بطاريات وبنك طاقة',
-  ...REPAIR_PART_CATEGORIES,
   'حوامل وسكسوارات سيارة',
   'محولات وتوصيلات',
   'أخرى'

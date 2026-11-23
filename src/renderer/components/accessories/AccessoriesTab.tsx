@@ -5,14 +5,14 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { Accessory } from '../../../shared/types';
-import { ACCESSORY_CATEGORIES, formatJOD } from '../../../shared/constants';
+import { ACCESSORY_CATEGORIES, formatJOD, isRepairCategory } from '../../../shared/constants';
 import { AccessoryModal } from './AccessoryModal';
 import { BarcodeStickerModal } from '../common/BarcodeStickerModal';
 import { DamagedItemModal } from '../common/DamagedItemModal';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const AccessoriesTab: React.FC = () => {
-  const { addToast, criticalShortageFilter, setCriticalShortageFilter, currentUser } = useAppStore();
+  const { addToast, criticalShortageFilter, setCriticalShortageFilter, currentUser, setActiveTab } = useAppStore();
   const isAdmin = currentUser?.role === 'admin';
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [search, setSearch] = useState('');
@@ -218,7 +218,9 @@ export const AccessoriesTab: React.FC = () => {
     }
   };
 
-  const filtered = accessories.filter(a => {
+  const consumerAccessories = accessories.filter(a => !isRepairCategory(a.category, a.name));
+
+  const filtered = consumerAccessories.filter(a => {
     const matchSearch = search === '' ||
       a.name.toLowerCase().includes(search.toLowerCase()) ||
       a.barcode.includes(search) ||
@@ -231,8 +233,8 @@ export const AccessoriesTab: React.FC = () => {
     return matchSearch && matchCategory && matchCritical && matchLowStock;
   });
 
-  const criticalStockCount = accessories.filter(a => a.currentStock <= 2).length;
-  const lowStockCount = accessories.filter(a => a.currentStock <= a.minStockAlert).length;
+  const criticalStockCount = consumerAccessories.filter(a => a.currentStock <= 2).length;
+  const lowStockCount = consumerAccessories.filter(a => a.currentStock <= a.minStockAlert).length;
 
   return (
     <div className="p-6 space-y-4 pb-28">
@@ -303,22 +305,13 @@ export const AccessoriesTab: React.FC = () => {
             {ACCESSORY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
 
-          {/* Repair Parts Quick Filter Button */}
+          {/* Repair Parts Shortcut Button */}
           <button
-            onClick={() => {
-              if (selectedCategory.includes('صيانة') || selectedCategory.includes('UI') || selectedCategory.includes('باكات')) {
-                setSelectedCategory('all');
-              } else {
-                setSelectedCategory('شاشات صيانة (LCD)');
-              }
-            }}
-            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-              selectedCategory.includes('صيانة') || selectedCategory.includes('UI') || selectedCategory.includes('باكات')
-                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-            }`}
+            onClick={() => setActiveTab('repair_parts')}
+            className="px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+            title="الانتقال إلى قسم قطع الصيانة المستقل"
           >
-            <span>🔧 قطع الصيانة</span>
+            <span>🔧 الانتقال لقطع الصيانة</span>
           </button>
 
           {/* Critical Shortage <= 2 Beacon Filter Button */}
@@ -531,6 +524,8 @@ export const AccessoriesTab: React.FC = () => {
           key={editingAcc ? editingAcc.id : 'new-accessory'}
           isOpen={isAddOpen}
           editingAccessory={editingAcc}
+          allowedCategories={ACCESSORY_CATEGORIES}
+          modalTitle={editingAcc ? 'تعديل الإكسسوار' : 'إضافة إكسسوار جديد'}
           onClose={() => {
             setAddOpen(false);
             setEditingAcc(null);

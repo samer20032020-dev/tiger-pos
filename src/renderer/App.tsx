@@ -10,6 +10,7 @@ import { PosTab } from './components/pos/PosTab';
 import { PhonesTab } from './components/phones/PhonesTab';
 import { AccessoriesTab } from './components/accessories/AccessoriesTab';
 import { RepairsTab } from './components/repairs/RepairsTab';
+import { RepairPartsTab } from './components/repairs/RepairPartsTab';
 import { CustomersTab } from './components/customers/CustomersTab';
 import { InstallmentsTab } from './components/installments/InstallmentsTab';
 import { SuppliersLedgerTab } from './components/installments/SuppliersLedgerTab';
@@ -198,6 +199,7 @@ export const App: React.FC = () => {
           {activeTab === 'phones' && <PhonesTab />}
           {activeTab === 'accessories' && <AccessoriesTab />}
           {activeTab === 'repairs' && <RepairsTab />}
+          {activeTab === 'repair_parts' && <RepairPartsTab />}
           {activeTab === 'customers' && <CustomersTab />}
           {activeTab === 'installments' && <InstallmentsTab />}
           {activeTab === 'suppliers' && <SuppliersLedgerTab />}

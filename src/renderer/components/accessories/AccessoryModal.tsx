@@ -9,18 +9,23 @@ interface AccessoryModalProps {
   onClose: () => void;
   onSuccess: () => void;
   editingAccessory?: Accessory | null;
+  allowedCategories?: string[];
+  modalTitle?: string;
 }
 
 export const AccessoryModal: React.FC<AccessoryModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  editingAccessory
+  editingAccessory,
+  allowedCategories,
+  modalTitle
 }) => {
   const { addToast } = useAppStore();
+  const categoriesList = allowedCategories && allowedCategories.length > 0 ? allowedCategories : ACCESSORY_CATEGORIES;
 
   const [name, setName] = useState(editingAccessory?.name || '');
-  const [category, setCategory] = useState(editingAccessory?.category || ACCESSORY_CATEGORIES[0]);
+  const [category, setCategory] = useState(editingAccessory?.category || categoriesList[0]);
   const [barcode, setBarcode] = useState(editingAccessory?.barcode || '');
   const [sku, setSku] = useState(editingAccessory?.sku || '');
   const [costPrice, setCostPrice] = useState<number | ''>(editingAccessory?.costPrice ?? '');
@@ -34,7 +39,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
   useEffect(() => {
     if (editingAccessory) {
       setName(editingAccessory.name || '');
-      setCategory(editingAccessory.category || ACCESSORY_CATEGORIES[0]);
+      setCategory(editingAccessory.category || categoriesList[0]);
       setBarcode(editingAccessory.barcode || '');
       setSku(editingAccessory.sku || '');
       setCostPrice(editingAccessory.costPrice ?? '');
@@ -45,7 +50,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
       setDescription(editingAccessory.description || '');
     } else {
       setName('');
-      setCategory(ACCESSORY_CATEGORIES[0]);
+      setCategory(categoriesList[0]);
       setBarcode('');
       setSku('');
       setCostPrice('');
@@ -55,7 +60,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
       setMinStockAlert(5);
       setDescription('');
     }
-  }, [editingAccessory, isOpen]);
+  }, [editingAccessory, isOpen, categoriesList]);
 
   if (!isOpen) return null;
 
@@ -120,7 +125,9 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5 text-orange-500" />
             <h3 className="font-bold text-slate-900 dark:text-white">
-              {editingAccessory ? 'تعديل بيانات الصنف' : 'إضافة إكسسوار أو قطعة غيار جديدة'}
+              {editingAccessory 
+                ? (modalTitle ? `تعديل ${modalTitle}` : 'تعديل بيانات الصنف') 
+                : (modalTitle || 'إضافة إكسسوار أو قطعة غيار جديدة')}
             </h3>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
@@ -149,7 +156,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white"
               >
-                {ACCESSORY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {categoriesList.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
