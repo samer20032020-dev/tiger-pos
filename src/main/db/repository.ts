@@ -487,6 +487,86 @@ export class TigerRepository {
     this.logAudit('stock_adjusted', 'usr', actor, `تعديل مخزون ${current.name} بمقدار (${delta > 0 ? '+' : ''}${delta}). الرصيد الجديد: ${newStock}. السبب: ${reason}`);
   }
 
+  public importAccessoriesBatch(items: Array<{
+    barcode?: string;
+    sku?: string;
+    name: string;
+    category?: string;
+    costPrice?: number;
+    retailPrice?: number;
+    wholesalePrice?: number;
+    currentStock?: number;
+    minStockAlert?: number;
+    description?: string;
+  }>): { importedCount: number; updatedCount: number; errors: string[] } {
+    return this.db.transaction(() => {
+      let importedCount = 0;
+      let updatedCount = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        try {
+          const name = (item.name || '').trim();
+          if (!name) continue;
+
+          let sku = (item.sku || '').trim();
+          let barcode = (item.barcode || '').trim();
+
+          if (!barcode) {
+            if (sku) {
+              barcode = `TGR${sku.padStart(5, '0')}`;
+            } else {
+              barcode = `TGR${Date.now().toString().slice(-6)}${String(i + 1).padStart(2, '0')}`;
+            }
+          }
+
+          if (!sku) {
+            sku = barcode.slice(-6);
+          }
+
+          const category = (item.category || 'أخرى').trim();
+          const costPrice = Number(item.costPrice) || 0;
+          const retailPrice = Number(item.retailPrice) || 0;
+          const wholesalePrice = Number(item.wholesalePrice) || retailPrice;
+          const currentStock = Number(item.currentStock) || 0;
+          const minStockAlert = Number(item.minStockAlert) || 3;
+          const description = (item.description || '').trim() || null;
+
+          const existing = this.db.queryOne('SELECT * FROM accessories WHERE barcode = ?', [barcode]);
+
+          if (existing) {
+            this.db.run(`
+              UPDATE accessories 
+              SET current_stock = ?,
+                  cost_price = ?,
+                  retail_price = ?,
+                  wholesale_price = ?,
+                  min_stock_alert = ?,
+                  category = ?,
+                  description = COALESCE(?, description)
+              WHERE id = ?
+            `, [currentStock, costPrice, retailPrice, wholesalePrice, minStockAlert, category, description, existing.id]);
+            updatedCount++;
+          } else {
+            const id = `acc-${Date.now()}-${i}`;
+            const createdAt = new Date().toISOString();
+            this.db.run(`
+              INSERT INTO accessories (id, barcode, sku, name, category, cost_price, retail_price, wholesale_price, current_stock, min_stock_alert, description, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [id, barcode, sku, name, category, costPrice, retailPrice, wholesalePrice, currentStock, minStockAlert, description, createdAt]);
+            importedCount++;
+          }
+        } catch (err: any) {
+          errors.push(`خطأ في الصنف (${items[i]?.name || i + 1}): ${err.message}`);
+        }
+      }
+
+      this.logAudit('stock_adjusted', 'system', 'المدير', `استيراد كميات وتحديث أصناف إكسل/CSV (${importedCount} جديد، ${updatedCount} محدث)`);
+      return { importedCount, updatedCount, errors };
+    });
+  }
+
   // ==================== DAMAGED / WRITE-OFF (التوالف) ====================
   public reportDamagedItem(params: {
     itemType: 'phone' | 'accessory';

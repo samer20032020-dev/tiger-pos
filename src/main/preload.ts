@@ -38,6 +38,7 @@ export interface TigerAPI {
   addAccessory: (acc: Omit<Accessory, 'id' | 'createdAt'>) => Promise<Accessory>;
   updateAccessory: (id: string, updates: Partial<Accessory>) => Promise<void>;
   adjustAccessoryStock: (id: string, delta: number, reason?: string, actor?: string) => Promise<void>;
+  importAccessoriesBatch: (items: any[]) => Promise<{ importedCount: number; updatedCount: number; errors: string[] }>;
 
   // POS & Invoices
   createInvoice: (
@@ -136,6 +137,7 @@ const tigerAPI: TigerAPI = {
   addAccessory: (acc) => ipcRenderer.invoke('db:addAccessory', acc),
   updateAccessory: (id, updates) => ipcRenderer.invoke('db:updateAccessory', id, updates),
   adjustAccessoryStock: (id, delta, reason, actor) => ipcRenderer.invoke('db:adjustAccessoryStock', id, delta, reason, actor),
+  importAccessoriesBatch: (items) => ipcRenderer.invoke('db:importAccessoriesBatch', items),
 
   // Invoices & POS
   createInvoice: (invoiceData, items, tradeIn) => ipcRenderer.invoke('db:createInvoice', invoiceData, items, tradeIn),

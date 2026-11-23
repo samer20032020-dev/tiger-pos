@@ -31,7 +31,7 @@ export const SettingsTab: React.FC = () => {
 
   // GitHub Auto-Update State
   const [githubRepo, setGithubRepo] = useState('samer20032020-dev/tiger-pos');
-  const [appVersion, setAppVersion] = useState('0.6.4');
+  const [appVersion, setAppVersion] = useState('0.6.5');
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [downloadingUpdate, setDownloadingUpdate] = useState(false);
@@ -225,7 +225,7 @@ export const SettingsTab: React.FC = () => {
       'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.'
     ];
 
-    const targetVer = '0.6.4';
+    const targetVer = '0.6.5';
     const cmp = (a: string, b: string) => {
       const pa = a.split('.').map(n => parseInt(n, 10) || 0);
       const pb = b.split('.').map(n => parseInt(n, 10) || 0);

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Package, Plus, Search, Printer, Edit2, 
-  AlertTriangle, Filter, PlusCircle, MinusCircle, Trash2 
+  AlertTriangle, Filter, PlusCircle, MinusCircle, Trash2,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Accessory } from '../../../shared/types';
 import { ACCESSORY_CATEGORIES, formatJOD } from '../../../shared/constants';
@@ -31,6 +32,147 @@ export const AccessoriesTab: React.FC = () => {
   const [editingAcc, setEditingAcc] = useState<Accessory | null>(null);
   const [barcodeAcc, setBarcodeAcc] = useState<Accessory | null>(null);
   const [damagedAcc, setDamagedAcc] = useState<Accessory | null>(null);
+
+  // Excel / CSV Import
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const detectCategory = (name: string, group: string): string => {
+    const n = (name || '').toLowerCase();
+    const g = (group || '').toLowerCase();
+    if (n.includes('كيبل') || n.includes('سلك') || n.includes('شاحن') || n.includes('عظمة') || n.includes('راس شاحن') || n.includes('cable') || n.includes('charger')) {
+      return 'شواحن وكوابل';
+    }
+    if (n.includes('سماعة') || n.includes('سبيكر') || n.includes('مايك') || n.includes('ايربودز') || n.includes('بودز') || n.includes('headphone') || n.includes('earphone') || n.includes('speaker') || n.includes('mic')) {
+      return 'سماعات وإيربودز';
+    }
+    if (n.includes('بور بانك') || n.includes('بنك طاقة') || n.includes('بطارية') || n.includes('power bank') || n.includes('battery')) {
+      return 'بطاريات وبنك طاقة';
+    }
+    if (n.includes('كفر') || n.includes('حافظة') || n.includes('جراب') || n.includes('case') || n.includes('cover')) {
+      return 'كفرات وحافظات';
+    }
+    if (n.includes('سكرين') || n.includes('حماية') || n.includes('عدسات') || n.includes('عدسة') || n.includes('لاصقة') || n.includes('screen') || n.includes('lens') || n.includes('glass')) {
+      return 'شاشات حماية (سكرينات)';
+    }
+    if (n.includes('هولدر') || n.includes('سيارة') || n.includes('حامل') || n.includes('car') || n.includes('holder') || n.includes('ستاند')) {
+      return 'حوامل وسكسوارات سيارة';
+    }
+    if (n.includes('تحويلة') || n.includes('محول') || n.includes('هب') || n.includes('adapter') || n.includes('hub') || n.includes('otg') || n.includes('وصلة')) {
+      return 'محولات وتوصيلات';
+    }
+    if (g.includes('صيان') || n.includes('شاشة صيانة') || n.includes('فلاتة') || n.includes('اي سي') || n.includes('لحام') || n.includes('بورد')) {
+      return 'قطع غيار وشاشات صيانة';
+    }
+    return 'أخرى';
+  };
+
+  const parseCSV = (text: string) => {
+    const cleanText = text.replace(/^\uFEFF/, '');
+    const lines = cleanText.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length < 2) return [];
+
+    const parseLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"' || char === "'") {
+          if (inQuotes && line[i + 1] === char) {
+            current += char;
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+
+    const header = parseLine(lines[0]).map(h => h.trim().toLowerCase());
+
+    const nameIdx = header.findIndex(h => h === 'name' || h.includes('اسم') || h === 'product' || h === 'item');
+    const groupIdx = header.findIndex(h => h === 'productgroup' || h === 'group' || h === 'category' || h.includes('مجموع') || h.includes('تصنيف'));
+    const skuIdx = header.findIndex(h => h === 'sku' || h.includes('كود') || h.includes('رمز'));
+    const barcodeIdx = header.findIndex(h => h === 'barcode' || h.includes('باركود') || h === 'upc' || h === 'ean');
+    const costIdx = header.findIndex(h => h === 'cost' || h.includes('تكلف') || h.includes('شراء'));
+    const priceIdx = header.findIndex(h => h === 'price' || h.includes('بيع') || h.includes('سعر') || h === 'retail_price');
+    const qtyIdx = header.findIndex(h => h === 'quantity' || h === 'qty' || h.includes('كمي') || h.includes('رصيد') || h.includes('مخزون'));
+    const warnQtyIdx = header.findIndex(h => h === 'warningquantity' || h === 'reorderpoint' || h.includes('تنبيه') || h.includes('ادنى'));
+    const descIdx = header.findIndex(h => h === 'description' || h.includes('وصف') || h.includes('ملاحظ'));
+
+    if (nameIdx === -1) {
+      throw new Error('لم يتم العثور على عمود اسم الصنف (Name) في الملف');
+    }
+
+    const items = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseLine(lines[i]);
+      if (!cols[nameIdx] || cols[nameIdx].trim() === '') continue;
+
+      const rawName = cols[nameIdx].trim();
+      const rawGroup = groupIdx !== -1 ? cols[groupIdx] || '' : '';
+      const category = detectCategory(rawName, rawGroup);
+
+      items.push({
+        name: rawName,
+        category,
+        sku: skuIdx !== -1 ? cols[skuIdx]?.trim() || '' : '',
+        barcode: barcodeIdx !== -1 ? cols[barcodeIdx]?.trim() || '' : '',
+        costPrice: costIdx !== -1 ? parseFloat(cols[costIdx]?.replace(/[^0-9.]/g, '')) || 0 : 0,
+        retailPrice: priceIdx !== -1 ? parseFloat(cols[priceIdx]?.replace(/[^0-9.]/g, '')) || 0 : 0,
+        wholesalePrice: priceIdx !== -1 ? parseFloat(cols[priceIdx]?.replace(/[^0-9.]/g, '')) || 0 : 0,
+        currentStock: qtyIdx !== -1 ? parseInt(cols[qtyIdx]?.replace(/[^0-9-]/g, ''), 10) || 0 : 0,
+        minStockAlert: warnQtyIdx !== -1 ? parseInt(cols[warnQtyIdx]?.replace(/[^0-9]/g, ''), 10) || 3 : 3,
+        description: descIdx !== -1 ? cols[descIdx]?.trim() || '' : ''
+      });
+    }
+
+    return items;
+  };
+
+  const handleFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const content = event.target?.result as string;
+          const parsed = parseCSV(content);
+
+          if (parsed.length === 0) {
+            addToast('الملف فارغ أو لا يحتوي على أصناف صالحة', 'error');
+            setImporting(false);
+            return;
+          }
+
+          const res = await window.tigerAPI.importAccessoriesBatch(parsed);
+          addToast(`تم استيراد ${res.importedCount} صنف جديد وتحديث ${res.updatedCount} صنف بنجاح!`, 'success');
+          await loadData();
+        } catch (err: any) {
+          addToast(err.message || 'فشل استيراد الملف', 'error');
+        } finally {
+          setImporting(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      };
+      reader.readAsText(file, 'utf-8');
+    } catch (err: any) {
+      addToast(err.message || 'فشل قراءة الملف', 'error');
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -93,16 +235,35 @@ export const AccessoriesTab: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingAcc(null);
-            setAddOpen(true);
-          }}
-          className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-orange-600/30 transition"
-        >
-          <Plus className="w-4 h-4" />
-          إضافة صنف / قطعة جديدة
-        </button>
+        <div className="flex items-center gap-2.5">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".csv, .txt"
+            onChange={handleFileChosen}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/25 transition cursor-pointer"
+            title="استيراد أصناف من ملف إكسل أو CSV بضغطة زر واحدة"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            {importing ? 'جاري الاستيراد...' : 'استيراد من إكسل / CSV'}
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingAcc(null);
+              setAddOpen(true);
+            }}
+            className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-orange-600/30 transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            إضافة صنف / قطعة جديدة
+          </button>
+        </div>
       </div>
 
       {/* Filters & Alerts Bar */}

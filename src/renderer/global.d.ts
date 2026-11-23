@@ -29,6 +29,7 @@ export interface TigerAPI {
   addAccessory: (acc: Omit<Accessory, 'id' | 'createdAt'>) => Promise<Accessory>;
   updateAccessory: (id: string, updates: Partial<Accessory>) => Promise<void>;
   adjustAccessoryStock: (id: string, delta: number, reason?: string, actor?: string) => Promise<void>;
+  importAccessoriesBatch: (items: any[]) => Promise<{ importedCount: number; updatedCount: number; errors: string[] }>;
   createInvoice: (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'createdAt'>, items: Omit<InvoiceItem, 'id' | 'invoiceId'>[], tradeIn?: Omit<TradeInDevice, 'id' | 'invoiceId' | 'createdAt'> | null) => Promise<Invoice>;
   refundInvoice: (invoiceId: string, actorName?: string) => Promise<void>;
   getAllInvoices: (limit?: number) => Promise<Invoice[]>;
