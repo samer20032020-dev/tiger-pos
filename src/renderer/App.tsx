@@ -174,12 +174,12 @@ export const App: React.FC = () => {
       <ShiftModal type="open" isOpen={isOpenShiftModalOpen} onClose={() => setOpenShiftModalOpen(false)} onSuccess={fetchBadgeCounts} />
       <ShiftModal type="close" isOpen={isCloseShiftModalOpen} onClose={() => setCloseShiftModalOpen(false)} onSuccess={fetchBadgeCounts} />
 
-      {/* Center Screen Toasts (تظهر في منتصف الشاشة وتختفي خلال ثانيتين) */}
-      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center space-y-2 pointer-events-none w-auto max-w-lg px-4">
+      {/* Bottom Center Toasts (تظهر في أسفل الشاشة وتختفي خلال ثانيتين لعدم حجب أشرطة البحث والبيع) */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] flex flex-col-reverse items-center space-y-reverse space-y-2 pointer-events-none w-auto max-w-lg px-4">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto px-5 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3 text-xs font-bold text-white transition-all transform animate-in fade-in slide-in-from-top-3 duration-200 ${
+            className={`pointer-events-auto px-5 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3 text-xs font-bold text-white transition-all transform animate-in fade-in slide-in-from-bottom-3 duration-200 ${
               toast.type === 'success' ? 'bg-emerald-600/95 border border-emerald-500/50' :
               toast.type === 'error' ? 'bg-red-600/95 border border-red-500/50' :
               toast.type === 'warning' ? 'bg-amber-600/95 border border-amber-500/50' : 'bg-slate-900/95 border border-slate-700/50'
