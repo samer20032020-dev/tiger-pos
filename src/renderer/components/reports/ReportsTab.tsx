@@ -245,7 +245,7 @@ export const ReportsTab: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 select-none max-w-6xl mx-auto overflow-y-auto max-h-[calc(100vh-64px)] pb-16 font-cairo">
+    <div className="p-6 space-y-6 select-none max-w-6xl mx-auto pb-28 font-cairo">
       
       {/* Top Header & Main Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">

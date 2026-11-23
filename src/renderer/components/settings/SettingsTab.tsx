@@ -213,6 +213,7 @@ export const SettingsTab: React.FC = () => {
 
     // Dynamic pool of improvements
     const IMPROVEMENTS_POOL = [
+      'تفعيل شريط وتمرير الفأرة (Scroll Down) بسلاسة كاملة في جميع شاشات وجداول النظام.',
       'نقل رسائل وتنبيهات النظام لتظهر في أسفل الشاشة لعدم حجب أشرطة وقوائم البيع.',
       'تبسيط شاشة التحديثات السحابية وحذف الروابط غير الضرورية.',
       'إصلاح تعبئة بيانات الإكسسوارات تلقائياً عند الضغط على زر التعديل وسلاسة الحفظ.',
@@ -228,7 +229,7 @@ export const SettingsTab: React.FC = () => {
       'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.'
     ];
 
-    const targetVer = '0.6.8';
+    const targetVer = '0.6.9';
     const cmp = (a: string, b: string) => {
       const pa = a.split('.').map(n => parseInt(n, 10) || 0);
       const pb = b.split('.').map(n => parseInt(n, 10) || 0);
@@ -427,7 +428,7 @@ export const SettingsTab: React.FC = () => {
   };
 
   return (
-    <div className="p-6 select-none max-w-5xl mx-auto overflow-y-auto max-h-[calc(100vh-64px)] pb-12 font-cairo space-y-6">
+    <div className="p-6 select-none max-w-5xl mx-auto pb-28 font-cairo space-y-6">
       
       {/* Page Header & Navigation Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">

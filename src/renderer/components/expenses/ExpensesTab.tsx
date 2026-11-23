@@ -67,7 +67,7 @@ export const ExpensesTab: React.FC = () => {
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
   return (
-    <div className="p-6 space-y-4 select-none">
+    <div className="p-6 space-y-4 select-none pb-28">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">

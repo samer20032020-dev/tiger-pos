@@ -153,7 +153,7 @@ export const App: React.FC = () => {
           onCloseShiftModal={() => setCloseShiftModalOpen(true)}
         />
 
-        <main className="flex-1 overflow-hidden relative">
+        <main className={`flex-1 relative ${activeTab === 'pos' ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden h-[calc(100vh-64px)]'}`}>
           {activeTab === 'dashboard' && <DashboardTab />}
           {activeTab === 'pos' && <PosTab />}
           {activeTab === 'phones' && <PhonesTab />}

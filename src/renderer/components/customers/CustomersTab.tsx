@@ -168,7 +168,7 @@ export const CustomersTab: React.FC = () => {
   );
 
   return (
-    <div className="p-6 space-y-4 select-none">
+    <div className="p-6 space-y-4 select-none pb-28">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div>

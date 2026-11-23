@@ -222,7 +222,7 @@ export const AccessoriesTab: React.FC = () => {
   const lowStockCount = accessories.filter(a => a.currentStock <= a.minStockAlert).length;
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4 pb-28">
       {/* Top Header */}
       <div className="flex items-center justify-between select-none">
         <div>

@@ -49,7 +49,7 @@ export const DashboardTab: React.FC = () => {
   ];
 
   return (
-    <div className="p-6 space-y-6 select-none overflow-y-auto max-h-[calc(100vh-64px)]">
+    <div className="p-6 space-y-6 select-none pb-28">
       {/* Top Banner */}
       <div className="flex items-center justify-between">
         <div>
