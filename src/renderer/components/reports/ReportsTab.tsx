@@ -154,30 +154,37 @@ export const ReportsTab: React.FC = () => {
   const totalRepairsRevenue = filteredRepairs.reduce((sum, rep) => sum + (rep.finalCost || rep.advancePayment || 0), 0);
   const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
-  // Settlement / Unposted Calculations (Scoped to active period filter)
+  // Settlement / Unposted Calculations (All pending unposted transactions in drawer)
   const unpostedInvoices = invoices.filter(i => !i.isPosted);
-  const currentPeriodUnposted = unpostedInvoices.filter(i => filterByDate(i.createdAt));
+  const periodInvoices = invoices.filter(i => filterByDate(i.createdAt));
   const postedInvoices = invoices.filter(i => i.isPosted && filterByDate(i.createdAt));
 
-  const unpostedSales = currentPeriodUnposted.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
-  const unpostedCost = currentPeriodUnposted.reduce((sum, i) => sum + (i.totalCost || 0), 0);
-  const unpostedDiscounts = currentPeriodUnposted.reduce((sum, i) => sum + (i.discount || 0), 0);
-  const unpostedProfit = currentPeriodUnposted.reduce((sum, i) => sum + (i.totalProfit || 0), 0);
-  const unpostedCash = currentPeriodUnposted.reduce((sum, i) => sum + (i.cashAmount || 0), 0);
+  const unpostedSales = unpostedInvoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
+  const unpostedCost = unpostedInvoices.reduce((sum, i) => sum + (i.totalCost || 0), 0);
+  const unpostedDiscounts = unpostedInvoices.reduce((sum, i) => sum + (i.discount || 0), 0);
+  const unpostedProfit = unpostedInvoices.reduce((sum, i) => sum + (i.totalProfit || 0), 0);
+  const unpostedCash = unpostedInvoices.reduce((sum, i) => sum + (i.cashAmount || 0), 0);
   
-  // Repairs cash from unposted repairs in period
+  // Repairs cash from unposted repairs in drawer
   const unpostedRepairsCash = repairs
-    .filter(r => !r.isPosted && filterByDate(r.createdAt))
+    .filter(r => !r.isPosted)
     .reduce((sum, r) => sum + (r.advancePayment || 0) + (r.status === 'delivered' ? Math.max(0, r.finalCost - r.advancePayment) : 0), 0);
 
   const totalExpectedDrawerCash = startingCash + unpostedCash + unpostedRepairsCash;
   const cashDifference = actualCash - totalExpectedDrawerCash;
 
-  // Filtered transactions for the ledger table (includes Date Filter)
+  // Filtered transactions for the ledger table
   const displayedInvoices = invoices.filter(inv => {
-    if (!filterByDate(inv.createdAt)) return false;
-    if (postingFilter === 'unposted' && inv.isPosted) return false;
-    if (postingFilter === 'posted' && !inv.isPosted) return false;
+    // When viewing 'unposted', ALWAYS show all unposted invoices so cashier can review and settle them!
+    if (postingFilter === 'unposted') {
+      if (inv.isPosted) return false;
+    } else if (postingFilter === 'posted') {
+      if (!inv.isPosted) return false;
+      if (!filterByDate(inv.createdAt)) return false;
+    } else {
+      // 'all'
+      if (!filterByDate(inv.createdAt)) return false;
+    }
 
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -599,7 +606,7 @@ export const ReportsTab: React.FC = () => {
                         : 'text-slate-600 dark:text-slate-300'
                     }`}
                   >
-                    الكل ({invoices.length})
+                    الكل ({periodInvoices.length})
                   </button>
                 </div>
               </div>
@@ -651,12 +658,27 @@ export const ReportsTab: React.FC = () => {
                   {displayedInvoices.length === 0 ? (
                     <tr>
                       <td colSpan={12} className="p-8 text-center text-slate-400 text-xs">
-                        لا توجد فواتير مطابقة لهذا الفلتر
+                        {postingFilter === 'unposted' ? (
+                          <div className="flex flex-col items-center justify-center gap-2 py-4">
+                            <CheckCircle2 className="w-7 h-7 text-emerald-500 animate-bounce" />
+                            <span className="font-bold text-slate-700 dark:text-slate-200 text-sm">
+                              ممتاز! لا توجد فواتير غير مرحلة حالياً
+                            </span>
+                            <span className="text-[11px] text-slate-400">
+                              كافة مبيعات الصندوق مرحلة ومغلقة بنجاح ومطابقة للخزينة
+                            </span>
+                          </div>
+                        ) : postingFilter === 'posted' ? (
+                          'لا توجد فواتير مرحلة ومغلقة ضمن الفترة الزمنية المحددة'
+                        ) : (
+                          'لا توجد فواتير مسجلة ضمن هذه الفترة'
+                        )}
                       </td>
                     </tr>
                   ) : (
                     displayedInvoices.slice(0, 100).map(inv => {
                       const isSelected = selectedInvoiceIds.includes(inv.id);
+                      const isPriorShift = !inv.isPosted && !filterByDate(inv.createdAt);
                       return (
                         <tr
                           key={inv.id}
@@ -684,7 +706,12 @@ export const ReportsTab: React.FC = () => {
                             {inv.invoiceNumber}
                           </td>
                           <td className="p-3 font-mono text-slate-500 text-[11px] whitespace-nowrap">
-                            {inv.createdAt ? inv.createdAt.replace('T', ' ').substring(5, 16) : '-'}
+                            <div>{inv.createdAt ? inv.createdAt.replace('T', ' ').substring(5, 16) : '-'}</div>
+                            {isPriorShift && (
+                              <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[9px] font-bold">
+                                شفت سابق
+                              </span>
+                            )}
                           </td>
                           <td className="p-3">
                             <div className="flex flex-wrap gap-1 max-w-xs">
