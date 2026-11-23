@@ -213,6 +213,7 @@ export const SettingsTab: React.FC = () => {
 
     // Dynamic pool of improvements
     const IMPROVEMENTS_POOL = [
+      'تبسيط شاشة التحديثات السحابية وحذف الروابط غير الضرورية.',
       'إصلاح تعبئة بيانات الإكسسوارات تلقائياً عند الضغط على زر التعديل وسلاسة الحفظ.',
       'إضافة ميزة استيراد المنتجات والإكسسوارات من ملفات CSV وإكسل بضغطة زر مع التصنيف التلقائي الذكي.',
       'نقل كافة الإشعارات والتنبيهات لتظهر مباشرة في منتصف الشاشة.',
@@ -227,7 +228,7 @@ export const SettingsTab: React.FC = () => {
       'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.'
     ];
 
-    const targetVer = '0.6.6';
+    const targetVer = '0.6.7';
     const cmp = (a: string, b: string) => {
       const pa = a.split('.').map(n => parseInt(n, 10) || 0);
       const pb = b.split('.').map(n => parseInt(n, 10) || 0);
@@ -1112,43 +1113,23 @@ export const SettingsTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Config & Check Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              <div className="md:col-span-2 space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  مستودع التحديثات الرسمي على GitHub (Repository):
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={githubRepo}
-                    onChange={(e) => setGithubRepo(e.target.value)}
-                    placeholder="e.g. your-github-user/tiger-pos"
-                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                  />
-                  <button
-                    onClick={handleSaveSettings}
-                    title="حفظ رابط المستودع"
-                    className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition shrink-0"
-                  >
-                    حفظ الرابط
-                  </button>
-                </div>
-                <span className="text-[10px] text-slate-400">
-                  عند رفع أي إصدار جديد (Release) على GitHub، سيتعرف البرنامج عليه تلقائياً
-                </span>
+            {/* Direct Check Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <div className="space-y-0.5 text-right w-full sm:w-auto">
+                <h4 className="text-xs font-black text-slate-800 dark:text-white">فحص التحديثات السحابية</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  اضغط على الزر للتحقق مباشرة من توفر أي إصدارات جديدة أو تحسينات للنظام
+                </p>
               </div>
 
-              <div className="flex items-center">
-                <button
-                  onClick={handleCheckUpdate}
-                  disabled={checkingUpdate}
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-orange-500/20"
-                >
-                  <RefreshCw className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
-                  <span>{checkingUpdate ? 'جاري الفحص...' : 'فحص تحديث'}</span>
-                </button>
-              </div>
+              <button
+                onClick={handleCheckUpdate}
+                disabled={checkingUpdate}
+                className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-orange-500/20 cursor-pointer shrink-0"
+              >
+                <RefreshCw className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
+                <span>{checkingUpdate ? 'جاري الفحص الآن...' : 'فحص تحديث جديد'}</span>
+              </button>
             </div>
 
             {/* Live Update Status Banner */}
