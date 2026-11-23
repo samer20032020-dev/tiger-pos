@@ -8,6 +8,11 @@ import { ExcelService } from './services/excelService';
 import { BackupService } from './services/backupService';
 import { PrintService } from './services/printService';
 
+// Performance & GPU Acceleration switches for instant launch
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+
 let mainWindow: BrowserWindow | null = null;
 let dbInstance: LocalDatabase | null = null;
 let repository: TigerRepository | null = null;
@@ -30,6 +35,7 @@ async function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
+      spellcheck: false,
     },
   });
 
