@@ -84,6 +84,19 @@ export const RepairsTab: React.FC = () => {
     }
   };
 
+  const handleDeleteTicket = async (t: RepairTicket) => {
+    if (!confirm(`هل أنت متأكد من حذف تذكرة الصيانة (${t.ticketNumber} - ${t.customerName}) نهائياً؟`)) {
+      return;
+    }
+    try {
+      await window.tigerAPI.deleteRepairTicket(t.id);
+      addToast(`تم حذف تذكرة الصيانة (${t.ticketNumber}) بنجاح`, 'info');
+      loadTickets();
+    } catch (err: any) {
+      addToast(err.message || 'فشل حذف تذكرة الصيانة', 'error');
+    }
+  };
+
   const filtered = tickets.filter(t => {
     const matchSearch = search === '' ||
       t.ticketNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -265,8 +278,19 @@ export const RepairsTab: React.FC = () => {
                 <div>
                   {/* Card Header: Ticket # & Status */}
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <span className="font-mono font-black text-xs text-orange-600 dark:text-orange-400">
-                      {t.ticketNumber}
+                    <span className="font-mono font-black text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTicket(t);
+                        }}
+                        title="حذف تذكرة الصيانة"
+                        className="w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-white hover:bg-red-500 dark:hover:bg-red-600 transition cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                      <span>{t.ticketNumber}</span>
                     </span>
                     <span className={`inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm ${stMeta.badge}`}>
                       {t.status === 'diagnosing' && (

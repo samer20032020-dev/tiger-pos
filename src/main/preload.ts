@@ -57,6 +57,7 @@ export interface TigerAPI {
   createRepairTicket: (data: Omit<RepairTicket, 'id' | 'ticketNumber' | 'createdAt'>) => Promise<RepairTicket>;
   updateRepairStatus: (ticketId: string, newStatus: string, notes?: string, finalCost?: number) => Promise<void>;
   attachPartToRepair: (ticketId: string, accessoryId: string, quantity?: number) => Promise<void>;
+  deleteRepairTicket: (ticketId: string) => Promise<void>;
 
   // Installments
   getAllInstallmentPlans: () => Promise<InstallmentPlan[]>;
@@ -152,6 +153,7 @@ const tigerAPI: TigerAPI = {
   createRepairTicket: (data) => ipcRenderer.invoke('db:createRepairTicket', data),
   updateRepairStatus: (ticketId, newStatus, notes, finalCost) => ipcRenderer.invoke('db:updateRepairStatus', ticketId, newStatus, notes, finalCost),
   attachPartToRepair: (ticketId, accessoryId, quantity) => ipcRenderer.invoke('db:attachPartToRepair', ticketId, accessoryId, quantity),
+  deleteRepairTicket: (ticketId) => ipcRenderer.invoke('db:deleteRepairTicket', ticketId),
 
   // Installments
   getAllInstallmentPlans: () => ipcRenderer.invoke('db:getAllInstallmentPlans'),

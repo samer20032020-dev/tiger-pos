@@ -1160,6 +1160,21 @@ export class TigerRepository {
     });
   }
 
+  public deleteRepairTicket(ticketId: string): void {
+    this.db.transaction(() => {
+      // 1. Return any attached parts back to stock
+      const parts = this.db.query('SELECT * FROM repair_parts WHERE ticket_id = ?', [ticketId]);
+      for (const p of parts) {
+        if (p.accessory_id && p.quantity) {
+          this.db.run('UPDATE accessories SET current_stock = current_stock + ? WHERE id = ?', [p.quantity, p.accessory_id]);
+        }
+      }
+      this.db.run('DELETE FROM repair_parts WHERE ticket_id = ?', [ticketId]);
+      this.db.run('DELETE FROM repair_tickets WHERE id = ?', [ticketId]);
+      this.logAudit('repair_deleted', 'system', 'المسؤول', `حذف تذكرة الصيانة ${ticketId}`);
+    });
+  }
+
   // ==================== INSTALLMENTS & GUARANTOR ====================
   public getAllInstallmentPlans(): InstallmentPlan[] {
     const plans = this.db.query('SELECT * FROM installment_plans ORDER BY created_at DESC');

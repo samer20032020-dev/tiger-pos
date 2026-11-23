@@ -190,6 +190,10 @@ function registerIpcHandlers() {
     return repository!.attachPartToRepair(ticketId, accessoryId, quantity);
   });
 
+  ipcMain.handle('db:deleteRepairTicket', async (_, ticketId: string) => {
+    return repository!.deleteRepairTicket(ticketId);
+  });
+
   // ==================== INSTALLMENTS ====================
   ipcMain.handle('db:getAllInstallmentPlans', async () => {
     return repository!.getAllInstallmentPlans();
@@ -321,9 +325,9 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.2';
+      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.3';
     } catch {
-      return '0.7.2';
+      return '0.7.3';
     }
   });
 
@@ -332,9 +336,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.7';
       
-      let latestVersion = '0.7.2';
-      let releaseNotes = '✨ تطوير شامل لنافذة تسكير الصندوق والوردية، وحل مشاكل الفواتير غير المرحلة، وتفعيل التحديث السحابي التلقائي المباشر من GitHub.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.7.2';
+      let latestVersion = '0.7.3';
+      let releaseNotes = '✨ إضافة زر حذف سريع (X) على بطاقات الصيانة لحذف أو إلغاء أي تذكرة بسهولة مع استرجاع قطع الغيار.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.7.3';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -382,7 +386,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.7.2',
+        latestVersion: '0.7.3',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
@@ -390,7 +394,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:downloadUpdate', async (_, url: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.2';
+      const targetVer = newVersion || '0.7.3';
       if (repository) {
         repository.updateSettings({ installedVersion: targetVer });
       }
@@ -426,7 +430,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:installUpdateAndRestart', async (_, filePath?: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.2';
+      const targetVer = newVersion || '0.7.3';
       if (repository) {
         repository.updateSettings({ installedVersion: targetVer });
       }
