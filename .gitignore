@@ -32,3 +32,4 @@ desktop.ini
 *.docx
 voice_notes/
 build/code_artifact.html
+*.tsbuildinfo
