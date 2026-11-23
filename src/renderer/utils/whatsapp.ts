@@ -76,26 +76,33 @@ export function buildRepairWhatsAppMessage(
  */
 export function buildInvoiceWhatsAppMessage(
   invoice: Invoice,
-  storeName: string = 'مركز تايجر موبايل'
+  storeName: string = 'TIGER'
 ): string {
-  const customerName = invoice.customerName?.trim() || 'الزبون العزيز';
+  const rawCustomer = invoice.customerName?.trim();
+  const customerDisplay = (!rawCustomer || rawCustomer === 'زبون نقدي' || rawCustomer === 'الزبون العزيز')
+    ? 'بك'
+    : rawCustomer;
+
+  const dateStr = invoice.createdAt ? invoice.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10);
+
   const itemsText = (invoice.items || [])
-    .map(i => `• ${i.name} × ${i.quantity} = ${formatJOD(i.total || (i.unitPrice * i.quantity))}`)
+    .map(i => `${i.name} × ${i.quantity} = ${formatJOD(i.total || (i.unitPrice * i.quantity))}`)
     .join('\n');
 
-  return (
-    `أهلاً بك زبوننا العزيز (${customerName})..\n` +
-    `شكراً لتسوقكم واختياركم ${storeName} 🛍️✨\n\n` +
-    `🧾 فاتورة رقم: #${invoice.invoiceNumber}\n` +
-    `📅 التاريخ: ${invoice.createdAt?.replace('T', ' ').substring(0, 16) || ''}\n\n` +
-    `📦 تفاصيل المشتريات:\n${itemsText}\n\n` +
-    `--------------------------\n` +
-    `💵 الإجمالي النهائي: ${formatJOD(invoice.totalAmount)}\n` +
-    `💳 طريقة الدفع: ${invoice.paymentMethod === 'cash' ? 'نقداً (كاش)' : invoice.paymentMethod === 'card' ? 'بطاقة بنكية' : 'متعدد'}\n` +
-    (invoice.remainingAmount > 0 ? `⚠️ المبلغ المتبقي (ذمة): ${formatJOD(invoice.remainingAmount)}\n` : '') +
-    `\nكفالة الأجهزة تخضع لتعليمات الوكيل الرسمي المعتمد.\n` +
-    `نتشرف دائماً بزيارتكم!`
-  );
+  let msg = `أهلاً ${customerDisplay} 🤍\n` +
+    `شكراً لاختيارك TIGER 🐅\n\n` +
+    `فاتورة #${invoice.invoiceNumber}\n` +
+    `التاريخ: ${dateStr}\n\n` +
+    `${itemsText}\n` +
+    `الإجمالي: ${formatJOD(invoice.totalAmount)}\n`;
+
+  if (invoice.remainingAmount && invoice.remainingAmount > 0) {
+    msg += `المتبقي عليك: ${formatJOD(invoice.remainingAmount)}\n`;
+  }
+
+  msg += `\nنورتنا ✨\nTIGER`;
+
+  return msg;
 }
 
 /**
