@@ -35,6 +35,12 @@ export const DashboardTab: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(loadData, 10000);
+    window.addEventListener('focus', loadData);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', loadData);
+    };
   }, []);
 
   // 7-day trend chart (starts at 0 for fresh new system)

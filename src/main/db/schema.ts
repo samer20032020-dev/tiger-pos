@@ -304,6 +304,8 @@ CREATE TABLE IF NOT EXISTS expenses (
   paid_by TEXT NOT NULL,
   shift_id TEXT,
   expense_date TEXT NOT NULL,
+  is_posted INTEGER NOT NULL DEFAULT 0,
+  posted_at TEXT,
   created_at TEXT NOT NULL
 );
 
@@ -343,5 +345,7 @@ export const SAFE_MIGRATIONS_SQL = [
   "ALTER TABLE invoices ADD COLUMN is_posted INTEGER NOT NULL DEFAULT 0;",
   "ALTER TABLE invoices ADD COLUMN posted_at TEXT;",
   "ALTER TABLE repair_tickets ADD COLUMN is_posted INTEGER NOT NULL DEFAULT 0;",
-  "ALTER TABLE repair_tickets ADD COLUMN posted_at TEXT;"
+  "ALTER TABLE repair_tickets ADD COLUMN posted_at TEXT;",
+  "ALTER TABLE expenses ADD COLUMN is_posted INTEGER NOT NULL DEFAULT 0;",
+  "ALTER TABLE expenses ADD COLUMN posted_at TEXT;"
 ];

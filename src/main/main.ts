@@ -51,6 +51,64 @@ async function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
+  // Handle Zoom shortcuts (Ctrl + + / Ctrl + - / Ctrl + 0) on both sides (Main Keyboard & Numpad)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && (input.control || input.meta)) {
+      const code = input.code;
+      const key = input.key;
+
+      // Zoom In: Equal (+), NumpadAdd, key '+' or '=' or 'Add'
+      if (
+        code === 'Equal' || 
+        code === 'NumpadAdd' || 
+        key === '+' || 
+        key === '=' ||
+        key === 'Add'
+      ) {
+        event.preventDefault();
+        const currentZoom = mainWindow ? mainWindow.webContents.getZoomFactor() : 1.0;
+        const newZoom = Math.min(Math.round((currentZoom + 0.1) * 100) / 100, 2.5);
+        if (mainWindow) {
+          mainWindow.webContents.setZoomFactor(newZoom);
+          mainWindow.webContents.send('system:zoomChanged', newZoom);
+        }
+        return;
+      }
+
+      // Zoom Out: Minus (-), NumpadSubtract, key '-' or '_' or 'Subtract'
+      if (
+        code === 'Minus' || 
+        code === 'NumpadSubtract' || 
+        key === '-' || 
+        key === '_' ||
+        key === 'Subtract'
+      ) {
+        event.preventDefault();
+        const currentZoom = mainWindow ? mainWindow.webContents.getZoomFactor() : 1.0;
+        const newZoom = Math.max(Math.round((currentZoom - 0.1) * 100) / 100, 0.5);
+        if (mainWindow) {
+          mainWindow.webContents.setZoomFactor(newZoom);
+          mainWindow.webContents.send('system:zoomChanged', newZoom);
+        }
+        return;
+      }
+
+      // Reset Zoom: Digit0, Numpad0, key '0'
+      if (
+        code === 'Digit0' || 
+        code === 'Numpad0' || 
+        key === '0'
+      ) {
+        event.preventDefault();
+        if (mainWindow) {
+          mainWindow.webContents.setZoomFactor(1.0);
+          mainWindow.webContents.send('system:zoomChanged', 1.0);
+        }
+        return;
+      }
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -325,10 +383,33 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.3';
+      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.4';
     } catch {
-      return '0.7.3';
+      return '0.7.4';
     }
+  });
+
+  // ==================== ZOOM & VIEWPORT ====================
+  ipcMain.handle('system:setZoomFactor', async (_, factor: number) => {
+    if (mainWindow) {
+      mainWindow.webContents.setZoomFactor(factor);
+      mainWindow.webContents.send('system:zoomChanged', factor);
+      return factor;
+    }
+    return 1.0;
+  });
+
+  ipcMain.handle('system:getZoomFactor', async () => {
+    return mainWindow ? mainWindow.webContents.getZoomFactor() : 1.0;
+  });
+
+  ipcMain.handle('system:resetZoom', async () => {
+    if (mainWindow) {
+      mainWindow.webContents.setZoomFactor(1.0);
+      mainWindow.webContents.send('system:zoomChanged', 1.0);
+      return 1.0;
+    }
+    return 1.0;
   });
 
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
@@ -336,9 +417,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.7';
       
-      let latestVersion = '0.7.3';
-      let releaseNotes = '✨ إضافة زر حذف سريع (X) على بطاقات الصيانة لحذف أو إلغاء أي تذكرة بسهولة مع استرجاع قطع الغيار.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.7.3';
+      let latestVersion = '0.7.4';
+      let releaseNotes = '✨ تصفير مؤشرات اليومية والمبيعات تلقائياً عند ترحيل الفواتير لبدء يوم جديد، وتفعيل اختصارات التكبير والتصغير (Ctrl + و Ctrl -) من جانبي لوحة المفاتيح والـ Numpad.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.7.4';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -386,7 +467,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.7.3',
+        latestVersion: '0.7.4',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
@@ -394,7 +475,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:downloadUpdate', async (_, url: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.3';
+      const targetVer = newVersion || '0.7.4';
       if (repository) {
         repository.updateSettings({ installedVersion: targetVer });
       }
@@ -430,7 +511,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:installUpdateAndRestart', async (_, filePath?: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.3';
+      const targetVer = newVersion || '0.7.4';
       if (repository) {
         repository.updateSettings({ installedVersion: targetVer });
       }

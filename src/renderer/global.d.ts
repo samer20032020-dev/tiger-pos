@@ -68,6 +68,12 @@ export interface TigerAPI {
   downloadUpdate: (url: string, newVersion?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
   installUpdateAndRestart: (filePath?: string, newVersion?: string) => Promise<void>;
   openExternal: (url: string) => Promise<void>;
+
+  // Zoom & Viewport
+  setZoomFactor: (factor: number) => Promise<number>;
+  getZoomFactor: () => Promise<number>;
+  resetZoom: () => Promise<number>;
+  onZoomChanged?: (callback: (factor: number) => void) => () => void;
 }
 
 declare global {

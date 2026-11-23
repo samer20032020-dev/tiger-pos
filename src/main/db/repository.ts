@@ -175,26 +175,33 @@ export class TigerRepository {
     const closedAt = new Date().toISOString();
     const difference = actualCash - shift.expected_cash;
 
-    this.db.run(
-      'UPDATE shifts SET closed_at = ?, actual_cash = ?, difference = ?, note = ?, status = "closed" WHERE id = ?',
-      [closedAt, actualCash, difference, note, shiftId]
-    );
+    return this.db.transaction(() => {
+      this.db.run(
+        'UPDATE shifts SET closed_at = ?, actual_cash = ?, difference = ?, note = ?, status = "closed" WHERE id = ?',
+        [closedAt, actualCash, difference, note, shiftId]
+      );
 
-    this.logAudit('shift_closed', shift.user_id, shift.user_name, `تم إغلاق الوردية ${shiftId}. متوقع: ${shift.expected_cash.toFixed(3)} د.أ، الفعلي: ${actualCash.toFixed(3)} د.أ، الفارق: ${difference.toFixed(3)} د.أ`);
+      // Automatically post unposted invoices, expenses, and delivered repairs for the shift
+      this.db.run('UPDATE invoices SET is_posted = 1, posted_at = ? WHERE is_posted = 0', [closedAt]);
+      this.db.run('UPDATE expenses SET is_posted = 1, posted_at = ? WHERE is_posted = 0 OR is_posted IS NULL', [closedAt]);
+      this.db.run('UPDATE repair_tickets SET is_posted = 1, posted_at = ? WHERE (is_posted = 0 OR is_posted IS NULL) AND status IN ("delivered", "cancelled")', [closedAt]);
 
-    return {
-      id: shift.id,
-      userId: shift.user_id,
-      userName: shift.user_name,
-      openedAt: shift.opened_at,
-      closedAt,
-      startingCash: shift.starting_cash,
-      expectedCash: shift.expected_cash,
-      actualCash,
-      difference,
-      note,
-      status: 'closed'
-    };
+      this.logAudit('shift_closed', shift.user_id, shift.user_name, `تم إغلاق الوردية ${shiftId} وترحيل العمليات. متوقع: ${shift.expected_cash.toFixed(3)} د.أ، الفعلي: ${actualCash.toFixed(3)} د.أ، الفارق: ${difference.toFixed(3)} د.أ`);
+
+      return {
+        id: shift.id,
+        userId: shift.user_id,
+        userName: shift.user_name,
+        openedAt: shift.opened_at,
+        closedAt,
+        startingCash: shift.starting_cash,
+        expectedCash: shift.expected_cash,
+        actualCash,
+        difference,
+        note,
+        status: 'closed'
+      };
+    });
   }
 
   public getShiftHistory(limit = 20): Shift[] {
@@ -914,7 +921,10 @@ export class TigerRepository {
         this.db.run('UPDATE invoices SET is_posted = 1, posted_at = ? WHERE id = ?', [now, id]);
         count++;
       }
-      this.logAudit('invoices_posted', 'system', 'المدير', `تم ترحيل وإغلاق ${count} فاتورة نقدية ومبيعات بنجاح`);
+      // Also post any unposted expenses and delivered/cancelled repairs
+      this.db.run('UPDATE expenses SET is_posted = 1, posted_at = ? WHERE is_posted = 0 OR is_posted IS NULL', [now]);
+      this.db.run('UPDATE repair_tickets SET is_posted = 1, posted_at = ? WHERE (is_posted = 0 OR is_posted IS NULL) AND status IN ("delivered", "cancelled")', [now]);
+      this.logAudit('invoices_posted', 'system', 'المدير', `تم ترحيل وإغلاق ${count} فاتورة نقدية ومبيعات ومصاريف اليوم بنجاح وتصفير مؤشرات اليومية`);
       return { count };
     });
   }
@@ -1486,28 +1496,28 @@ export class TigerRepository {
   public getDashboardStats(): DashboardStats {
     const today = new Date().toISOString().split('T')[0];
 
-    // Today sales
+    // Today sales: only unposted invoices (active shift/day sales)
     const salesRow = this.db.queryOne(`
       SELECT 
         COALESCE(SUM(total_amount), 0) as total_sales,
         COUNT(*) as invoice_count
       FROM invoices 
-      WHERE status = 'completed' AND DATE(created_at) = ?
-    `, [today]);
+      WHERE status = 'completed' AND is_posted = 0
+    `);
 
-    // Today COGS (Cost of goods sold)
+    // Today COGS (Cost of goods sold) for unposted invoices
     const cogsRow = this.db.queryOne(`
       SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cogs
       FROM invoice_items
-      WHERE invoice_id IN (SELECT id FROM invoices WHERE status = 'completed' AND DATE(created_at) = ?)
-    `, [today]);
+      WHERE invoice_id IN (SELECT id FROM invoices WHERE status = 'completed' AND is_posted = 0)
+    `);
 
-    // Today Expenses
+    // Today Expenses: only unposted expenses
     const expRow = this.db.queryOne(`
       SELECT COALESCE(SUM(amount), 0) as total_exp
       FROM expenses
-      WHERE DATE(expense_date) = ?
-    `, [today]);
+      WHERE (is_posted = 0 OR is_posted IS NULL)
+    `);
 
     // Active repairs count
     const repairsRow = this.db.queryOne(`

@@ -105,6 +105,12 @@ export interface TigerAPI {
   downloadUpdate: (url: string, newVersion?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
   installUpdateAndRestart: (filePath?: string, newVersion?: string) => Promise<void>;
   openExternal: (url: string) => Promise<void>;
+
+  // Zoom & Viewport
+  setZoomFactor: (factor: number) => Promise<number>;
+  getZoomFactor: () => Promise<number>;
+  resetZoom: () => Promise<number>;
+  onZoomChanged?: (callback: (factor: number) => void) => () => void;
 }
 
 const tigerAPI: TigerAPI = {
@@ -201,6 +207,16 @@ const tigerAPI: TigerAPI = {
   downloadUpdate: (url, newVersion) => ipcRenderer.invoke('system:downloadUpdate', url, newVersion),
   installUpdateAndRestart: (filePath, newVersion) => ipcRenderer.invoke('system:installUpdateAndRestart', filePath, newVersion),
   openExternal: (url) => ipcRenderer.invoke('system:openExternal', url),
+
+  // Zoom & Viewport
+  setZoomFactor: (factor) => ipcRenderer.invoke('system:setZoomFactor', factor),
+  getZoomFactor: () => ipcRenderer.invoke('system:getZoomFactor'),
+  resetZoom: () => ipcRenderer.invoke('system:resetZoom'),
+  onZoomChanged: (callback) => {
+    const handler = (_: any, factor: number) => callback(factor);
+    ipcRenderer.on('system:zoomChanged', handler);
+    return () => ipcRenderer.removeListener('system:zoomChanged', handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('tigerAPI', tigerAPI);

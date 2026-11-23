@@ -113,6 +113,32 @@ export const App: React.FC = () => {
         input?.focus(); input?.select();
       }, 50);
     }
+
+    // Zoom shortcuts (Ctrl + + / Ctrl + - / Ctrl + 0) - supports both main keyboard and numpad
+    if (e.ctrlKey || e.metaKey) {
+      if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        if (window.tigerAPI?.getZoomFactor && window.tigerAPI?.setZoomFactor) {
+          window.tigerAPI.getZoomFactor().then(cur => {
+            const next = Math.min(Math.round((cur + 0.1) * 100) / 100, 2.5);
+            window.tigerAPI.setZoomFactor(next);
+          });
+        }
+      } else if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        if (window.tigerAPI?.getZoomFactor && window.tigerAPI?.setZoomFactor) {
+          window.tigerAPI.getZoomFactor().then(cur => {
+            const next = Math.max(Math.round((cur - 0.1) * 100) / 100, 0.5);
+            window.tigerAPI.setZoomFactor(next);
+          });
+        }
+      } else if (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0') {
+        e.preventDefault();
+        if (window.tigerAPI?.resetZoom) {
+          window.tigerAPI.resetZoom();
+        }
+      }
+    }
   }, [screen, activeTab, setActiveTab]);
 
   useEffect(() => {
@@ -121,7 +147,20 @@ export const App: React.FC = () => {
       fetchBadgeCounts();
       const interval = setInterval(fetchBadgeCounts, 15000);
       window.addEventListener('keydown', handleGlobalKeyDown);
-      return () => { clearInterval(interval); window.removeEventListener('keydown', handleGlobalKeyDown); };
+
+      let unsubZoom: (() => void) | undefined;
+      if (window.tigerAPI?.onZoomChanged) {
+        unsubZoom = window.tigerAPI.onZoomChanged((factor) => {
+          const pct = Math.round(factor * 100);
+          useAppStore.getState().addToast(`🔍 مستوى الرؤية والتكبير: ${pct}%`, 'info');
+        });
+      }
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('keydown', handleGlobalKeyDown);
+        if (unsubZoom) unsubZoom();
+      };
     }
   }, [screen, handleGlobalKeyDown]);
 
