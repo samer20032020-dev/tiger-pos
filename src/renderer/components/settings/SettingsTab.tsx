@@ -213,6 +213,8 @@ export const SettingsTab: React.FC = () => {
 
     // Dynamic pool of improvements
     const IMPROVEMENTS_POOL = [
+      'إصلاح تعبئة بيانات الإكسسوارات تلقائياً عند الضغط على زر التعديل وسلاسة الحفظ.',
+      'إضافة ميزة استيراد المنتجات والإكسسوارات من ملفات CSV وإكسل بضغطة زر مع التصنيف التلقائي الذكي.',
       'نقل كافة الإشعارات والتنبيهات لتظهر مباشرة في منتصف الشاشة.',
       'تقليص مدة ظهور الإشعار إلى ثانيتين فقط (2s) لسرعة وسلاسة العمل.',
       'وضع التوافق الفائق مع الأجهزة الضعيفة (4GB رام وبدون كرت شاشة).',
@@ -225,7 +227,7 @@ export const SettingsTab: React.FC = () => {
       'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.'
     ];
 
-    const targetVer = '0.6.5';
+    const targetVer = '0.6.6';
     const cmp = (a: string, b: string) => {
       const pa = a.split('.').map(n => parseInt(n, 10) || 0);
       const pb = b.split('.').map(n => parseInt(n, 10) || 0);

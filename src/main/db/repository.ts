@@ -472,6 +472,8 @@ export class TigerRepository {
     if (updates.currentStock !== undefined) { fields.push('current_stock = ?'); values.push(updates.currentStock); }
     if (updates.minStockAlert !== undefined) { fields.push('min_stock_alert = ?'); values.push(updates.minStockAlert); }
     if (updates.description !== undefined) { fields.push('description = ?'); values.push(updates.description); }
+    if (updates.barcode !== undefined) { fields.push('barcode = ?'); values.push(updates.barcode); }
+    if (updates.sku !== undefined) { fields.push('sku = ?'); values.push(updates.sku); }
 
     if (fields.length > 0) {
       values.push(id);

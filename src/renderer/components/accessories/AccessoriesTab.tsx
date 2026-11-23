@@ -487,15 +487,18 @@ export const AccessoriesTab: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <AccessoryModal
-        isOpen={isAddOpen}
-        editingAccessory={editingAcc}
-        onClose={() => {
-          setAddOpen(false);
-          setEditingAcc(null);
-        }}
-        onSuccess={loadData}
-      />
+      {isAddOpen && (
+        <AccessoryModal
+          key={editingAcc ? editingAcc.id : 'new-accessory'}
+          isOpen={isAddOpen}
+          editingAccessory={editingAcc}
+          onClose={() => {
+            setAddOpen(false);
+            setEditingAcc(null);
+          }}
+          onSuccess={loadData}
+        />
+      )}
 
       {barcodeAcc && (
         <BarcodeStickerModal

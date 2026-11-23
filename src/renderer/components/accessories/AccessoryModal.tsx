@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Package, Check, Sparkles } from 'lucide-react';
 import { ACCESSORY_CATEGORIES } from '../../../shared/constants';
 import { Accessory } from '../../../shared/types';
@@ -23,13 +23,39 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
   const [category, setCategory] = useState(editingAccessory?.category || ACCESSORY_CATEGORIES[0]);
   const [barcode, setBarcode] = useState(editingAccessory?.barcode || '');
   const [sku, setSku] = useState(editingAccessory?.sku || '');
-  const [costPrice, setCostPrice] = useState<number | ''>(editingAccessory?.costPrice || '');
-  const [retailPrice, setRetailPrice] = useState<number | ''>(editingAccessory?.retailPrice || '');
-  const [wholesalePrice, setWholesalePrice] = useState<number | ''>(editingAccessory?.wholesalePrice || '');
-  const [currentStock, setCurrentStock] = useState<number | ''>(editingAccessory?.currentStock || 10);
-  const [minStockAlert, setMinStockAlert] = useState<number | ''>(editingAccessory?.minStockAlert || 5);
+  const [costPrice, setCostPrice] = useState<number | ''>(editingAccessory?.costPrice ?? '');
+  const [retailPrice, setRetailPrice] = useState<number | ''>(editingAccessory?.retailPrice ?? '');
+  const [wholesalePrice, setWholesalePrice] = useState<number | ''>(editingAccessory?.wholesalePrice ?? '');
+  const [currentStock, setCurrentStock] = useState<number | ''>(editingAccessory?.currentStock ?? 10);
+  const [minStockAlert, setMinStockAlert] = useState<number | ''>(editingAccessory?.minStockAlert ?? 5);
   const [description, setDescription] = useState(editingAccessory?.description || '');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (editingAccessory) {
+      setName(editingAccessory.name || '');
+      setCategory(editingAccessory.category || ACCESSORY_CATEGORIES[0]);
+      setBarcode(editingAccessory.barcode || '');
+      setSku(editingAccessory.sku || '');
+      setCostPrice(editingAccessory.costPrice ?? '');
+      setRetailPrice(editingAccessory.retailPrice ?? '');
+      setWholesalePrice(editingAccessory.wholesalePrice ?? '');
+      setCurrentStock(editingAccessory.currentStock ?? 10);
+      setMinStockAlert(editingAccessory.minStockAlert ?? 5);
+      setDescription(editingAccessory.description || '');
+    } else {
+      setName('');
+      setCategory(ACCESSORY_CATEGORIES[0]);
+      setBarcode('');
+      setSku('');
+      setCostPrice('');
+      setRetailPrice('');
+      setWholesalePrice('');
+      setCurrentStock(10);
+      setMinStockAlert(5);
+      setDescription('');
+    }
+  }, [editingAccessory, isOpen]);
 
   if (!isOpen) return null;
 
@@ -53,6 +79,8 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
         await window.tigerAPI.updateAccessory(editingAccessory.id, {
           name,
           category,
+          barcode,
+          sku: sku || barcode,
           costPrice: Number(costPrice),
           retailPrice: Number(retailPrice),
           wholesalePrice: wholesalePrice ? Number(wholesalePrice) : Number(retailPrice),
@@ -154,8 +182,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
               required
-              disabled={Boolean(editingAccessory)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left disabled:opacity-50"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
             />
           </div>
 
@@ -164,7 +191,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر التكلفة (د.أ):</label>
               <input
                 type="number"
-                step="0.1"
+                step="any"
                 min="0"
                 placeholder="0.00"
                 value={costPrice}
@@ -177,7 +204,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
               <label className="block text-xs font-bold text-orange-600 dark:text-orange-400 mb-1">سعر المفرق (البيع):</label>
               <input
                 type="number"
-                step="0.1"
+                step="any"
                 min="0"
                 placeholder="0.00"
                 value={retailPrice}
@@ -190,12 +217,12 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر الجملة (د.أ):</label>
               <input
                 type="number"
-                step="0.1"
+                step="any"
                 min="0"
                 placeholder="0.00"
                 value={wholesalePrice}
                 onChange={(e) => setWholesalePrice(e.target.value ? Number(e.target.value) : '')}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
               />
             </div>
           </div>
