@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, CreditCard, Banknote, Landmark, UserCheck, CheckCircle2, 
-  Split, AlertTriangle, Plus, Search, Calendar, Sparkles, UserPlus 
+  Split, AlertTriangle, Plus, Search, Calendar, UserPlus 
 } from 'lucide-react';
 import { useCartStore } from '../../stores/useCartStore';
 import { useAppStore } from '../../stores/useAppStore';
@@ -85,43 +85,6 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
     } else if (method === 'credit') {
       setCashAmount(0); setCardAmount(0); setCliqAmount(0);
     }
-  };
-
-  // --- Smart Quick-Split Presets ---
-  // 1. Half Cash + Half CliQ (50% / 50%)
-  const handleSplitHalfCashCliq = () => {
-    setPaymentMethod('split');
-    const half = Number((netTotal / 2).toFixed(3));
-    setCashAmount(half);
-    setCliqAmount(Number((netTotal - half).toFixed(3)));
-    setCardAmount(0);
-  };
-
-  // 2. Half Cash + Half Card (50% / 50%)
-  const handleSplitHalfCashCard = () => {
-    setPaymentMethod('split');
-    const half = Number((netTotal / 2).toFixed(3));
-    setCashAmount(half);
-    setCardAmount(Number((netTotal - half).toFixed(3)));
-    setCliqAmount(0);
-  };
-
-  // 3. Half Card + Half CliQ (50% / 50%)
-  const handleSplitHalfCardCliq = () => {
-    setPaymentMethod('split');
-    const half = Number((netTotal / 2).toFixed(3));
-    setCardAmount(half);
-    setCliqAmount(Number((netTotal - half).toFixed(3)));
-    setCashAmount(0);
-  };
-
-  // 4. Equal Thirds (1/3 Cash + 1/3 Card + 1/3 CliQ)
-  const handleSplitEqualThirds = () => {
-    setPaymentMethod('split');
-    const third = Number((netTotal / 3).toFixed(3));
-    setCashAmount(third);
-    setCardAmount(third);
-    setCliqAmount(Number((netTotal - (2 * third)).toFixed(3)));
   };
 
   // Auto-Fill balance buttons
@@ -356,52 +319,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
           </button>
         </div>
 
-        {/* 2. Smart Quick-Split Presets Row */}
-        <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 mb-3 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-orange-500" />
-              أزرار التوزيع الذكي السريع بنقرة واحدة:
-            </span>
-            <span className="text-[10px] text-slate-400">تقسيم تلقائي فوري للمبلغ</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-            <button
-              type="button"
-              onClick={handleSplitHalfCashCliq}
-              className="bg-white dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-orange-950/40 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 transition text-center"
-            >
-              نصف كاش + نصف كليك
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSplitHalfCashCard}
-              className="bg-white dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-orange-950/40 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 transition text-center"
-            >
-              نصف كاش + نصف فيزا
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSplitEqualThirds}
-              className="bg-white dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-orange-950/40 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 transition text-center"
-            >
-              أثلاث (كاش + فيزا + كليك)
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSplitHalfCardCliq}
-              className="bg-white dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-orange-950/40 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 transition text-center"
-            >
-              نصف فيزا + نصف كليك
-            </button>
-          </div>
-        </div>
-
-        {/* 3. Detailed Input Boxes with Auto-Fill (+ الباقي) */}
+        {/* 2. Detailed Input Boxes with Auto-Fill (+ الباقي) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 mb-3">
           <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
             <span className="flex items-center gap-1.5">
