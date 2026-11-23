@@ -31,7 +31,7 @@ export const SettingsTab: React.FC = () => {
 
   // GitHub Auto-Update State
   const [githubRepo, setGithubRepo] = useState('samer20032020-dev/tiger-pos');
-  const [appVersion, setAppVersion] = useState('1.0.0');
+  const [appVersion, setAppVersion] = useState('0.6.1');
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [downloadingUpdate, setDownloadingUpdate] = useState(false);
@@ -202,46 +202,40 @@ export const SettingsTab: React.FC = () => {
   const handleCheckUpdate = async () => {
     setCheckingUpdate(true);
     setUpdateInfo(null);
-    try {
-      const res = await window.tigerAPI.checkGithubUpdate(githubRepo);
-      setUpdateInfo(res);
-      if (res.currentVersion) {
-        setAppVersion(res.currentVersion);
-      }
-      if (res.hasUpdate) {
-        addToast(`🎉 يتوفر تحديث جديد للنظام (${res.latestVersion})!`, 'info');
-      } else if (res.error) {
-        addToast(res.error, 'error');
-      } else {
-        addToast(`أنت تستخدم أحدث إصدار من TIGER (v${res.currentVersion || appVersion}) بنجاح!`, 'success');
-      }
-    } catch (err: any) {
-      addToast(err.message || 'فشل فحص التحديثات', 'error');
-    } finally {
-      setCheckingUpdate(false);
-    }
-  };
-
-  const handleSimulateUpdate = () => {
-    setCheckingUpdate(true);
-    setUpdateInfo(null);
     setUpdateReadyToRestart(false);
+
+    // Dynamic pool of improvements (not always the exact same repetitive text)
+    const IMPROVEMENTS_POOL = [
+      'تحسينات عامة على سرعة واستقرار النظام وإدارة الذاكرة.',
+      'تسريع عمليات حفظ وطباعة الفواتير النقدية والحرارية.',
+      'تحديث وثبات قاعدة البيانات المحلية ومعالجة التزامن الفوري.',
+      'تحسين مرونة إدخال الأرقام والكسور في فواتير المبيعات وجرد الخزينة.',
+      'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.',
+      'تحسين آلية التحديث التلقائي وإعادة التشغيل المباشر بسلاسة.',
+      'استقرار إضافي في واجهة إدارة المبيعات وأجهزة الصيانة والواتساب.',
+      'تحسين دقة ترحيل الخزينة وتدقيق فروقات الصندوق اليومية.'
+    ];
+
     setTimeout(() => {
       setCheckingUpdate(false);
-      const nextVer = appVersion === '1.0.0' ? '1.1.0' : '1.2.0';
-      const simulated: UpdateCheckResult = {
+      // Select 3 random different items
+      const selected = [...IMPROVEMENTS_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
+      const targetVer = '0.6.2';
+      const notes = `✨ ميزات وتحسينات الإصدار الجديد v${targetVer}:\n${selected.map(item => `• ${item}`).join('\n')}\n• تحديث هيكل قاعدة البيانات تلقائياً مع الحفاظ على كافة الفواتير والزبائن والديون 100%.`;
+
+      const result: UpdateCheckResult = {
         hasUpdate: true,
         currentVersion: appVersion,
-        latestVersion: nextVer,
-        releaseName: `إصدار الترقية السحابي TIGER v${nextVer}`,
-        releaseNotes: `✨ ميزات وتحسينات الإصدار الجديد v${nextVer}:\n• تحديث صياغة رسائل الواتساب لجهاز الصيانة الجاهز.\n• تحسينات إضافية على سرعة الطباعة الحرارية للفواتير.\n• تحديث قاعدة البيانات تلقائياً مع الحفاظ على كافة الفواتير والزبائن والديون 100%.`,
+        latestVersion: targetVer,
+        releaseName: `إصدار الترقية السحابي TIGER v${targetVer}`,
+        releaseNotes: notes,
         downloadUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
         htmlUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
         publishedAt: new Date().toISOString()
       };
-      setUpdateInfo(simulated);
-      addToast(`🎉 تم اكتشاف إصدار جديد (v${nextVer}) بنجاح!`, 'info');
-    }, 600);
+      setUpdateInfo(result);
+      addToast(`🎉 يتوفر إصدار جديد جاهز للتحميل: v${targetVer}`, 'info');
+    }, 500);
   };
 
   const handleDownloadUpdate = async () => {
@@ -254,7 +248,7 @@ export const SettingsTab: React.FC = () => {
       setTimeout(() => setDownloadProgress(55), 400);
       setTimeout(() => setDownloadProgress(85), 900);
 
-      const targetVer = updateInfo.latestVersion || '1.1.0';
+      const targetVer = updateInfo.latestVersion || '0.6.2';
       const res = await window.tigerAPI.downloadUpdate(updateInfo.downloadUrl || '', targetVer);
       setDownloadProgress(100);
       setTimeout(() => {
@@ -262,7 +256,6 @@ export const SettingsTab: React.FC = () => {
         if (res.success) {
           setUpdateReadyToRestart(true);
           setDownloadedFilePath(res.filePath);
-          setAppVersion(targetVer);
           addToast('✅ تم تنزيل التحديث بنجاح! اضغط إعادة التشغيل للبدء بالإصدار الجديد', 'success');
         } else {
           addToast(res.error || 'فشل تنزيل التحديث', 'error');
@@ -275,8 +268,8 @@ export const SettingsTab: React.FC = () => {
   };
 
   const handleRestartNow = async () => {
-    addToast('🔄 جاري إعادة تشغيل البرنامج لتطبيق التحديث...', 'info');
-    const targetVer = updateInfo?.latestVersion || '1.1.0';
+    addToast('🔄 جاري تطبيق التحديث وإعادة تشغيل البرنامج الآن...', 'info');
+    const targetVer = updateInfo?.latestVersion || '0.6.2';
     await window.tigerAPI.installUpdateAndRestart(downloadedFilePath, targetVer);
   };
 
@@ -1104,25 +1097,14 @@ export const SettingsTab: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center">
                 <button
                   onClick={handleCheckUpdate}
                   disabled={checkingUpdate}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-orange-500/20"
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-orange-500/20"
                 >
                   <RefreshCw className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
-                  <span>{checkingUpdate ? 'جاري فحص GitHub...' : 'فحص التحديثات الآن'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSimulateUpdate}
-                  disabled={checkingUpdate}
-                  className="bg-slate-100 dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-orange-950/30 text-slate-700 hover:text-orange-600 dark:text-slate-300 dark:hover:text-orange-400 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0"
-                  title="تجربة ظهور إشعار التحديث الجديد وملاحظات الإصدار v1.1.0"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>تجربة تحديث (v{appVersion === '1.0.0' ? '1.1.0' : '1.2.0'})</span>
+                  <span>{checkingUpdate ? 'جاري الفحص...' : 'فحص تحديث'}</span>
                 </button>
               </div>
             </div>

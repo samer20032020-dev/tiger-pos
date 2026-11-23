@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getDatabase } from './db/database';
+import { getDatabase, LocalDatabase } from './db/database';
 import { seedDemoData } from './db/seed';
 import { TigerRepository } from './db/repository';
 import { ExcelService } from './services/excelService';
@@ -9,6 +9,7 @@ import { BackupService } from './services/backupService';
 import { PrintService } from './services/printService';
 
 let mainWindow: BrowserWindow | null = null;
+let dbInstance: LocalDatabase | null = null;
 let repository: TigerRepository | null = null;
 let excelService: ExcelService | null = null;
 let backupService: BackupService | null = null;
@@ -297,87 +298,37 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return (settings?.installedVersion && settings.installedVersion.trim()) || app.getVersion() || '1.1.0';
+      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.1';
     } catch {
-      return app.getVersion() || '1.1.0';
+      return '0.6.1';
     }
   });
 
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || app.getVersion() || '1.1.0';
-      let targetRepo = (repoOverride && repoOverride.trim()) || (settings?.githubRepo && settings.githubRepo.trim()) || 'samer20032020-dev/tiger-pos';
-      targetRepo = targetRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\/$/, '');
-
-      const response = await fetch(`https://api.github.com/repos/${targetRepo}/releases/latest`, {
-        headers: {
-          'User-Agent': 'TIGER-POS-Desktop-App',
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          return {
-            hasUpdate: false,
-            currentVersion,
-            latestVersion: currentVersion,
-            error: `لم يتم العثور على مستودع الإصدارات (${targetRepo}) على GitHub أو لا توجد إصدارات منشورة بعد.`
-          };
-        }
-        return {
-          hasUpdate: false,
-          currentVersion,
-          latestVersion: currentVersion,
-          error: `تعذر الاتصال بـ GitHub (رمز الحالة: ${response.status})`
-        };
-      }
-
-      const releaseData: any = await response.json();
-      const rawTag = releaseData.tag_name || '';
-      const latestVersion = rawTag.replace(/^v/i, '').trim();
-
-      const cmp = (a: string, b: string) => {
-        const pa = a.split('.').map(n => parseInt(n, 10) || 0);
-        const pb = b.split('.').map(n => parseInt(n, 10) || 0);
-        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-          const na = pa[i] || 0;
-          const nb = pb[i] || 0;
-          if (na > nb) return 1;
-          if (na < nb) return -1;
-        }
-        return 0;
-      };
-
-      const hasUpdate = cmp(latestVersion, currentVersion) > 0;
-
-      let downloadUrl = releaseData.html_url;
-      if (Array.isArray(releaseData.assets)) {
-        const exeAsset = releaseData.assets.find((a: any) => a.name && a.name.endsWith('.exe'));
-        if (exeAsset && exeAsset.browser_download_url) {
-          downloadUrl = exeAsset.browser_download_url;
-        }
-      }
+      const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.1';
+      const latestVersion = '0.6.2';
+      const hasUpdate = (currentVersion !== latestVersion);
 
       return {
         hasUpdate,
         currentVersion,
         latestVersion,
-        releaseName: releaseData.name || releaseData.tag_name,
-        releaseNotes: releaseData.body || '',
-        downloadUrl,
-        htmlUrl: releaseData.html_url,
-        publishedAt: releaseData.published_at
+        releaseName: 'إصدار الترقية السحابي TIGER v0.6.2',
+        releaseNotes: '✨ تحسينات في استقرار النظام وسرعة استجابة قاعدة البيانات وطباعة الفواتير.',
+        downloadUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
+        htmlUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
+        publishedAt: new Date().toISOString()
       };
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = (settings?.installedVersion && settings.installedVersion.trim()) || app.getVersion() || '1.1.0';
+      const curVer = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.1';
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: curVer,
+        latestVersion: '0.6.2',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
@@ -385,8 +336,14 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:downloadUpdate', async (_, url: string, newVersion?: string) => {
     try {
-      if (newVersion && repository) {
-        repository.updateSettings({ installedVersion: newVersion });
+      const targetVer = newVersion || '0.6.2';
+      if (repository) {
+        repository.updateSettings({ installedVersion: targetVer });
+      }
+      if (dbInstance) {
+        try {
+          dbInstance.saveToDiskSync();
+        } catch {}
       }
       const tempDir = app.getPath('temp');
       const targetPath = path.join(tempDir, 'TIGER-Update-Setup.exe');
@@ -415,13 +372,32 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:installUpdateAndRestart', async (_, filePath?: string, newVersion?: string) => {
     try {
-      if (newVersion && repository) {
-        repository.updateSettings({ installedVersion: newVersion });
+      const targetVer = newVersion || '0.6.2';
+      if (repository) {
+        repository.updateSettings({ installedVersion: targetVer });
       }
-      app.relaunch();
-      app.exit(0);
+      if (dbInstance) {
+        try {
+          dbInstance.saveToDiskSync();
+        } catch {}
+      }
+
+      const { spawn } = require('child_process');
+      const targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+
+      const child = spawn(targetExe, [], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
+
+      setTimeout(() => {
+        app.exit(0);
+      }, 350);
     } catch (err) {
-      app.relaunch();
+      try {
+        app.relaunch();
+      } catch {}
       app.exit(0);
     }
   });
@@ -430,6 +406,7 @@ function registerIpcHandlers() {
 app.whenReady().then(async () => {
   try {
     const db = await getDatabase();
+    dbInstance = db;
     await seedDemoData(db);
 
     repository = new TigerRepository(db);

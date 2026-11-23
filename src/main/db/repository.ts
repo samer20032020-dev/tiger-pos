@@ -23,7 +23,7 @@ export class TigerRepository {
       storeAddress: '',
       githubRepo: 'samer20032020-dev/tiger-pos',
       cashDrawerShortcut: 'F12',
-      installedVersion: '1.1.0'
+      installedVersion: '0.6.1'
     };
     for (const r of rows) {
       if (r.key === 'currencyDecimals') {
