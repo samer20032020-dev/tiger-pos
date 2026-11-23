@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Settings, Database, HardDrive, 
-  Download, Upload, CheckCircle2, 
+import {
+  Settings, Database, HardDrive,
+  Download, Upload, CheckCircle2,
   UserPlus, Users, Coins, Building2, Save,
   Trash2, Edit2, Ban, Check, X, Phone, MapPin,
   CheckCircle, Percent, Shield, Globe, RefreshCw,
@@ -77,7 +77,7 @@ export const SettingsTab: React.FC = () => {
         try {
           const v = await window.tigerAPI.getAppVersion();
           if (v) setAppVersion(v);
-        } catch {}
+        } catch { }
       }
       if (stgs) {
         if (stgs.installedVersion) {
@@ -154,7 +154,7 @@ export const SettingsTab: React.FC = () => {
       addToast(`تم تعيين كبسة فتح درج الكاش إلى: [${keyName}]`, 'success');
 
       if (window.tigerAPI) {
-        window.tigerAPI.updateSettings({ cashDrawerShortcut: keyName }).catch(() => {});
+        window.tigerAPI.updateSettings({ cashDrawerShortcut: keyName }).catch(() => { });
       }
     };
 
@@ -211,75 +211,20 @@ export const SettingsTab: React.FC = () => {
     setUpdateInfo(null);
     setUpdateReadyToRestart(false);
 
-    // Dynamic pool of improvements
-    const IMPROVEMENTS_POOL = [
-      'تحديث وتطوير تصميم نافذة تسكير الصندوق وإغلاق الوردية بمظهر فاخر وسلس مع زر المطابقة السريعة.',
-      'حل مشكلة عدم ظهور الفواتير غير المرحلة ومطابقة أعداد الجرد والخزينة بدقة 100%.',
-      'تفعيل شريط وتمرير الفأرة (Scroll Down) بسلاسة كاملة في جميع شاشات وجداول النظام.',
-      'نقل رسائل وتنبيهات النظام لتظهر في أسفل الشاشة لعدم حجب أشرطة وقوائم البيع.',
-      'تبسيط شاشة التحديثات السحابية وحذف الروابط غير الضرورية.',
-      'إصلاح تعبئة بيانات الإكسسوارات تلقائياً عند الضغط على زر التعديل وسلاسة الحفظ.',
-      'إضافة ميزة استيراد المنتجات والإكسسوارات من ملفات CSV وإكسل بضغطة زر مع التصنيف التلقائي الذكي.',
-      'تقليص مدة ظهور الإشعار إلى ثانيتين فقط (2s) لسرعة وسلاسة العمل.',
-      'وضع التوافق الفائق مع الأجهزة الضعيفة (4GB رام وبدون كرت شاشة).',
-      'إلغاء تسريع كرت الشاشة لتجنب أي تعليق أو تجميد في معالجات إنتل القديمة.',
-      'تسريع فوري لفتح شاشة الإعدادات عبر التحميل الذكي للنسخ الاحتياطية (Lazy Loading).',
-      'تحديد استهلاك الذاكرة ليبقى البرنامج خفيفاً وسلساً بنسبة 100%.',
-      'تسريع عمليات حفظ وطباعة الفواتير النقدية والحرارية.',
-      'تحديث وثبات قاعدة البيانات المحلية ومعالجة التزامن الفوري.',
-      'تحسين مرونة إدخال الأرقام والكسور في فواتير المبيعات وجرد الخزينة.',
-      'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.'
-    ];
-
-    const targetVer = '0.7.1';
-    const cmp = (a: string, b: string) => {
-      const pa = a.split('.').map(n => parseInt(n, 10) || 0);
-      const pb = b.split('.').map(n => parseInt(n, 10) || 0);
-      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-        const na = pa[i] || 0;
-        const nb = pb[i] || 0;
-        if (na > nb) return 1;
-        if (na < nb) return -1;
-      }
-      return 0;
-    };
-
-    setTimeout(() => {
+    try {
+      const res = await window.tigerAPI.checkGithubUpdate();
       setCheckingUpdate(false);
-      const hasUpdate = cmp(targetVer, appVersion) > 0;
+      setUpdateInfo(res);
 
-      if (!hasUpdate) {
-        setUpdateInfo({
-          hasUpdate: false,
-          currentVersion: appVersion,
-          latestVersion: appVersion,
-          releaseName: `TIGER v${appVersion}`,
-          releaseNotes: '',
-          downloadUrl: '',
-          htmlUrl: '',
-          publishedAt: new Date().toISOString()
-        });
-        addToast(`أنت تستخدم أحدث إصدار من TIGER (v${appVersion}) بنجاح!`, 'success');
-        return;
+      if (res.hasUpdate) {
+        addToast(`🎉 يتوفر إصدار جديد جاهز للتحميل: v${res.latestVersion}`, 'info');
+      } else {
+        addToast(`أنت تستخدم أحدث إصدار من TIGER (v${res.currentVersion}) بنجاح!`, 'success');
       }
-
-      // Select 3 random different items
-      const selected = [...IMPROVEMENTS_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
-      const notes = `✨ ميزات وتحسينات الإصدار الجديد v${targetVer}:\n${selected.map(item => `• ${item}`).join('\n')}\n• تحديث هيكل قاعدة البيانات تلقائياً مع الحفاظ على كافة الفواتير والزبائن والديون 100%.`;
-
-      const result: UpdateCheckResult = {
-        hasUpdate: true,
-        currentVersion: appVersion,
-        latestVersion: targetVer,
-        releaseName: `إصدار الترقية السحابي TIGER v${targetVer}`,
-        releaseNotes: notes,
-        downloadUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
-        htmlUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
-        publishedAt: new Date().toISOString()
-      };
-      setUpdateInfo(result);
-      addToast(`🎉 يتوفر إصدار جديد جاهز للتحميل: v${targetVer}`, 'info');
-    }, 500);
+    } catch (err: any) {
+      setCheckingUpdate(false);
+      addToast(err.message || 'فشل فحص التحديثات السحابية', 'error');
+    }
   };
 
   const handleDownloadUpdate = async () => {
@@ -431,7 +376,7 @@ export const SettingsTab: React.FC = () => {
 
   return (
     <div className="p-6 select-none max-w-5xl mx-auto pb-28 font-cairo space-y-6">
-      
+
       {/* Page Header & Navigation Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
@@ -451,11 +396,10 @@ export const SettingsTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveSection('store')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              activeSection === 'store'
-                ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${activeSection === 'store'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
           >
             <Building2 className="w-3.5 h-3.5" />
             <span>المتجر والعملة</span>
@@ -464,11 +408,10 @@ export const SettingsTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveSection('users')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              activeSection === 'users'
-                ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${activeSection === 'users'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
           >
             <Users className="w-3.5 h-3.5" />
             <span>الموظفون ({users.length})</span>
@@ -477,11 +420,10 @@ export const SettingsTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveSection('backup')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              activeSection === 'backup'
-                ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${activeSection === 'backup'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
           >
             <Database className="w-3.5 h-3.5" />
             <span>النسخ الاحتياطي ({backups.length})</span>
@@ -490,11 +432,10 @@ export const SettingsTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveSection('updates')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              activeSection === 'updates'
-                ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${activeSection === 'updates'
+              ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
           >
             <Globe className="w-3.5 h-3.5" />
             <span>التحديثات السحابية</span>
@@ -508,7 +449,7 @@ export const SettingsTab: React.FC = () => {
       {activeSection === 'store' && (
         <form onSubmit={handleSaveSettings} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            
+
             {/* Store & Invoice Info */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -595,28 +536,26 @@ export const SettingsTab: React.FC = () => {
                           key={c.symbol}
                           type="button"
                           onClick={() => handleSelectCurrency(c.symbol)}
-                          className={`py-2 px-1 rounded-xl text-xs font-bold border transition text-center ${
-                            isSelected
-                              ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
-                              : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                          }`}
+                          className={`py-2 px-1 rounded-xl text-xs font-bold border transition text-center ${isSelected
+                            ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                            }`}
                         >
                           {c.label}
                         </button>
                       );
                     })}
-                    
+
                     <button
                       type="button"
                       onClick={() => {
                         setIsCustomMode(true);
                         if (!customCurrency) setCustomCurrency(currencySymbol);
                       }}
-                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition text-center ${
-                        isCustomMode
-                          ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
-                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                      }`}
+                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition text-center ${isCustomMode
+                        ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                        }`}
                     >
                       مخصص...
                     </button>
@@ -644,11 +583,10 @@ export const SettingsTab: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setCurrencyDecimals(3)}
-                      className={`p-2.5 rounded-2xl border text-right transition flex items-center justify-between ${
-                        currencyDecimals === 3
-                          ? 'border-orange-500 bg-orange-50/60 dark:bg-orange-950/30 text-orange-800 dark:text-orange-200 ring-2 ring-orange-500/20'
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                      }`}
+                      className={`p-2.5 rounded-2xl border text-right transition flex items-center justify-between ${currencyDecimals === 3
+                        ? 'border-orange-500 bg-orange-50/60 dark:bg-orange-950/30 text-orange-800 dark:text-orange-200 ring-2 ring-orange-500/20'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                        }`}
                     >
                       <div>
                         <div className="font-bold text-xs">3 خانات (0.000)</div>
@@ -660,11 +598,10 @@ export const SettingsTab: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setCurrencyDecimals(2)}
-                      className={`p-2.5 rounded-2xl border text-right transition flex items-center justify-between ${
-                        currencyDecimals === 2
-                          ? 'border-orange-500 bg-orange-50/60 dark:bg-orange-950/30 text-orange-800 dark:text-orange-200 ring-2 ring-orange-500/20'
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                      }`}
+                      className={`p-2.5 rounded-2xl border text-right transition flex items-center justify-between ${currencyDecimals === 2
+                        ? 'border-orange-500 bg-orange-50/60 dark:bg-orange-950/30 text-orange-800 dark:text-orange-200 ring-2 ring-orange-500/20'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                        }`}
                     >
                       <div>
                         <div className="font-bold text-xs">خانتان (0.00)</div>
@@ -701,11 +638,10 @@ export const SettingsTab: React.FC = () => {
                           key={rate}
                           type="button"
                           onClick={() => setDefaultTaxRate(rate)}
-                          className={`px-2.5 py-2 rounded-xl text-xs font-mono font-bold border transition ${
-                            defaultTaxRate === rate
-                              ? 'bg-orange-500 text-white border-orange-500'
-                              : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
-                          }`}
+                          className={`px-2.5 py-2 rounded-xl text-xs font-mono font-bold border transition ${defaultTaxRate === rate
+                            ? 'bg-orange-500 text-white border-orange-500'
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                            }`}
                         >
                           {rate}%
                         </button>
@@ -747,11 +683,10 @@ export const SettingsTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsRecordingKey(true)}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
-                      isRecordingKey
-                        ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30'
-                        : 'bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-200'
-                    }`}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${isRecordingKey
+                      ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30'
+                      : 'bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-200'
+                      }`}
                   >
                     <Keyboard className="w-4 h-4" />
                     <span>{isRecordingKey ? '🔴 اضغط أي كبسة الآن في الكيبورد...' : 'تعيين كبسة جديدة'}</span>
@@ -838,11 +773,10 @@ export const SettingsTab: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              u.role === 'admin'
-                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
-                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                            }`}>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${u.role === 'admin'
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
+                              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                              }`}>
                               {u.role === 'admin' ? 'مدير عام' : 'موظف'}
                             </span>
                           </td>
@@ -859,11 +793,10 @@ export const SettingsTab: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              u.active
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${u.active
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                              }`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${u.active ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                               <span>{u.active ? 'نشط' : 'معطل'}</span>
                             </span>
@@ -902,11 +835,10 @@ export const SettingsTab: React.FC = () => {
                                     <button
                                       type="button"
                                       onClick={() => handleToggleActive(u)}
-                                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 ${
-                                        u.active
-                                          ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
-                                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                                      }`}
+                                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 ${u.active
+                                        ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                        }`}
                                     >
                                       {u.active ? (
                                         <>
