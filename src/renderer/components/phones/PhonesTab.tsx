@@ -13,7 +13,8 @@ import { DamagedItemModal } from '../common/DamagedItemModal';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const PhonesTab: React.FC = () => {
-  const { addToast } = useAppStore();
+  const { addToast, currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'admin';
   const [phones, setPhones] = useState<Phone[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -237,7 +238,7 @@ export const PhonesTab: React.FC = () => {
                         >
                           <History className="w-4 h-4" />
                         </button>
-                        {phone.status === 'in_stock' && (
+                        {isAdmin && phone.status === 'in_stock' && (
                           <button
                             onClick={() => setDamagedPhone(phone)}
                             title="تسجيل جهاز تالف / شطب أو مرتجع للمورد"

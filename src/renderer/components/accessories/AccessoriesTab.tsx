@@ -12,7 +12,8 @@ import { DamagedItemModal } from '../common/DamagedItemModal';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const AccessoriesTab: React.FC = () => {
-  const { addToast, criticalShortageFilter, setCriticalShortageFilter } = useAppStore();
+  const { addToast, criticalShortageFilter, setCriticalShortageFilter, currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'admin';
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -459,23 +460,27 @@ export const AccessoriesTab: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleAdjustStock(acc, 1)}
-                            title="إضافة قطعة للمخزون (+1)"
-                            className="p-1 rounded text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition"
-                          >
-                            <PlusCircle className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleAdjustStock(acc, -1)}
-                            disabled={acc.currentStock <= 0}
-                            title="خصم قطعة من المخزون (-1)"
-                            className="p-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-950/60 transition disabled:opacity-30"
-                          >
-                            <MinusCircle className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {isAdmin ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleAdjustStock(acc, 1)}
+                              title="إضافة قطعة للمخزون (+1)"
+                              className="p-1 rounded text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition"
+                            >
+                              <PlusCircle className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleAdjustStock(acc, -1)}
+                              disabled={acc.currentStock <= 0}
+                              title="خصم قطعة من المخزون (-1)"
+                              className="p-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-950/60 transition disabled:opacity-30"
+                            >
+                              <MinusCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 dark:text-slate-600 font-mono text-xs select-none" title="تعديل المخزون مخصص للمدير فقط">-</span>
+                        )}
                       </td>
                       <td className="p-3.5 text-center">
                         <div className="flex items-center justify-center gap-1.5">
@@ -486,24 +491,28 @@ export const AccessoriesTab: React.FC = () => {
                           >
                             <Printer className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => {
-                              setEditingAcc(acc);
-                              setAddOpen(true);
-                            }}
-                            title="تعديل الصنف"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          {acc.currentStock > 0 && (
-                            <button
-                              onClick={() => setDamagedAcc(acc)}
-                              title="تسجيل صنف تالف / شطب أو مرتجع للمورد"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          {isAdmin && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingAcc(acc);
+                                  setAddOpen(true);
+                                }}
+                                title="تعديل الصنف"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              {acc.currentStock > 0 && (
+                                <button
+                                  onClick={() => setDamagedAcc(acc)}
+                                  title="تسجيل صنف تالف / شطب أو مرتجع للمورد"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>

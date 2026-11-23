@@ -387,9 +387,9 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.5';
+      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.6';
     } catch {
-      return '0.7.5';
+      return '0.7.6';
     }
   });
 
@@ -421,9 +421,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.7';
       
-      let latestVersion = '0.7.5';
-      let releaseNotes = '✨ حل تعليقة الصندوق وتصفير اليومية بالكامل، وتعديل المبالغ بحرية، وإضافة تصنيفات قطع الصيانة (شاشات، بطاريات، UI، باكات)، وتكبير التواريخ بنسبة 25% مع إبراز المؤشرات الحيوية.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.7.5';
+      let latestVersion = '0.7.6';
+      let releaseNotes = '✨ ضبط صلاحيات الموظف (قفل التعديل السريع وحصر الإجراءات بالطباعة فقط ومنع التعديل والمسح إلا للمدير).';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.7.6';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -471,7 +471,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.7.5',
+        latestVersion: '0.7.6',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
@@ -479,7 +479,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:downloadUpdate', async (_, url: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.5';
+      const targetVer = newVersion || '0.7.6';
       if (repository) {
         repository.updateSettings({ installedVersion: targetVer });
       }
@@ -515,7 +515,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:installUpdateAndRestart', async (_, filePath?: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.5';
+      const targetVer = newVersion || '0.7.6';
       if (repository) {
         repository.updateSettings({ installedVersion: targetVer });
       }

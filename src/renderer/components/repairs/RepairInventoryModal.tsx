@@ -19,7 +19,8 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { addToast } = useAppStore();
+  const { addToast, currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'admin';
   const [parts, setParts] = useState<Accessory[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -403,25 +404,29 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <button
-                            type="button"
-                            onClick={() => handleStockDelta(p.id, -1)}
-                            disabled={p.currentStock <= 0}
-                            title="خصم قطعة (-1)"
-                            className="w-6 h-6 flex items-center justify-center rounded text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 transition font-bold"
-                          >
-                            -
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleStockDelta(p.id, 1)}
-                            title="إضافة قطعة (+1)"
-                            className="w-6 h-6 flex items-center justify-center rounded text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition font-bold"
-                          >
-                            +
-                          </button>
-                        </div>
+                        {isAdmin ? (
+                          <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <button
+                              type="button"
+                              onClick={() => handleStockDelta(p.id, -1)}
+                              disabled={p.currentStock <= 0}
+                              title="خصم قطعة (-1)"
+                              className="w-6 h-6 flex items-center justify-center rounded text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 transition font-bold"
+                            >
+                              -
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleStockDelta(p.id, 1)}
+                              title="إضافة قطعة (+1)"
+                              className="w-6 h-6 flex items-center justify-center rounded text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 font-mono text-xs select-none" title="تعديل المخزون مخصص للمدير فقط">-</span>
+                        )}
                       </td>
                     </tr>
                   );
