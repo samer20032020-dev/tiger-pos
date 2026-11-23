@@ -31,7 +31,7 @@ export const SettingsTab: React.FC = () => {
 
   // GitHub Auto-Update State
   const [githubRepo, setGithubRepo] = useState('samer20032020-dev/tiger-pos');
-  const [appVersion, setAppVersion] = useState('0.6.2');
+  const [appVersion, setAppVersion] = useState('0.6.3');
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [downloadingUpdate, setDownloadingUpdate] = useState(false);
@@ -211,19 +211,20 @@ export const SettingsTab: React.FC = () => {
     setUpdateInfo(null);
     setUpdateReadyToRestart(false);
 
-    // Dynamic pool of improvements (not always the exact same repetitive text)
+    // Dynamic pool of improvements
     const IMPROVEMENTS_POOL = [
+      'وضع التوافق الفائق مع الأجهزة الضعيفة (4GB رام وبدون كرت شاشة).',
+      'إلغاء تسريع كرت الشاشة لتجنب أي تعليق أو تجميد في معالجات إنتل القديمة.',
+      'تسريع فوري لفتح شاشة الإعدادات عبر التحميل الذكي للنسخ الاحتياطية (Lazy Loading).',
+      'تحديد استهلاك الذاكرة ليبقى البرنامج خفيفاً وسلساً بنسبة 100%.',
       'تحسينات عامة على سرعة واستقرار النظام وإدارة الذاكرة.',
       'تسريع عمليات حفظ وطباعة الفواتير النقدية والحرارية.',
       'تحديث وثبات قاعدة البيانات المحلية ومعالجة التزامن الفوري.',
       'تحسين مرونة إدخال الأرقام والكسور في فواتير المبيعات وجرد الخزينة.',
-      'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.',
-      'تحسين آلية التحديث التلقائي وإعادة التشغيل المباشر بسلاسة.',
-      'استقرار إضافي في واجهة إدارة المبيعات وأجهزة الصيانة والواتساب.',
-      'تحسين دقة ترحيل الخزينة وتدقيق فروقات الصندوق اليومية.'
+      'تعزيز أمان النظام وتسريع فتح درج الكاش وقارئ الباركود.'
     ];
 
-    const targetVer = '0.6.2';
+    const targetVer = '0.6.3';
     const cmp = (a: string, b: string) => {
       const pa = a.split('.').map(n => parseInt(n, 10) || 0);
       const pb = b.split('.').map(n => parseInt(n, 10) || 0);
