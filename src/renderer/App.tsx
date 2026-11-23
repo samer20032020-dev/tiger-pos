@@ -174,26 +174,26 @@ export const App: React.FC = () => {
       <ShiftModal type="open" isOpen={isOpenShiftModalOpen} onClose={() => setOpenShiftModalOpen(false)} onSuccess={fetchBadgeCounts} />
       <ShiftModal type="close" isOpen={isCloseShiftModalOpen} onClose={() => setCloseShiftModalOpen(false)} onSuccess={fetchBadgeCounts} />
 
-      {/* Toasts */}
-      <div className="fixed bottom-4 left-4 z-50 space-y-2 max-w-xs pointer-events-none">
+      {/* Center Screen Toasts (تظهر في منتصف الشاشة وتختفي خلال ثانيتين) */}
+      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center space-y-2 pointer-events-none w-auto max-w-lg px-4">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto px-4 py-3 rounded-xl shadow-lg flex items-center justify-between gap-3 text-xs font-semibold text-white ${
-              toast.type === 'success' ? 'bg-emerald-600' :
-              toast.type === 'error' ? 'bg-red-600' :
-              toast.type === 'warning' ? 'bg-amber-600' : 'bg-gray-800'
+            className={`pointer-events-auto px-5 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3 text-xs font-bold text-white transition-all transform animate-in fade-in slide-in-from-top-3 duration-200 ${
+              toast.type === 'success' ? 'bg-emerald-600/95 border border-emerald-500/50' :
+              toast.type === 'error' ? 'bg-red-600/95 border border-red-500/50' :
+              toast.type === 'warning' ? 'bg-amber-600/95 border border-amber-500/50' : 'bg-slate-900/95 border border-slate-700/50'
             }`}
           >
-            <div className="flex items-center gap-2">
-              {toast.type === 'success' && <CheckCircle2 className="w-4 h-4" />}
-              {toast.type === 'error' && <AlertCircle className="w-4 h-4" />}
-              {toast.type === 'warning' && <AlertTriangle className="w-4 h-4" />}
-              {toast.type === 'info' && <Info className="w-4 h-4" />}
-              <span>{toast.message}</span>
+            <div className="flex items-center gap-2.5">
+              {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />}
+              {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-200 shrink-0" />}
+              {toast.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-200 shrink-0" />}
+              {toast.type === 'info' && <Info className="w-4 h-4 text-blue-200 shrink-0" />}
+              <span className="whitespace-nowrap">{toast.message}</span>
             </div>
-            <button onClick={() => removeToast(toast.id)} className="p-0.5 hover:bg-white/20 rounded">
-              <X className="w-3 h-3" />
+            <button onClick={() => removeToast(toast.id)} className="p-1 hover:bg-white/20 rounded-lg transition mr-1">
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
