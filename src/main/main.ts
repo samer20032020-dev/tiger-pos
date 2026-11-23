@@ -8,10 +8,13 @@ import { ExcelService } from './services/excelService';
 import { BackupService } from './services/backupService';
 import { PrintService } from './services/printService';
 
-// Performance & GPU Acceleration switches for instant launch
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
+// Ultra-lightweight & smooth mode for low-end PCs (4GB RAM, old CPUs, integrated Intel HD Graphics)
+// Prevents GPU driver crashes, black screens, and freezes on machines without dedicated GPU
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+app.commandLine.appendSwitch('disable-breakpad');
 
 let mainWindow: BrowserWindow | null = null;
 let dbInstance: LocalDatabase | null = null;
@@ -36,6 +39,7 @@ async function createWindow() {
       contextIsolation: true,
       sandbox: false,
       spellcheck: false,
+      backgroundThrottling: true,
     },
   });
 
@@ -255,7 +259,16 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('backup:list', async (_, folder?: string) => {
-    return backupService!.listBackups(folder);
+    try {
+      if (!backupService) return [];
+      // Guarantee response within 2.5s even if disk is slow
+      return await Promise.race([
+        backupService.listBackups(folder),
+        new Promise<any[]>((resolve) => setTimeout(() => resolve([]), 2500))
+      ]);
+    } catch {
+      return [];
+    }
   });
 
   ipcMain.handle('backup:restore', async (_, filePath: string) => {

@@ -7,12 +7,15 @@ export class BackupService {
   constructor(private db: LocalDatabase) {}
 
   public getDefaultBackupDir(): string {
-    const documents = app ? app.getPath('documents') : process.cwd();
-    const backupDir = path.join(documents, 'Tiger_Backups');
-    if (!fs.existsSync(backupDir)) {
-      fs.mkdirSync(backupDir, { recursive: true });
+    try {
+      const baseDir = app ? path.join(app.getPath('userData'), 'backups') : path.join(process.cwd(), 'backups');
+      if (!fs.existsSync(baseDir)) {
+        fs.mkdirSync(baseDir, { recursive: true });
+      }
+      return baseDir;
+    } catch {
+      return process.cwd();
     }
-    return backupDir;
   }
 
   public createBackup(destinationFolder?: string): { success: boolean; filePath: string; size: number } {
@@ -34,27 +37,37 @@ export class BackupService {
     };
   }
 
-  public listBackups(folder?: string): { filename: string; filePath: string; size: number; date: string }[] {
-    const dir = folder || this.getDefaultBackupDir();
-    if (!fs.existsSync(dir)) return [];
+  public async listBackups(folder?: string): Promise<{ filename: string; filePath: string; size: number; date: string }[]> {
+    try {
+      const dir = folder || this.getDefaultBackupDir();
+      if (!fs.existsSync(dir)) return [];
 
-    const files = fs.readdirSync(dir);
-    return files
-      .filter(f => f.endsWith('.sqlite') || f.endsWith('.db'))
-      .map(f => {
-        const full = path.join(dir, f);
-        const stat = fs.statSync(full);
-        return {
-          filename: f,
-          filePath: full,
-          size: stat.size,
-          date: stat.mtime.toISOString()
-        };
-      })
-      .sort((a, b) => b.date.localeCompare(a.date));
+      const files = await fs.promises.readdir(dir);
+      const results: { filename: string; filePath: string; size: number; date: string }[] = [];
+
+      for (const f of files) {
+        if (f.endsWith('.sqlite') || f.endsWith('.db')) {
+          try {
+            const full = path.join(dir, f);
+            const stat = await fs.promises.stat(full);
+            results.push({
+              filename: f,
+              filePath: full,
+              size: stat.size,
+              date: stat.mtime.toISOString()
+            });
+          } catch {}
+        }
+      }
+      return results.sort((a, b) => b.date.localeCompare(a.date));
+    } catch (err) {
+      console.error('[BackupService] Error listing backups:', err);
+      return [];
+    }
   }
 
   public async restoreBackup(filePath: string): Promise<boolean> {
     return await this.db.restoreFromBackup(filePath);
   }
 }
+

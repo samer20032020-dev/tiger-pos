@@ -68,13 +68,11 @@ export const SettingsTab: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [bks, usrs, stgs] = await Promise.all([
-        window.tigerAPI.listBackups(),
-        window.tigerAPI.getAllUsers(),
-        window.tigerAPI.getSettings()
+      const [usrs, stgs] = await Promise.all([
+        window.tigerAPI.getAllUsers().catch(() => []),
+        window.tigerAPI.getSettings().catch(() => null)
       ]);
-      setBackups(bks);
-      setUsers(usrs);
+      setUsers(usrs || []);
       if (window.tigerAPI?.getAppVersion) {
         try {
           const v = await window.tigerAPI.getAppVersion();
@@ -123,6 +121,15 @@ export const SettingsTab: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Lazy-load backups list ONLY when navigating to the backup section (saves massive CPU/Disk I/O)
+  useEffect(() => {
+    if (activeSection === 'backup' && window.tigerAPI) {
+      window.tigerAPI.listBackups()
+        .then((bks) => setBackups(bks || []))
+        .catch(() => setBackups([]));
+    }
+  }, [activeSection]);
 
   // Keyboard shortcut recorder listener
   useEffect(() => {
@@ -307,7 +314,8 @@ export const SettingsTab: React.FC = () => {
     try {
       const res = await window.tigerAPI.createBackup();
       addToast(`تم حفظ نسخة احتياطية جديدة بنجاح (${(res.size / 1024).toFixed(1)} KB)`, 'success');
-      loadData();
+      const bks = await window.tigerAPI.listBackups().catch(() => []);
+      setBackups(bks || []);
     } catch (err: any) {
       addToast(err.message || 'فشل إنشاء النسخة الاحتياطية', 'error');
     } finally {
@@ -321,7 +329,8 @@ export const SettingsTab: React.FC = () => {
       if (!folder) return;
       await window.tigerAPI.createBackup(folder);
       addToast('تم حفظ النسخة الاحتياطية في المجلد المختار بنجاح', 'success');
-      loadData();
+      const bks = await window.tigerAPI.listBackups().catch(() => []);
+      setBackups(bks || []);
     } catch (err: any) {
       addToast(err.message, 'error');
     }
