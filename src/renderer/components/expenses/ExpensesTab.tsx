@@ -163,9 +163,9 @@ export const ExpensesTab: React.FC = () => {
                   <label className="block text-xs font-bold text-red-600 dark:text-red-400 mb-1">المبلغ (د.أ):</label>
                   <input
                     type="number"
-                    step="0.5"
-                    min="0.1"
-                    placeholder="0.00"
+                    step="any"
+                    min="0"
+                    placeholder="0.000"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value ? Number(e.target.value) : '')}
                     required

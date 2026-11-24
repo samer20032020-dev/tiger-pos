@@ -213,7 +213,7 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">سعر التكلفة (د.أ):</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="any"
                   min="0"
                   placeholder="0.000"
                   value={newCostPrice}
@@ -227,7 +227,7 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">سعر البيع للزبون (د.أ):</label>
                 <input
                   type="number"
-                  step="0.5"
+                  step="any"
                   min="0"
                   placeholder="0.000"
                   value={newRetailPrice}
@@ -241,7 +241,7 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">سعر الجملة / محلات (د.أ):</label>
                 <input
                   type="number"
-                  step="0.5"
+                  step="any"
                   min="0"
                   placeholder="0.000"
                   value={newWholesalePrice}

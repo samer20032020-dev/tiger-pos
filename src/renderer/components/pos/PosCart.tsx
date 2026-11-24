@@ -232,7 +232,7 @@ export const PosCart: React.FC<PosCartProps> = ({
           <div className="flex items-center gap-1">
             <input
               type="number"
-              step="0.1"
+              step="any"
               min="0"
               value={discount || ''}
               onChange={(e) => {

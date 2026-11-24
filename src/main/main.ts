@@ -425,9 +425,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.0';
-      let releaseNotes = '✨ إصدار الترقية الشامل v0.8.0: تصدير تقارير Excel بتفاصيل كاملة وتواريخ مخصصة، صلاحيات الموظفين، تصفير الصندوق اليومي التلقائي، وتحسينات الأداء واستقرار التحديثات.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.0';
+      let latestVersion = '0.8.1';
+      let releaseNotes = '✨ إصدار v0.8.1: حل مشكلة تحديد مبالغ المصاريف والسلف وإتاحة إدخال أي رقم بحرية تامة دون قيود المتصفح.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.1';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -475,7 +475,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.0',
+        latestVersion: '0.8.1',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

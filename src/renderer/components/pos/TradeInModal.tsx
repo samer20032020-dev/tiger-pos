@@ -139,9 +139,9 @@ export const TradeInModal: React.FC<TradeInModalProps> = ({ isOpen, onClose }) =
               <label className="block text-xs font-bold text-orange-600 dark:text-orange-400 mb-1">سعر الشراء المتفق عليه (د.أ):</label>
               <input
                 type="number"
-                step="0.5"
-                min="1"
-                placeholder="0.00"
+                step="any"
+                min="0"
+                placeholder="0.000"
                 value={purchasePrice}
                 onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : '')}
                 required

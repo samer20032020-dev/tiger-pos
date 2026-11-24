@@ -237,7 +237,7 @@ export const SettingsTab: React.FC = () => {
       const t1 = setTimeout(() => setDownloadProgress(55), 300);
       const t2 = setTimeout(() => setDownloadProgress(85), 600);
 
-      const targetVer = updateInfo.latestVersion || '0.8.0';
+      const targetVer = updateInfo.latestVersion || '0.8.1';
       const res = await window.tigerAPI.downloadUpdate(updateInfo.downloadUrl || '', targetVer);
       
       clearTimeout(t1);
@@ -262,7 +262,7 @@ export const SettingsTab: React.FC = () => {
 
   const handleRestartNow = async () => {
     addToast('🔄 جاري تشغيل مثبت التحديث وإغلاق البرنامج وتطبيق الإصدار الجديد...', 'info');
-    const targetVer = updateInfo?.latestVersion || '0.8.0';
+    const targetVer = updateInfo?.latestVersion || '0.8.1';
     const res = await window.tigerAPI.installUpdateAndRestart(downloadedFilePath, targetVer);
     if (res && (res as any).success === false) {
       addToast((res as any).error || 'تعذر بدء التحديث', 'error');
