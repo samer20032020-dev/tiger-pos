@@ -34,10 +34,12 @@ export const ReportsTab: React.FC = () => {
   // Settlement tab states
   const [postingFilter, setPostingFilter] = useState<PostingFilter>('unposted');
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
-  const [startingCashInput, setStartingCashInput] = useState<string>('');
+  const [startingCashInput, setStartingCashInput] = useState<string>('0.000');
   const [receiptsOverrideInput, setReceiptsOverrideInput] = useState<string>('');
   const [expectedOverrideInput, setExpectedOverrideInput] = useState<string>('');
-  const [actualCashInput, setActualCashInput] = useState<string>('');
+  const [actualCashInput, setActualCashInput] = useState<string>('0.000');
+  const [isManualReceipts, setIsManualReceipts] = useState<boolean>(false);
+  const [isManualExpected, setIsManualExpected] = useState<boolean>(false);
 
   const startingCash = parseFloat(startingCashInput) || 0;
   const actualCash = parseFloat(actualCashInput) || 0;
@@ -173,9 +175,13 @@ export const ReportsTab: React.FC = () => {
     .reduce((sum, r) => sum + (r.advancePayment || 0) + (r.status === 'delivered' ? Math.max(0, r.finalCost - r.advancePayment) : 0), 0);
 
   const autoReceipts = unpostedCash + unpostedRepairsCash;
-  const effectiveReceipts = receiptsOverrideInput.trim() !== '' ? (parseFloat(receiptsOverrideInput) || 0) : autoReceipts;
+  const effectiveReceipts = isManualReceipts 
+    ? (parseFloat(receiptsOverrideInput) || 0) 
+    : autoReceipts;
   const autoExpectedDrawerCash = startingCash + effectiveReceipts;
-  const totalExpectedDrawerCash = expectedOverrideInput.trim() !== '' ? (parseFloat(expectedOverrideInput) || 0) : autoExpectedDrawerCash;
+  const totalExpectedDrawerCash = isManualExpected 
+    ? (parseFloat(expectedOverrideInput) || 0) 
+    : autoExpectedDrawerCash;
   const cashDifference = actualCash - totalExpectedDrawerCash;
 
   // Filtered transactions for the ledger table
@@ -248,11 +254,13 @@ export const ReportsTab: React.FC = () => {
     setPostingLoading(true);
     try {
       const res = await window.tigerAPI.settleAndResetDailyDrawer();
-      addToast(`تم ترحيل الصندوق بنجاح (${res.invoiceCount} فواتير، ${res.repairCount} صيانة)! تم تصفير كافة المؤشرات لبدء يوم جديد.`, 'success');
-      setStartingCashInput('');
-      setReceiptsOverrideInput('');
-      setExpectedOverrideInput('');
-      setActualCashInput('');
+      addToast(`تم ترحيل الصندوق بنجاح (${res.invoiceCount} فواتير، ${res.repairCount} صيانة)! تم تصفير كافة المؤشرات والأرقام بالكامل لبدء يوم جديد.`, 'success');
+      setStartingCashInput('0.000');
+      setIsManualReceipts(true);
+      setReceiptsOverrideInput('0.000');
+      setIsManualExpected(true);
+      setExpectedOverrideInput('0.000');
+      setActualCashInput('0.000');
       setSelectedInvoiceIds([]);
       await loadReportData();
     } catch (err: any) {
@@ -491,15 +499,13 @@ export const ReportsTab: React.FC = () => {
               <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-1.5 shadow-sm">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-300 block">الرصيد الافتتاحي (الصبح):</label>
-                  {startingCashInput && (
-                    <button
-                      type="button"
-                      onClick={() => setStartingCashInput('')}
-                      className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
-                    >
-                      مسح (0)
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setStartingCashInput('0.000')}
+                    className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
+                  >
+                    تصفير (0)
+                  </button>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -525,28 +531,44 @@ export const ReportsTab: React.FC = () => {
               <div className="bg-slate-800/80 border border-emerald-500/40 rounded-2xl p-4 space-y-1.5 shadow-[0_0_15px_rgba(16,185,129,0.2)] ring-1 ring-emerald-500/30">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-300 block">+ مقبوضات اليوم النقدية:</span>
-                  {receiptsOverrideInput !== '' && (
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setReceiptsOverrideInput('')}
-                      className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
-                      title="استعادة الحساب التلقائي"
+                      onClick={() => {
+                        setIsManualReceipts(true);
+                        setReceiptsOverrideInput('0.000');
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
                     >
-                      استعادة التلقائي
+                      تصفير (0)
                     </button>
-                  )}
+                    {isManualReceipts && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManualReceipts(false);
+                          setReceiptsOverrideInput('');
+                        }}
+                        className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
+                        title="استعادة الحساب التلقائي"
+                      >
+                        استعادة التلقائي
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     inputMode="decimal"
                     dir="ltr"
-                    placeholder={formatJOD(autoReceipts)}
-                    value={receiptsOverrideInput !== '' ? receiptsOverrideInput : (autoReceipts > 0 ? autoReceipts.toFixed(3) : '')}
+                    placeholder="0.000"
+                    value={isManualReceipts ? receiptsOverrideInput : (autoReceipts > 0 ? autoReceipts.toFixed(3) : '0.000')}
                     onChange={(e) => {
                       const val = e.target.value.replace(/[^0-9.]/g, '');
                       const parts = val.split('.');
                       const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
+                      setIsManualReceipts(true);
                       setReceiptsOverrideInput(sanitized);
                     }}
                     className="w-full bg-slate-900 border border-emerald-500/50 rounded-xl px-3 py-2 text-sm font-mono font-black text-emerald-400 focus:outline-none focus:border-emerald-400 select-text text-left"
@@ -560,28 +582,44 @@ export const ReportsTab: React.FC = () => {
               <div className="bg-slate-800/90 border-2 border-orange-500 rounded-2xl p-4 space-y-1.5 shadow-[0_0_20px_rgba(249,115,22,0.35)] ring-2 ring-orange-500/60">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-orange-300 block">= الكاش المفترض بالدرج:</span>
-                  {expectedOverrideInput !== '' && (
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setExpectedOverrideInput('')}
-                      className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
-                      title="استعادة الحساب التلقائي"
+                      onClick={() => {
+                        setIsManualExpected(true);
+                        setExpectedOverrideInput('0.000');
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
                     >
-                      استعادة التلقائي
+                      تصفير (0)
                     </button>
-                  )}
+                    {isManualExpected && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManualExpected(false);
+                          setExpectedOverrideInput('');
+                        }}
+                        className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
+                        title="استعادة الحساب التلقائي"
+                      >
+                        استعادة التلقائي
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     inputMode="decimal"
                     dir="ltr"
-                    placeholder={formatJOD(autoExpectedDrawerCash)}
-                    value={expectedOverrideInput !== '' ? expectedOverrideInput : (autoExpectedDrawerCash > 0 ? autoExpectedDrawerCash.toFixed(3) : '')}
+                    placeholder="0.000"
+                    value={isManualExpected ? expectedOverrideInput : (autoExpectedDrawerCash > 0 ? autoExpectedDrawerCash.toFixed(3) : '0.000')}
                     onChange={(e) => {
                       const val = e.target.value.replace(/[^0-9.]/g, '');
                       const parts = val.split('.');
                       const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
+                      setIsManualExpected(true);
                       setExpectedOverrideInput(sanitized);
                     }}
                     className="w-full bg-slate-900 border border-orange-500/60 rounded-xl px-3 py-2 text-base font-mono font-black text-orange-400 focus:outline-none focus:border-orange-400 select-text text-left"
@@ -601,14 +639,23 @@ export const ReportsTab: React.FC = () => {
               }`}>
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-300 block">الكاش الفعلي بعد العد بالدرج:</label>
-                  <button
-                    type="button"
-                    onClick={() => setActualCashInput(totalExpectedDrawerCash > 0 ? totalExpectedDrawerCash.toFixed(3) : '0.000')}
-                    className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
-                    title="تعبئة الكاش الفعلي ليطابق المفترض"
-                  >
-                    مطابقة مع المفترض
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setActualCashInput('0.000')}
+                      className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
+                    >
+                      تصفير (0)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActualCashInput(totalExpectedDrawerCash > 0 ? totalExpectedDrawerCash.toFixed(3) : '0.000')}
+                      className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
+                      title="تعبئة الكاش الفعلي ليطابق المفترض"
+                    >
+                      مطابقة مع المفترض
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
