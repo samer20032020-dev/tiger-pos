@@ -510,6 +510,13 @@ export class TigerRepository {
     this.logAudit('stock_adjusted', 'usr', actor, `تعديل مخزون ${current.name} بمقدار (${delta > 0 ? '+' : ''}${delta}). الرصيد الجديد: ${newStock}. السبب: ${reason}`);
   }
 
+  public deleteAccessory(id: string): void {
+    const current = this.db.queryOne('SELECT * FROM accessories WHERE id = ?', [id]);
+    if (!current) throw new Error('الصنف غير موجود');
+    this.db.run('DELETE FROM accessories WHERE id = ?', [id]);
+    this.logAudit('accessory_deleted', 'usr', 'المدير', `تم حذف الصنف نهائياً من المخزون: ${current.name} (باركود: ${current.barcode})`);
+  }
+
   public importAccessoriesBatch(items: Array<{
     barcode?: string;
     sku?: string;

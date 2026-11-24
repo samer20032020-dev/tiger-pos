@@ -204,6 +204,19 @@ export const RepairPartsTab: React.FC = () => {
     }
   };
 
+  const handleDeletePart = async (part: Accessory) => {
+    const confirmed = window.confirm(`هل أنت متأكد من حذف قطعة الصيانة "${part.name}" نهائياً من النظام؟`);
+    if (!confirmed) return;
+
+    try {
+      await window.tigerAPI.deleteAccessory(part.id);
+      addToast(`تم حذف قطعة الصيانة "${part.name}" بنجاح`, 'success');
+      loadData();
+    } catch (err: any) {
+      addToast(err.message || 'فشل حذف قطعة الصيانة', 'error');
+    }
+  };
+
   const filtered = parts.filter(p => {
     const matchSearch = search === '' ||
       p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -529,11 +542,18 @@ export const RepairPartsTab: React.FC = () => {
                                 <button
                                   onClick={() => setDamagedPart(part)}
                                   title="تسجيل قطعة تالفة أو شطب أو مرتجع"
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <AlertTriangle className="w-4 h-4" />
                                 </button>
                               )}
+                              <button
+                                onClick={() => handleDeletePart(part)}
+                                title="حذف قطعة الصيانة نهائياً"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </>
                           )}
                         </div>

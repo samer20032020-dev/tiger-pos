@@ -206,6 +206,10 @@ function registerIpcHandlers() {
     return repository!.adjustAccessoryStock(id, delta, reason, actor);
   });
 
+  ipcMain.handle('db:deleteAccessory', async (_, id: string) => {
+    return repository!.deleteAccessory(id);
+  });
+
   ipcMain.handle('db:importAccessoriesBatch', async (_, items) => {
     return repository!.importAccessoriesBatch(items);
   });
@@ -433,9 +437,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.8';
-      let releaseNotes = '✨ إصدار v0.8.8: مرونة تامة في كتابة الأرقام ودعم الأرقام العربية والإنجليزية بكافة الحقول وخانات المبالغ، والتركيز التلقائي وعرض آخر الفواتير في شاشة المرتجعات.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.8';
+      let latestVersion = '0.8.9';
+      let releaseNotes = '✨ إصدار v0.8.9: تفريغ وتنظيف مخزون قطع الصيانة لتمكين إضافة القطع من الصفر، وحذف الأصناف التلقائية ودمج إمكانية الحذف النهائي لأي صنف أو قطعة صيانة.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.9';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -483,7 +487,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.8',
+        latestVersion: '0.8.9',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

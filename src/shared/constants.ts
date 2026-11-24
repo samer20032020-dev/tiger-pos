@@ -7,26 +7,70 @@ export const REPAIR_PART_CATEGORIES = [
 ];
 
 export const isRepairCategory = (category: string = '', name: string = ''): boolean => {
-  const c = (category || '').toLowerCase();
-  const n = (name || '').toLowerCase();
+  const c = (category || '').trim().toLowerCase();
+  const n = (name || '').trim().toLowerCase();
+
+  // 1. Explicit exclusion: standard consumer accessories
+  if (
+    c.includes('حماية') ||
+    c.includes('سكرين') ||
+    c.includes('كفر') ||
+    c.includes('جراب') ||
+    c.includes('سماعة') ||
+    c.includes('سماعات') ||
+    c.includes('إيربود') ||
+    c.includes('ايربود') ||
+    c.includes('شواحن') ||
+    c.includes('كيبل') ||
+    c.includes('كوابل') ||
+    c.includes('بنك طاقة') ||
+    c.includes('حوامل') ||
+    c.includes('سيارة') ||
+    c.includes('محول') ||
+    n.includes('حماية') ||
+    n.includes('سكرين') ||
+    n.includes('عدسة') ||
+    n.includes('عدسات') ||
+    n.includes('كفر') ||
+    n.includes('جراب') ||
+    n.includes('سماعة') ||
+    n.includes('سماعات') ||
+    n.includes('إيربود') ||
+    n.includes('ايربود') ||
+    n.includes('باور بانك') ||
+    n.includes('بنك طاقة')
+  ) {
+    return false;
+  }
+
+  // 2. Direct match with standard repair part categories
+  if (REPAIR_PART_CATEGORIES.some(rpc => rpc.toLowerCase() === c)) {
+    return true;
+  }
+
+  // 3. Category keywords specific to internal maintenance/hardware
+  if (
+    c === 'شاشات الصيانة' ||
+    c === 'بطاريات الصيانة' ||
+    c === 'باكات وظواهر' ||
+    c === 'جدلات وكونكترات شحن (ui)' ||
+    c === 'قطع غيار ومواد صيانة' ||
+    c.includes('قطع غيار') ||
+    c.includes('مواد صيانة')
+  ) {
+    return true;
+  }
+
+  // 4. Specific internal repair part keywords
   return (
-    c.includes('صيانة') ||
-    c.includes('شاشات') ||
-    c.includes('شاشة') ||
-    c.includes('بطاريات صيانة') ||
-    c.includes('باك') ||
-    c.includes('ظواهر') ||
-    c.includes('هاوسنج') ||
-    c.includes('ui') ||
     c.includes('جدلات') ||
     c.includes('كونكتر') ||
-    c.includes('قطع غيار') ||
-    n.includes('شاشة') ||
-    n.includes('بطارية') ||
-    n.includes('باك') ||
+    c.includes('هاوسنج') ||
     n.includes('هاوسنج') ||
-    n.includes('جدلة') ||
-    n.includes('كونكتر')
+    n.includes('فلكس') ||
+    n.includes('كونكتر شحن') ||
+    n.includes('اي سي') ||
+    n.includes('ic ')
   );
 };
 

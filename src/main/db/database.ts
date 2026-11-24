@@ -116,6 +116,14 @@ export class LocalDatabase {
       console.warn('[Database] Customer reconciliation warning:', e);
     }
 
+    // Cleanup placeholder/sample repair parts if any exist
+    try {
+      this.run("DELETE FROM accessories WHERE id = 'acc-1795435646203-78' OR name LIKE '%صافي الصيانه%'");
+      this.isDirty = true;
+    } catch {
+      // Ignore if not present
+    }
+
     this.saveToDiskSync();
   }
 

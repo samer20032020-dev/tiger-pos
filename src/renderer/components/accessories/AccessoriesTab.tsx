@@ -218,6 +218,19 @@ export const AccessoriesTab: React.FC = () => {
     }
   };
 
+  const handleDeleteAcc = async (acc: Accessory) => {
+    const confirmed = window.confirm(`هل أنت متأكد من حذف الصنف "${acc.name}" نهائياً من النظام؟`);
+    if (!confirmed) return;
+
+    try {
+      await window.tigerAPI.deleteAccessory(acc.id);
+      addToast(`تم حذف الصنف "${acc.name}" بنجاح`, 'success');
+      loadData();
+    } catch (err: any) {
+      addToast(err.message || 'فشل حذف الصنف', 'error');
+    }
+  };
+
   const consumerAccessories = accessories.filter(a => !isRepairCategory(a.category, a.name));
 
   const filtered = consumerAccessories.filter(a => {
@@ -500,11 +513,18 @@ export const AccessoriesTab: React.FC = () => {
                                 <button
                                   onClick={() => setDamagedAcc(acc)}
                                   title="تسجيل صنف تالف / شطب أو مرتجع للمورد"
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <AlertTriangle className="w-4 h-4" />
                                 </button>
                               )}
+                              <button
+                                onClick={() => handleDeleteAcc(acc)}
+                                title="حذف الصنف نهائياً من النظام"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </>
                           )}
                         </div>
