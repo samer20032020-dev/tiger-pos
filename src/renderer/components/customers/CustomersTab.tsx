@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, Search, Plus, UserPlus, Phone, 
-  FileText, DollarSign, Receipt, Printer, X, Check, 
-  AlertCircle, Smartphone, Wrench, CalendarClock 
+import {
+  Users, Search, Plus, UserPlus, Phone,
+  FileText, DollarSign, Receipt, Printer, X, Check,
+  AlertCircle, Smartphone, Wrench, CalendarClock, Trash2, CheckCircle2
 } from 'lucide-react';
 import { Customer, CustomerStatement, PaymentMethod } from '../../../shared/types';
 import { formatJOD } from '../../../shared/constants';
@@ -13,6 +13,7 @@ export const CustomersTab: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [filterTab, setFilterTab] = useState<'debtors' | 'settled' | 'all'>('debtors');
 
   // Modals state
   const [isAddOpen, setAddOpen] = useState(false);
@@ -26,7 +27,12 @@ export const CustomersTab: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [voucherNumber, setVoucherNumber] = useState('');
   const [payNotes, setPayNotes] = useState('');
+  const [autoDeleteOnZero, setAutoDeleteOnZero] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
+
+  // Delete Customer Modal state
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [deletingCustomer, setDeletingCustomer] = useState(false);
 
   // New Customer Form state
   const [newName, setNewName] = useState('');
@@ -99,25 +105,52 @@ export const CustomersTab: React.FC = () => {
     setSubmittingPayment(true);
     try {
       const vNumber = voucherNumber || `VCH-${Date.now().toString().slice(-6)}`;
+      const amt = Number(payAmount);
+      const isFullSettlement = (debtPayCustomer.balance - amt) <= 0.001;
+
       await window.tigerAPI.payCustomerDebt({
         customerId: debtPayCustomer.id,
-        amount: Number(payAmount),
+        amount: amt,
         paymentMethod,
         voucherNumber: vNumber,
         receivedBy: currentUser?.fullName || 'الكاشير',
         notes: payNotes || null
       });
 
-      addToast(`تم تسجيل سند قبض وسداد ذمة بقيمة ${formatJOD(Number(payAmount))} بنجاح!`, 'success');
+      if (isFullSettlement && autoDeleteOnZero) {
+        await window.tigerAPI.deleteCustomer(debtPayCustomer.id, currentUser?.fullName || 'الكاشير');
+        addToast(`تم سداد كامل الذمة للعميل (${debtPayCustomer.name}) وحذفه نهائياً بنجاح!`, 'success');
+      } else if (isFullSettlement) {
+        addToast(`تم سداد كامل الذمة للعميل (${debtPayCustomer.name}) بنجاح! تم تصفير حسابه وإزالته تلقائياً من قائمة الذمم المطلوبة.`, 'success');
+      } else {
+        addToast(`تم تسجيل سند قبض وسداد دفعة بقيمة ${formatJOD(amt)} بنجاح! المتبقي: ${formatJOD(debtPayCustomer.balance - amt)}`, 'success');
+      }
+
       setDebtPayCustomer(null);
       setPayAmount('');
       setVoucherNumber('');
       setPayNotes('');
+      setAutoDeleteOnZero(false);
       loadCustomers();
     } catch (err: any) {
       addToast(err.message || 'فشل سداد الذمة', 'error');
     } finally {
       setSubmittingPayment(false);
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+    setDeletingCustomer(true);
+    try {
+      await window.tigerAPI.deleteCustomer(customerToDelete.id, currentUser?.fullName || 'المدير');
+      addToast(`تم حذف سجل العميل (${customerToDelete.name}) نهائياً بنجاح!`, 'success');
+      setCustomerToDelete(null);
+      loadCustomers();
+    } catch (err: any) {
+      addToast(err.message || 'فشل حذف العميل', 'error');
+    } finally {
+      setDeletingCustomer(false);
     }
   };
 
@@ -161,11 +194,22 @@ export const CustomersTab: React.FC = () => {
     }
   };
 
-  const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone.includes(search) ||
-    (c.idNumber && c.idNumber.includes(search))
-  );
+  const debtors = customers.filter(c => c.balance > 0);
+  const settled = customers.filter(c => c.balance <= 0);
+  const totalDebt = debtors.reduce((sum, c) => sum + c.balance, 0);
+
+  const filtered = customers.filter(c => {
+    if (filterTab === 'debtors' && c.balance <= 0) return false;
+    if (filterTab === 'settled' && c.balance > 0) return false;
+
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.phone && c.phone.includes(q)) ||
+      (c.idNumber && c.idNumber.includes(q))
+    );
+  });
 
   return (
     <div className="p-6 space-y-4 select-none pb-28">
@@ -190,16 +234,89 @@ export const CustomersTab: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute right-3.5 top-3 text-slate-400" />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500">إجمالي الذمم المطلوبة في السوق</div>
+            <div className="text-xl font-black text-red-600 dark:text-red-400 font-mono mt-0.5">
+              {formatJOD(totalDebt)}
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center">
+            <DollarSign className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500">عملاء عليهم مبالغ مستحقة</div>
+            <div className="text-xl font-black text-slate-800 dark:text-slate-100 font-mono mt-0.5">
+              {debtors.length} <span className="text-xs font-normal text-slate-400">عميل</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500">سددوا ذممهم بالكامل (خالص)</div>
+            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+              {settled.length} <span className="text-xs font-normal text-slate-400">عميل</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center">
+            <Check className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Tabs & Search Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl">
+          <button
+            onClick={() => setFilterTab('debtors')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${filterTab === 'debtors'
+                ? 'bg-red-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${filterTab === 'debtors' ? 'bg-white' : 'bg-red-500'}`} />
+            عليهم ذمم مطلوبة ({debtors.length})
+          </button>
+
+          <button
+            onClick={() => setFilterTab('settled')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${filterTab === 'settled'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${filterTab === 'settled' ? 'bg-white' : 'bg-emerald-500'}`} />
+            المسددين بالكامل / خالصين ({settled.length})
+          </button>
+
+          <button
+            onClick={() => setFilterTab('all')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${filterTab === 'all'
+                ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+          >
+            جميع العملاء ({customers.length})
+          </button>
+        </div>
+
+        <div className="relative flex-1 max-w-xs">
+          <Search className="w-4 h-4 absolute right-3 top-2.5 text-slate-400" />
           <input
             type="text"
-            placeholder="بحث باسم العميل، الهاتف، أو الرقم الوطني..."
+            placeholder="بحث بالاسم أو الهاتف..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pr-10 pl-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pr-9 pl-3 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
       </div>
@@ -228,8 +345,18 @@ export const CustomersTab: React.FC = () => {
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-400">
-                    لا يوجد عملاء مطابقون للبحث
+                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                    {filterTab === 'debtors' ? (
+                      <div className="flex flex-col items-center justify-center gap-1.5">
+                        <CheckCircle2 className="w-7 h-7 text-emerald-500" />
+                        <span className="font-bold text-slate-700 dark:text-slate-300">لا توجد أي ذمم مالية مطلوبة حالياً</span>
+                        <span className="text-[11px] text-slate-400">جميع العملاء مسددين بالكامل وخالصين</span>
+                      </div>
+                    ) : filterTab === 'settled' ? (
+                      'لا يوجد عملاء خالصين مسجلين بعد'
+                    ) : (
+                      'لا يوجد عملاء مطابقون للبحث'
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -239,14 +366,14 @@ export const CustomersTab: React.FC = () => {
                       {cust.name}
                     </td>
                     <td className="p-3.5 font-mono text-slate-600 dark:text-slate-300">
-                      {cust.phone}
+                      {cust.phone || '-'}
                     </td>
                     <td className="p-3.5 font-mono text-slate-500">
                       {cust.idNumber || '-'}
                     </td>
                     <td className="p-3.5 font-mono font-black">
                       {cust.balance > 0 ? (
-                        <span className="text-red-600 dark:text-red-400">
+                        <span className="text-red-600 dark:text-red-400 font-bold">
                           {formatJOD(cust.balance)} (مطلوب)
                         </span>
                       ) : cust.balance < 0 ? (
@@ -254,7 +381,9 @@ export const CustomersTab: React.FC = () => {
                           {formatJOD(Math.abs(cust.balance))} (دائن)
                         </span>
                       ) : (
-                        <span className="text-slate-400">0.000 د.أ</span>
+                        <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-lg text-[11px] font-bold">
+                          <Check className="w-3 h-3" /> خالص (0.000 د.أ)
+                        </span>
                       )}
                     </td>
                     <td className="p-3.5 text-slate-500 max-w-[180px] truncate">
@@ -274,18 +403,30 @@ export const CustomersTab: React.FC = () => {
                           كشف حساب
                         </button>
 
-                        <button
-                          onClick={() => {
-                            setDebtPayCustomer(cust);
-                            setPayAmount(cust.balance > 0 ? cust.balance : '');
-                            setVoucherNumber(`RCP-${Date.now().toString().slice(-5)}`);
-                          }}
-                          title="سداد ذمة أو دفعة نقدية"
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
-                        >
-                          <Receipt className="w-3.5 h-3.5" />
-                          سداد ذمة
-                        </button>
+                        {cust.balance > 0 ? (
+                          <button
+                            onClick={() => {
+                              setDebtPayCustomer(cust);
+                              setPayAmount(cust.balance > 0 ? cust.balance : '');
+                              setVoucherNumber(`RCP-${Date.now().toString().slice(-5)}`);
+                              setAutoDeleteOnZero(false);
+                            }}
+                            title="سداد ذمة أو دفعة نقدية"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                            سداد ذمة
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setCustomerToDelete(cust)}
+                            title="حذف سجل العميل نهائياً من النظام"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition flex items-center gap-1 text-xs font-bold"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            حذف
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -439,6 +580,24 @@ export const CustomersTab: React.FC = () => {
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold"
                 />
               </div>
+
+              {debtPayCustomer.balance > 0 && typeof payAmount === 'number' && payAmount >= debtPayCustomer.balance && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-bold">
+                    <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    سيتم تصفير الذمة بالكامل (0.000 د.أ) وإزالة العميل تلقائياً من قائمة الذمم المطلوبة.
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-700 dark:text-slate-300 select-none pt-1 border-t border-emerald-200/60 dark:border-emerald-800/60">
+                    <input
+                      type="checkbox"
+                      checked={autoDeleteOnZero}
+                      onChange={(e) => setAutoDeleteOnZero(e.target.checked)}
+                      className="rounded text-red-600 focus:ring-red-500"
+                    />
+                    <span>حذف سجل العميل وسنداته نهائياً من قاعدة البيانات بعد تمام السداد</span>
+                  </label>
+                </div>
+              )}
 
               <div className="pt-2 flex justify-end gap-2">
                 <button
@@ -629,6 +788,50 @@ export const CustomersTab: React.FC = () => {
                 className="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold"
               >
                 إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 4: Confirm Delete Customer Modal */}
+      {customerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm shadow-2xl p-6">
+            <div className="flex items-center gap-3 text-red-600 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950/50 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-sm text-slate-900 dark:text-white">حذف سجل العميل</h3>
+                <p className="text-xs text-slate-400">تأكيد حذف بيانات العميل</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+              هل أنت متأكد من حذف العميل <span className="font-bold text-slate-900 dark:text-white">({customerToDelete.name})</span> نهائياً من قاعدة البيانات؟
+              <br />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                * سيبقى أرشيف فواتير البيع مسجلاً في التقارير المالية لضمان سلامة المحاسبة والأرباح.
+              </span>
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCustomerToDelete(null)}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                disabled={deletingCustomer}
+                onClick={handleDeleteCustomer}
+                className="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-red-600/30"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deletingCustomer ? 'جاري الحذف...' : 'نعم، احذف العميل'}
               </button>
             </div>
           </div>

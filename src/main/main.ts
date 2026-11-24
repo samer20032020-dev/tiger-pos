@@ -286,6 +286,10 @@ function registerIpcHandlers() {
     return repository!.payCustomerDebt(payment);
   });
 
+  ipcMain.handle('db:deleteCustomer', async (_, customerId: string, actorName?: string) => {
+    return repository!.deleteCustomer(customerId, actorName);
+  });
+
   // ==================== DAMAGED ITEMS ====================
   ipcMain.handle('db:reportDamagedItem', async (_, item) => {
     return repository!.reportDamagedItem(item);
@@ -429,9 +433,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.6';
-      let releaseNotes = '✨ إصدار v0.8.6: إصلاح إنشاء العملاء والذمم بدون رقم هاتف، ومطابقة وربط الذمم السابقة تلقائياً بالعملاء.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.6';
+      let latestVersion = '0.8.7';
+      let releaseNotes = '✨ إصدار v0.8.7: إخفاء تلقائي للعملاء المسددين بالكامل من جدول الذمم، تبويب خالصين ومسددين، وإمكانية حذف سجل العميل المسدد نهائياً.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.7';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -479,7 +483,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.6',
+        latestVersion: '0.8.7',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

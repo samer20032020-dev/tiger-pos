@@ -1478,6 +1478,24 @@ export class TigerRepository {
     return result;
   }
 
+  public deleteCustomer(customerId: string, actorName = 'المدير'): void {
+    this.db.transaction(() => {
+      const cust = this.db.queryOne('SELECT * FROM customers WHERE id = ?', [customerId]);
+      if (!cust) throw new Error('العميل غير موجود');
+
+      // Unlink customer from invoices to preserve sales archive
+      this.db.run('UPDATE invoices SET customer_id = NULL WHERE customer_id = ?', [customerId]);
+
+      // Remove debt payments
+      this.db.run('DELETE FROM customer_debt_payments WHERE customer_id = ?', [customerId]);
+
+      // Delete customer record
+      this.db.run('DELETE FROM customers WHERE id = ?', [customerId]);
+
+      this.logAudit('customer_deleted', 'usr', actorName, `تم حذف العميل ${cust.name} نهائياً`);
+    });
+  }
+
   // ==================== EXPENSES ====================
   public getAllExpenses(limit = 100): Expense[] {
     const rows = this.db.query('SELECT * FROM expenses ORDER BY created_at DESC LIMIT ?', [limit]);

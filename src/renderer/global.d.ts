@@ -50,6 +50,7 @@ export interface TigerAPI {
   addCustomer: (cust: Omit<Customer, 'id' | 'createdAt'>) => Promise<Customer>;
   getCustomerStatement: (customerId: string) => Promise<CustomerStatement | null>;
   payCustomerDebt: (payment: Omit<CustomerDebtPayment, 'id' | 'createdAt'>) => Promise<CustomerDebtPayment>;
+  deleteCustomer: (customerId: string, actorName?: string) => Promise<void>;
   reportDamagedItem: (item: Omit<DamagedItem, 'id' | 'createdAt'>) => Promise<DamagedItem>;
   getDamagedItems: (limit?: number) => Promise<DamagedItem[]>;
   getAllExpenses: (limit?: number) => Promise<Expense[]>;

@@ -71,6 +71,7 @@ export interface TigerAPI {
   addCustomer: (cust: Omit<Customer, 'id' | 'createdAt'>) => Promise<Customer>;
   getCustomerStatement: (customerId: string) => Promise<CustomerStatement | null>;
   payCustomerDebt: (payment: Omit<CustomerDebtPayment, 'id' | 'createdAt'>) => Promise<CustomerDebtPayment>;
+  deleteCustomer: (customerId: string, actorName?: string) => Promise<void>;
 
   // Damaged Items & Stock Write-Off
   reportDamagedItem: (item: Omit<DamagedItem, 'id' | 'createdAt'>) => Promise<DamagedItem>;
@@ -175,6 +176,7 @@ const tigerAPI: TigerAPI = {
   addCustomer: (cust) => ipcRenderer.invoke('db:addCustomer', cust),
   getCustomerStatement: (customerId) => ipcRenderer.invoke('db:getCustomerStatement', customerId),
   payCustomerDebt: (payment) => ipcRenderer.invoke('db:payCustomerDebt', payment),
+  deleteCustomer: (customerId, actorName) => ipcRenderer.invoke('db:deleteCustomer', customerId, actorName),
 
   // Damaged Items
   reportDamagedItem: (item) => ipcRenderer.invoke('db:reportDamagedItem', item),

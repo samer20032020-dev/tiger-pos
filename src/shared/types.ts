@@ -313,7 +313,7 @@ export interface Expense {
 
 export interface AuditLog {
   id: string;
-  actionType: 'invoice_deleted' | 'invoices_posted' | 'price_override' | 'stock_adjusted' | 'phone_status_changed' | 'shift_closed' | 'user_created' | 'backup_restored' | 'repair_updated' | 'repair_deleted' | 'damaged_stock' | 'debt_payment';
+  actionType: 'invoice_deleted' | 'invoices_posted' | 'price_override' | 'stock_adjusted' | 'phone_status_changed' | 'shift_closed' | 'user_created' | 'backup_restored' | 'repair_updated' | 'repair_deleted' | 'damaged_stock' | 'debt_payment' | 'customer_deleted';
   actorId: string;
   actorName: string;
   details: string;
