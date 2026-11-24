@@ -370,8 +370,8 @@ function registerIpcHandlers() {
   });
 
   // ==================== PRINTING & CASH DRAWER ====================
-  ipcMain.handle('print:silentHtml', async (_, htmlContent: string, isBarcode?: boolean) => {
-    return PrintService.printSilentHtml(htmlContent, isBarcode);
+  ipcMain.handle('print:silentHtml', async (_, htmlContent: string, isBarcode?: boolean, silent = true) => {
+    return PrintService.printSilentHtml(htmlContent, isBarcode, silent);
   });
 
   ipcMain.handle('printer:openCashDrawer', async () => {
@@ -425,9 +425,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.2';
-      let releaseNotes = '✨ إصدار v0.8.2: إصلاح شامل لتسجيل دخول الموظفين ودعم تطابق كلمات المرور والـ PIN المشتركة والأرقام العربية والإنجليزية.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.2';
+      let latestVersion = '0.8.3';
+      let releaseNotes = '✨ إصدار v0.8.3: نظام متكامل لطباعة ملصقات الباركود والأسعار واستيكر ظهر أجهزة الصيانة، مع دعم كامل لتحديد عدد النسخ، والمقاسات المتعددة، والمعاينة الحية.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.3 - نظام ملصقات الباركود والصيانة';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -475,7 +475,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.2',
+        latestVersion: '0.8.3',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

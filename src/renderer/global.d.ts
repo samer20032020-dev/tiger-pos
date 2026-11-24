@@ -62,7 +62,7 @@ export interface TigerAPI {
   restoreBackup: (filePath: string) => Promise<boolean>;
   selectBackupFolder: () => Promise<string | null>;
   selectBackupFile: () => Promise<string | null>;
-  printSilentHtml: (htmlContent: string, isBarcode?: boolean) => Promise<boolean>;
+  printSilentHtml: (htmlContent: string, isBarcode?: boolean, silent?: boolean) => Promise<boolean>;
   openCashDrawer: () => Promise<{ success: boolean; message: string }>;
   // System & Auto-Update
   getAppVersion: () => Promise<string>;

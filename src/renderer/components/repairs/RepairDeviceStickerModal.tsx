@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Tag, Printer, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Tag, Printer, X, Plus, Minus, Smartphone, Check, Eye } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import { RepairTicket } from '../../../shared/types';
+import { useAppStore } from '../../stores/useAppStore';
 
 interface RepairDeviceStickerModalProps {
   isOpen: boolean;
@@ -9,132 +10,461 @@ interface RepairDeviceStickerModalProps {
   ticket: RepairTicket;
 }
 
+export type DeviceStickerSize = '40x20' | '50x25';
+
 export const RepairDeviceStickerModal: React.FC<RepairDeviceStickerModalProps> = ({
   isOpen,
   onClose,
   ticket
 }) => {
-  const barcodeRef = useRef<HTMLCanvasElement>(null);
+  const { addToast } = useAppStore();
   const [printing, setPrinting] = useState(false);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [presetSize, setPresetSize] = useState<DeviceStickerSize>('40x20');
+  const [isSilent, setIsSilent] = useState(true);
+  const [storeName, setStoreName] = useState('TIGER REPAIR');
+  const [barcodeDataUrl, setBarcodeDataUrl] = useState<string>('');
 
+  // Fetch store name
   useEffect(() => {
-    if (isOpen && barcodeRef.current && ticket.ticketNumber) {
+    if (isOpen && window.tigerAPI) {
+      window.tigerAPI.getSettings().then((stgs) => {
+        if (stgs && stgs.storeName) {
+          setStoreName(`${stgs.storeName} REPAIR`);
+        }
+      }).catch(console.error);
+    }
+  }, [isOpen]);
+
+  // Generate crisp Barcode PNG Data URL for ticket number
+  useEffect(() => {
+    if (isOpen && ticket?.ticketNumber) {
       try {
-        JsBarcode(barcodeRef.current, ticket.ticketNumber, {
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, ticket.ticketNumber, {
           format: 'CODE128',
-          width: 1.2,
-          height: 25,
+          width: 1.5,
+          height: 36,
           displayValue: false,
           margin: 0
         });
+        setBarcodeDataUrl(canvas.toDataURL('image/png'));
       } catch (err) {
         console.error('Failed to generate sticker barcode:', err);
       }
     }
   }, [isOpen, ticket]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !ticket) return null;
+
+  const [widthMm, heightMm] = presetSize.split('x').map(Number);
+
+  const lockInfo = ticket.lockPasscode
+    ? `PIN: ${ticket.lockPasscode}`
+    : ticket.lockPattern
+    ? `نمط: ${ticket.lockPattern}`
+    : 'بدون قفل';
+
+  const dateStr = ticket.createdAt ? ticket.createdAt.substring(0, 10) : '';
 
   const handlePrint = async () => {
+    if (quantity < 1) {
+      addToast('يرجى تحديد عدد نسخ صحيح', 'error');
+      return;
+    }
+
     setPrinting(true);
-    const stickerHtml = document.getElementById('repair-mini-sticker-content')?.innerHTML;
-    if (stickerHtml && window.tigerAPI) {
+
+    try {
+      const escape = (str: string) =>
+        (str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+
+      const pagesHtml = Array.from({ length: quantity })
+        .map(
+          () => `
+        <div class="sticker-page">
+          <div class="header">
+            <span class="store-badge">${escape(storeName)}</span>
+            <span class="ticket-num">#${escape(ticket.ticketNumber)}</span>
+          </div>
+
+          <div class="details">
+            <div class="row">
+              <span class="lbl">العميل:</span>
+              <span class="val font-bold">${escape(ticket.customerName)}</span>
+              ${ticket.customerPhone ? `<span class="val-phone">(${escape(ticket.customerPhone)})</span>` : ''}
+            </div>
+            <div class="row">
+              <span class="lbl">الجهاز:</span>
+              <span class="val">${escape(ticket.deviceModel)}</span>
+            </div>
+            <div class="row">
+              <span class="lbl">العطل:</span>
+              <span class="val truncate">${escape(ticket.reportedIssue || 'فحص وصيانة')}</span>
+            </div>
+            <div class="row">
+              <span class="lbl">القفل:</span>
+              <span class="val font-mono font-bold">${escape(lockInfo)}</span>
+            </div>
+          </div>
+
+          <div class="footer">
+            ${barcodeDataUrl ? `<img src="${barcodeDataUrl}" class="barcode-img" alt="barcode" />` : ''}
+            <span class="date-badge">${escape(dateStr)}</span>
+          </div>
+        </div>
+      `
+        )
+        .join('\n');
+
       const fullHtml = `
         <!DOCTYPE html>
         <html lang="ar" dir="rtl">
         <head>
           <meta charset="utf-8">
+          <title>استيكر ظهر جهاز الصيانة</title>
           <style>
-            @page { margin: 0; size: 40mm 20mm; }
-            body {
-              font-family: Arial, Tahoma, sans-serif;
+            @page {
+              size: ${widthMm}mm ${heightMm}mm;
               margin: 0;
-              padding: 1.5mm;
-              direction: rtl;
-              text-align: right;
+            }
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+            }
+            html, body {
+              margin: 0;
+              padding: 0;
               background: #fff;
               color: #000;
-              font-size: 8px;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif;
+              direction: rtl;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
-            .center { text-align: center; }
-            .bold { font-weight: bold; }
+            .sticker-page {
+              width: ${widthMm}mm;
+              height: ${heightMm}mm;
+              page-break-after: always;
+              page-break-inside: avoid;
+              padding: 1mm 1.5mm;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              overflow: hidden;
+              font-size: ${presetSize === '40x20' ? '6.8pt' : '8pt'};
+              line-height: 1.15;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid #000;
+              padding-bottom: 0.3mm;
+              font-weight: 900;
+            }
+            .store-badge {
+              font-size: ${presetSize === '40x20' ? '6.5pt' : '7.5pt'};
+              text-transform: uppercase;
+            }
+            .ticket-num {
+              font-family: 'Courier New', Courier, monospace;
+              font-size: ${presetSize === '40x20' ? '7pt' : '8.5pt'};
+              direction: ltr;
+            }
+            .details {
+              display: flex;
+              flex-direction: column;
+              gap: 0.2mm;
+              margin: 0.4mm 0;
+            }
+            .row {
+              display: flex;
+              align-items: center;
+              gap: 1mm;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            .lbl {
+              font-weight: 900;
+              color: #111;
+              flex-shrink: 0;
+            }
+            .val {
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            .val-phone {
+              font-family: 'Courier New', Courier, monospace;
+              font-size: 6pt;
+              direction: ltr;
+            }
+            .font-bold { font-weight: bold; }
+            .font-mono { font-family: 'Courier New', Courier, monospace; }
+            .footer {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-top: 1px solid #000;
+              padding-top: 0.3mm;
+            }
+            .barcode-img {
+              max-width: ${widthMm - 16}mm;
+              height: ${presetSize === '40x20' ? '5.5mm' : '8mm'};
+              object-fit: contain;
+              image-rendering: pixelated;
+            }
+            .date-badge {
+              font-family: 'Courier New', Courier, monospace;
+              font-size: 6pt;
+              font-weight: bold;
+              direction: ltr;
+            }
           </style>
         </head>
         <body>
-          ${stickerHtml}
+          ${pagesHtml}
         </body>
         </html>
       `;
-      try {
-        await window.tigerAPI.printSilentHtml(fullHtml, true);
-      } catch (e) {
-        console.error('Sticker print error:', e);
+
+      if (window.tigerAPI) {
+        await window.tigerAPI.printSilentHtml(fullHtml, true, isSilent);
+        addToast(`تم إرسال ${quantity} لاصق ظهر الجهاز للطابعة بنجاح!`, 'success');
+        onClose();
       }
+    } catch (e: any) {
+      console.error('Sticker print error:', e);
+      addToast(e?.message || 'فشلت عملية الطباعة', 'error');
+    } finally {
+      setPrinting(false);
     }
-    setPrinting(false);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm shadow-2xl p-5 flex flex-col">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Tag className="w-5 h-5 text-orange-500" />
-            <h3 className="font-bold text-slate-800 dark:text-white text-sm">استيكر الجهاز اللاصق (40mm x 20mm)</h3>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 flex flex-col max-h-[92vh] overflow-y-auto">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-white text-base">استيكر ظهر جهاز الصيانة</h3>
+              <p className="text-xs text-slate-400">لاصق مخصص لظهر هاتف العميل وعلبة حفظ القطع</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-200 p-1 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* 40mm x 20mm Mini Tag Preview */}
+        {/* Live Sticker Preview Box */}
         <div className="my-5 flex flex-col items-center">
+          <div className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
+            <Eye className="w-3.5 h-3.5 text-orange-500" />
+            <span>معاينة لاصق ظهر الجهاز ({presetSize} مم)</span>
+          </div>
+
           <div
-            id="repair-mini-sticker-content"
-            style={{ width: '160px', height: '80px' }}
-            className="border-2 border-dashed border-orange-500 bg-white text-black p-1.5 rounded flex flex-col justify-between shadow-sm select-none font-sans"
+            style={{
+              width: `${widthMm * 5.2}px`,
+              minHeight: `${heightMm * 5.2}px`
+            }}
+            className="border-2 border-dashed border-orange-500 bg-white text-black p-2 rounded-xl flex flex-col justify-between shadow-lg select-none font-sans text-xs transition-all duration-200"
           >
-            <div className="flex items-center justify-between border-b border-black pb-0.5 text-[9px] font-black">
-              <span className="text-orange-600">TIGER REPAIR</span>
-              <span className="font-mono">#{ticket.ticketNumber}</span>
+            {/* Top row */}
+            <div className="w-full flex items-center justify-between border-b border-black pb-0.5 text-[10px] font-black">
+              <span className="text-orange-600">{storeName}</span>
+              <span className="font-mono text-black font-black">#{ticket.ticketNumber}</span>
             </div>
 
-            <div className="text-[8px] leading-tight space-y-0.5">
-              <div className="truncate font-bold">
-                العميل: <span className="font-normal">{ticket.customerName}</span>
+            {/* Details */}
+            <div className="my-1 space-y-0.5 text-[9px] leading-tight text-right">
+              <div className="truncate">
+                <span className="font-bold">العميل: </span>
+                <span>{ticket.customerName}</span>
+                {ticket.customerPhone && (
+                  <span className="font-mono text-[8px] text-gray-700 mr-1">({ticket.customerPhone})</span>
+                )}
               </div>
-              <div className="truncate font-bold">
-                الجهاز: <span className="font-normal">{ticket.deviceModel}</span>
+              <div className="truncate">
+                <span className="font-bold">الجهاز: </span>
+                <span>{ticket.deviceModel}</span>
               </div>
-              <div className="truncate font-mono font-bold text-[7.5px]">
-                القفل: <span>{ticket.lockPasscode || (ticket.lockPattern ? `P:${ticket.lockPattern}` : 'بدون')}</span>
+              <div className="truncate">
+                <span className="font-bold">العطل: </span>
+                <span className="text-gray-800">{ticket.reportedIssue || 'صيانة عامة'}</span>
+              </div>
+              <div className="truncate">
+                <span className="font-bold">القفل: </span>
+                <span className="font-mono font-bold text-orange-600">{lockInfo}</span>
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-0.5 border-t border-black">
-              <canvas ref={barcodeRef} className="max-h-[16px] max-w-[90px]" />
-              <span className="text-[7.5px] font-mono text-gray-700">{ticket.createdAt.substring(0, 10)}</span>
+            {/* Bottom Row: Barcode + Date */}
+            <div className="w-full flex items-center justify-between border-t border-black pt-0.5">
+              {barcodeDataUrl ? (
+                <img
+                  src={barcodeDataUrl}
+                  alt="barcode"
+                  className="max-h-[18px] max-w-[110px] object-contain"
+                  style={{ imageRendering: 'pixelated' }}
+                />
+              ) : (
+                <div className="h-4 w-20 bg-slate-200 animate-pulse rounded" />
+              )}
+              <span className="font-mono text-[8px] text-gray-700 font-bold">{dateStr}</span>
             </div>
           </div>
-          <span className="text-[10px] text-slate-400 mt-2">مقاس لاصق ظهر الجهاز: 40مم × 20مم</span>
+          <span className="text-[10px] text-slate-400 mt-2">يلصق على ظهر هاتف الزبون لمنع ضياع الجهاز أو اختلاطه</span>
         </div>
 
-        <div className="flex items-center gap-2 pt-2">
+        {/* Options */}
+        <div className="space-y-4 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+          
+          {/* Quantity Selector */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              عدد النسخ المطلوب طباعتها:
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 font-bold active:scale-95 transition"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+                className="flex-1 text-center font-bold font-mono text-base bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl py-2 text-slate-900 dark:text-white"
+              />
+
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+                className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 font-bold active:scale-95 transition"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Chips */}
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => setQuantity(1)}
+                className={`py-1.5 text-xs font-bold rounded-xl border transition ${
+                  quantity === 1
+                    ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                نسخة 1 (ظهر الهاتف)
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuantity(2)}
+                className={`py-1.5 text-xs font-bold rounded-xl border transition ${
+                  quantity === 2
+                    ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                نسختان (هاتف + علبة)
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuantity(3)}
+                className={`py-1.5 text-xs font-bold rounded-xl border transition ${
+                  quantity === 3
+                    ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                3 نسخ
+              </button>
+            </div>
+          </div>
+
+          {/* Size Preset */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              مقاس لاصق الطابعة الحرارية:
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPresetSize('40x20')}
+                className={`p-2.5 rounded-xl text-center border transition ${
+                  presetSize === '40x20'
+                    ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 font-bold'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="text-xs font-mono font-bold">40 × 20 مم</div>
+                <div className="text-[10px] text-slate-400">حجم ميني لظهر الهاتف</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPresetSize('50x25')}
+                className={`p-2.5 rounded-xl text-center border transition ${
+                  presetSize === '50x25'
+                    ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 font-bold'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="text-xs font-mono font-bold">50 × 25 مم</div>
+                <div className="text-[10px] text-slate-400">حجم قياسي بطباعة أكبر</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Silent Print Toggle */}
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 dark:text-slate-300 pt-1">
+            <input
+              type="checkbox"
+              checked={isSilent}
+              onChange={(e) => setIsSilent(e.target.checked)}
+              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+            />
+            <span>طباعة مباشرة وسريعة (إرسال فوري للطابعة الافتراضية)</span>
+          </label>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center gap-2 pt-4">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
+            className="px-5 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
             إلغاء
           </button>
           <button
             onClick={handlePrint}
             disabled={printing}
-            className="flex-1 bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30"
+            className="flex-1 bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30 transition disabled:opacity-50"
           >
             <Printer className="w-4 h-4" />
-            {printing ? 'جاري الطباعة...' : 'طباعة استيكر الجهاز'}
+            {printing ? 'جاري إرسال الأمر للطابعة...' : `طباعة (${quantity}) لاصق جهاز`}
           </button>
         </div>
+
       </div>
     </div>
   );

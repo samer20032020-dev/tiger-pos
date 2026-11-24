@@ -1,6 +1,6 @@
 {
   "name": "tiger-pos-system",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "TIGER - نظام إدارة المحل المكتبي الذكي",
   "main": "dist-electron/main/main.js",
   "scripts": {

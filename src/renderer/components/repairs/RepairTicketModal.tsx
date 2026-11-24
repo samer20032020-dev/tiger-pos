@@ -7,7 +7,7 @@ import { useAppStore } from '../../stores/useAppStore';
 interface RepairTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdTicket?: RepairTicket) => void;
 }
 
 export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
@@ -44,6 +44,7 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [printDeviceSticker, setPrintDeviceSticker] = useState(true);
 
   if (!isOpen) return null;
 
@@ -53,7 +54,7 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
 
     setSubmitting(true);
     try {
-      await window.tigerAPI.createRepairTicket({
+      const createdTicket = await window.tigerAPI.createRepairTicket({
         customerName,
         customerPhone,
         deviceModel,
@@ -72,7 +73,7 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
       });
 
       addToast(`تم إنشاء كرت الصيانة بنجاح للعميل ${customerName}!`, 'success');
-      onSuccess();
+      onSuccess(printDeviceSticker ? createdTicket : undefined);
       onClose();
     } catch (err: any) {
       addToast(err.message || 'فشل إنشاء تذكرة الصيانة', 'error');
@@ -381,22 +382,34 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
             </div>
           </div>
 
-          <div className="pt-3 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-orange-600/30 transition flex items-center gap-1.5 disabled:opacity-50"
-            >
-              <Check className="w-4 h-4" />
-              {submitting ? 'جاري الإصدار...' : 'إصدار كرت الصيانة وطباعة الإيصال'}
-            </button>
+          <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-200 dark:border-slate-800">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={printDeviceSticker}
+                onChange={(e) => setPrintDeviceSticker(e.target.checked)}
+                className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+              />
+              <span>طباعة لاصق ظهر الجهاز فوراً (40×20 مم)</span>
+            </label>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-orange-600/30 transition flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                {submitting ? 'جاري الإصدار...' : 'إصدار كرت الصيانة'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

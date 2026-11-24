@@ -541,6 +541,8 @@ export const AccessoriesTab: React.FC = () => {
           title={barcodeAcc.name}
           code={barcodeAcc.barcode}
           price={barcodeAcc.retailPrice}
+          subtitle={barcodeAcc.category}
+          availableStock={barcodeAcc.currentStock}
         />
       )}
 

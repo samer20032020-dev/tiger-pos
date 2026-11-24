@@ -457,7 +457,12 @@ export const RepairsTab: React.FC = () => {
       <RepairTicketModal
         isOpen={isCreateOpen}
         onClose={() => setCreateOpen(false)}
-        onSuccess={loadTickets}
+        onSuccess={(newTicket) => {
+          loadTickets();
+          if (newTicket) {
+            setStickerTicket(newTicket);
+          }
+        }}
       />
 
       {partsTicket && (

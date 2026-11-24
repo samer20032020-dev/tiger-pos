@@ -97,7 +97,7 @@ export interface TigerAPI {
   selectBackupFile: () => Promise<string | null>;
 
   // Printing & Hardware
-  printSilentHtml: (htmlContent: string, isBarcode?: boolean) => Promise<boolean>;
+  printSilentHtml: (htmlContent: string, isBarcode?: boolean, silent?: boolean) => Promise<boolean>;
   openCashDrawer: () => Promise<{ success: boolean; message: string }>;
 
   // System & GitHub Auto-Update
@@ -200,7 +200,7 @@ const tigerAPI: TigerAPI = {
   selectBackupFile: () => ipcRenderer.invoke('backup:selectFile'),
 
   // Printing & Hardware
-  printSilentHtml: (htmlContent, isBarcode) => ipcRenderer.invoke('print:silentHtml', htmlContent, isBarcode),
+  printSilentHtml: (htmlContent, isBarcode, silent) => ipcRenderer.invoke('print:silentHtml', htmlContent, isBarcode, silent),
   openCashDrawer: () => ipcRenderer.invoke('printer:openCashDrawer'),
 
   // System & GitHub Auto-Update

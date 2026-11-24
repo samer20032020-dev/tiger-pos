@@ -280,6 +280,9 @@ export const PhonesTab: React.FC = () => {
           title={`${barcodePhone.brand} ${barcodePhone.model}`}
           code={barcodePhone.imei1}
           price={barcodePhone.sellingPrice}
+          subtitle={`${barcodePhone.storage || ''} ${barcodePhone.color || ''}`.trim() || barcodePhone.brand}
+          extraInfo={barcodePhone.imei2 ? `IMEI2: ${barcodePhone.imei2}` : undefined}
+          availableStock={1}
         />
       )}
 

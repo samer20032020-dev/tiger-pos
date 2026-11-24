@@ -570,6 +570,8 @@ export const RepairPartsTab: React.FC = () => {
           title={barcodePart.name}
           code={barcodePart.barcode}
           price={barcodePart.retailPrice}
+          subtitle={barcodePart.category}
+          availableStock={barcodePart.currentStock}
         />
       )}
 

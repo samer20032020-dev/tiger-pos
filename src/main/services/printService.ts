@@ -13,9 +13,9 @@ export interface PrintBarcodeOptions {
 
 export class PrintService {
   /**
-   * Print an HTML string silently via a hidden BrowserWindow
+   * Print an HTML string silently or via dialog via a hidden BrowserWindow
    */
-  public static async printSilentHtml(htmlContent: string, isBarcode = false): Promise<boolean> {
+  public static async printSilentHtml(htmlContent: string, isBarcode = false, silent = true): Promise<boolean> {
     return new Promise((resolve) => {
       const printWindow = new BrowserWindow({
         show: false,
@@ -28,10 +28,10 @@ export class PrintService {
       printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
 
       printWindow.webContents.on('did-finish-load', () => {
-        // Trigger silent printing
+        // Trigger printing (silent or with dialog)
         printWindow.webContents.print(
           {
-            silent: true,
+            silent: silent !== false,
             printBackground: true,
             margins: {
               marginType: 'none'
@@ -39,21 +39,23 @@ export class PrintService {
           },
           (success, failureReason) => {
             if (!success) {
-              console.warn('[PrintService] Silent printing failed or cancelled:', failureReason);
+              console.warn('[PrintService] Printing failed or cancelled:', failureReason);
             }
-            printWindow.close();
+            if (!printWindow.isDestroyed()) {
+              printWindow.close();
+            }
             resolve(success);
           }
         );
       });
 
-      // Fail-safe timeout in case printing hangs
+      // Fail-safe timeout in case printing hangs or user closes dialog
       setTimeout(() => {
         if (!printWindow.isDestroyed()) {
           printWindow.close();
           resolve(false);
         }
-      }, 7000);
+      }, silent === false ? 60000 : 10000);
     });
   }
 
