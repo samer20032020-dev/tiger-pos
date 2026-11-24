@@ -41,6 +41,7 @@ export interface TigerAPI {
   createRepairTicket: (data: Omit<RepairTicket, 'id' | 'ticketNumber' | 'createdAt'>) => Promise<RepairTicket>;
   updateRepairStatus: (ticketId: string, newStatus: string, notes?: string, finalCost?: number) => Promise<void>;
   attachPartToRepair: (ticketId: string, accessoryId: string, quantity?: number) => Promise<void>;
+  deleteRepairTicket: (ticketId: string) => Promise<void>;
   getAllInstallmentPlans: () => Promise<InstallmentPlan[]>;
   payInstallment: (paymentId: string, voucherNumber: string, receivedBy?: string) => Promise<void>;
   getAllSuppliers: () => Promise<Supplier[]>;
