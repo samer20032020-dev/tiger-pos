@@ -55,7 +55,7 @@ export interface TigerAPI {
   getSettings: () => Promise<SystemSettings>;
   updateSettings: (settings: Partial<SystemSettings>) => Promise<SystemSettings>;
   getAuditLogs: (limit?: number) => Promise<AuditLog[]>;
-  exportMonthlyExcel: (year: number, month: number, targetPath?: string) => Promise<{ success: boolean; filePath: string }>;
+  exportMonthlyExcel: (yearOrOptions: number | any, month?: number, targetPath?: string) => Promise<{ success: boolean; filePath: string }>;
   createBackup: (folder?: string) => Promise<{ success: boolean; filePath: string; size: number }>;
   listBackups: (folder?: string) => Promise<{ filename: string; filePath: string; size: number; date: string }[]>;
   restoreBackup: (filePath: string) => Promise<boolean>;

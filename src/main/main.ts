@@ -315,8 +315,8 @@ function registerIpcHandlers() {
   });
 
   // ==================== EXCEL ====================
-  ipcMain.handle('excel:exportMonthly', async (_, year: number, month: number, targetPath?: string) => {
-    return excelService!.exportMonthlyReport(year, month, targetPath);
+  ipcMain.handle('excel:exportMonthly', async (_, arg1: any, arg2?: any, arg3?: any) => {
+    return excelService!.exportReport(arg1, arg2, arg3);
   });
 
   // ==================== BACKUPS ====================
@@ -381,15 +381,19 @@ function registerIpcHandlers() {
   // ==================== GITHUB AUTO-UPDATE & SYSTEM ====================
   ipcMain.handle('system:openExternal', async (_, url: string) => {
     const { shell } = require('electron');
-    await shell.openExternal(url);
+    if (url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:'))) {
+      await shell.openExternal(url);
+    } else {
+      await shell.openPath(url);
+    }
   });
 
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
+      return app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.9';
     } catch {
-      return '0.7.8';
+      return '0.7.9';
     }
   });
 

@@ -3,12 +3,63 @@ import * as path from 'path';
 import { app } from 'electron';
 import { LocalDatabase } from '../db/database';
 
+export interface ExcelExportOptions {
+  startDate?: string;
+  endDate?: string;
+  year?: number;
+  month?: number;
+  periodLabel?: string;
+}
+
 export class ExcelService {
   constructor(private db: LocalDatabase) {}
 
-  public async exportMonthlyReport(year: number, month: number, targetFilePath?: string): Promise<{ success: boolean; filePath: string }> {
-    const monthStr = String(month).padStart(2, '0');
-    const monthPrefix = `${year}-${monthStr}`;
+  public async exportReport(
+    options: ExcelExportOptions | number,
+    maybeMonth?: number,
+    targetFilePath?: string
+  ): Promise<{ success: boolean; filePath: string }> {
+    let startDate = '';
+    let endDate = '';
+    let periodLabel = '';
+    let filePrefix = '';
+
+    if (typeof options === 'number') {
+      const year = options;
+      const month = maybeMonth || 1;
+      const monthStr = String(month).padStart(2, '0');
+      const lastDay = new Date(year, month, 0).getDate();
+      startDate = `${year}-${monthStr}-01`;
+      endDate = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+      periodLabel = `شهر ${monthStr}/${year}`;
+      filePrefix = `تقرير_شهر_${monthStr}_${year}`;
+    } else {
+      const opts = options || {};
+      if (opts.startDate && opts.endDate) {
+        startDate = opts.startDate <= opts.endDate ? opts.startDate : opts.endDate;
+        endDate = opts.startDate <= opts.endDate ? opts.endDate : opts.startDate;
+        if (startDate === endDate) {
+          periodLabel = `يوم ${startDate}`;
+          filePrefix = `تقرير_يوم_${startDate}`;
+        } else {
+          periodLabel = `الفترة من ${startDate} إلى ${endDate}`;
+          filePrefix = `تقرير_فترة_${startDate}_إلى_${endDate}`;
+        }
+      } else if (opts.year && opts.month) {
+        const monthStr = String(opts.month).padStart(2, '0');
+        const lastDay = new Date(opts.year, opts.month, 0).getDate();
+        startDate = `${opts.year}-${monthStr}-01`;
+        endDate = `${opts.year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+        periodLabel = `شهر ${monthStr}/${opts.year}`;
+        filePrefix = `تقرير_شهر_${monthStr}_${opts.year}`;
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        startDate = today;
+        endDate = today;
+        periodLabel = `يوم ${today}`;
+        filePrefix = `تقرير_يوم_${today}`;
+      }
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'TIGER';
@@ -18,6 +69,11 @@ export class ExcelService {
       type: 'pattern',
       pattern: 'solid',
       fgColor: { argb: 'FFE65100' } // Tiger Primary Orange
+    };
+    const slateHeaderFill: ExcelJS.Fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF0F172A' } // Dark Slate / Navy for Sales items
     };
     const headerFont: Partial<ExcelJS.Font> = {
       name: 'Arial',
@@ -35,9 +91,9 @@ export class ExcelService {
     const currencyNumFmt = '#,##0.000 "د.أ"';
 
     // ==========================================
-    // 1. SHEET: ملخص الشهر (Monthly Summary)
+    // 1. SHEET: ملخص الأرباح وتفاصيل المبيعات الشاملة
     // ==========================================
-    const summarySheet = workbook.addWorksheet('ملخص الشهر', {
+    const summarySheet = workbook.addWorksheet('ملخص الأرباح والمبيعات', {
       views: [{ rightToLeft: true }]
     });
 
@@ -50,40 +106,40 @@ export class ExcelService {
         COALESCE(SUM(trade_in_discount), 0) as total_trade_in,
         COUNT(*) as invoice_count
       FROM invoices 
-      WHERE status = 'completed' AND strftime('%Y-%m', created_at) = ?
-    `, [monthPrefix]);
+      WHERE status = 'completed' AND date(created_at) >= ? AND date(created_at) <= ?
+    `, [startDate, endDate]);
 
     const cogsStats = this.db.queryOne(`
       SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cogs
       FROM invoice_items
-      WHERE invoice_id IN (SELECT id FROM invoices WHERE status = 'completed' AND strftime('%Y-%m', created_at) = ?)
-    `, [monthPrefix]);
+      WHERE invoice_id IN (SELECT id FROM invoices WHERE status = 'completed' AND date(created_at) >= ? AND date(created_at) <= ?)
+    `, [startDate, endDate]);
 
     const repairStats = this.db.queryOne(`
       SELECT 
         COALESCE(SUM(final_cost), 0) as total_repairs,
         COUNT(*) as repair_count
       FROM repair_tickets
-      WHERE status = 'delivered' AND strftime('%Y-%m', created_at) = ?
-    `, [monthPrefix]);
+      WHERE status = 'delivered' AND date(created_at) >= ? AND date(created_at) <= ?
+    `, [startDate, endDate]);
 
     const repairPartsCost = this.db.queryOne(`
       SELECT COALESCE(SUM(total_cost), 0) as parts_cost
       FROM repair_parts
-      WHERE ticket_id IN (SELECT id FROM repair_tickets WHERE status = 'delivered' AND strftime('%Y-%m', created_at) = ?)
-    `, [monthPrefix]);
+      WHERE ticket_id IN (SELECT id FROM repair_tickets WHERE status = 'delivered' AND date(created_at) >= ? AND date(created_at) <= ?)
+    `, [startDate, endDate]);
 
     const expenseStats = this.db.queryOne(`
       SELECT COALESCE(SUM(amount), 0) as total_expenses
       FROM expenses
-      WHERE strftime('%Y-%m', expense_date) = ?
-    `, [monthPrefix]);
+      WHERE date(expense_date) >= ? AND date(expense_date) <= ?
+    `, [startDate, endDate]);
 
     const damagedLossStats = this.db.queryOne(`
       SELECT COALESCE(SUM(total_loss), 0) as total_write_off
       FROM damaged_items
-      WHERE action_taken = 'write_off' AND strftime('%Y-%m', created_at) = ?
-    `, [monthPrefix]);
+      WHERE action_taken = 'write_off' AND date(created_at) >= ? AND date(created_at) <= ?
+    `, [startDate, endDate]);
 
     const totalSales = Number(salesStats?.total_sales || 0);
     const totalCogs = Number(cogsStats?.total_cogs || 0);
@@ -96,12 +152,71 @@ export class ExcelService {
     const grandExpenses = totalExpenses + totalWriteOff;
     const totalNetProfit = grossProfitSales + netRepairProfit - grandExpenses;
 
+    // Define column widths for Sheet 1
     summarySheet.columns = [
-      { header: 'البيان المالي', key: 'metric', width: 38 },
-      { header: 'القيمة (3 خانات د.أ)', key: 'value', width: 25 },
-      { header: 'ملاحظات وتفاصيل', key: 'notes', width: 45 }
+      { key: 'metric', width: 36 },
+      { key: 'value', width: 22 },
+      { key: 'notes', width: 44 },
+      { key: 'spacer', width: 4 },
+      { key: 'item_name', width: 32 },
+      { key: 'item_type', width: 14 },
+      { key: 'quantity', width: 12 },
+      { key: 'unit_price', width: 15 },
+      { key: 'total_price', width: 16 },
+      { key: 'sale_date', width: 19 },
+      { key: 'invoice_number', width: 16 },
+      { key: 'seller', width: 22 },
+      { key: 'payment_method', width: 14 },
+      { key: 'customer', width: 22 },
+      { key: 'cost_price', width: 15 },
+      { key: 'profit', width: 15 }
     ];
 
+    // Headers Row (Row 1)
+    const headerRow = summarySheet.getRow(1);
+    headerRow.height = 28;
+
+    // Financial summary headers (Cols A-C)
+    headerRow.getCell(1).value = 'البيان المالي';
+    headerRow.getCell(2).value = 'القيمة (3 خانات د.أ)';
+    headerRow.getCell(3).value = `ملاحظات وتفاصيل (${periodLabel})`;
+    [1, 2, 3].forEach(col => {
+      const cell = headerRow.getCell(col);
+      cell.fill = tigerOrangeFill;
+      cell.font = headerFont;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = borderStyle;
+    });
+
+    // Spacer column (Col D)
+    headerRow.getCell(4).value = '';
+
+    // Items details headers (Cols E-P)
+    const itemsHeaders = [
+      { col: 5, label: 'اسم الصنف والمواصفات' },
+      { col: 6, label: 'نوع الصنف' },
+      { col: 7, label: 'الكمية المباعة' },
+      { col: 8, label: 'سعر القطعة (د.أ)' },
+      { col: 9, label: 'السعر الكامل (د.أ)' },
+      { col: 10, label: 'تاريخ ووقت البيع' },
+      { col: 11, label: 'رقم الفاتورة' },
+      { col: 12, label: 'البائع (الموظف / المدير)' },
+      { col: 13, label: 'طريقة الدفع' },
+      { col: 14, label: 'اسم وهاتف العميل' },
+      { col: 15, label: 'تكلفة القطعة (د.أ)' },
+      { col: 16, label: 'صافي ربح البند (د.أ)' }
+    ];
+
+    itemsHeaders.forEach(h => {
+      const cell = headerRow.getCell(h.col);
+      cell.value = h.label;
+      cell.fill = slateHeaderFill;
+      cell.font = headerFont;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = borderStyle;
+    });
+
+    // Populate Left side: Financial metrics rows 2..10
     const summaryRows = [
       { metric: 'إجمالي المبيعات (Gross Sales)', value: totalSales, notes: `عدد الفواتير المكتملة: ${salesStats?.invoice_count || 0}` },
       { metric: 'تكلفة البضاعة المباعة (COGS)', value: totalCogs, notes: 'تكلفة شراء الأجهزة والإكسسوارات المباعة' },
@@ -111,29 +226,142 @@ export class ExcelService {
       { metric: 'صافي ربح الصيانة (Net Repair Profit)', value: netRepairProfit, notes: 'أجور اليد والأرباح الصافية للصيانة' },
       { metric: 'المصاريف التشغيلية (Operating Expenses)', value: totalExpenses, notes: 'إيجار، رواتب، كهرباء، ونثريات' },
       { metric: 'خسائر التوالف المشطوبة (Damaged Write-offs)', value: totalWriteOff, notes: 'أجهزة وإكسسوارات تالفة مسجلة كخسارة' },
-      { metric: 'صافي الربح الإجمالي النهائي (NET PROFIT)', value: totalNetProfit, notes: `الربح الصافي لشهر ${monthStr}/${year} بعد خصم المصاريف والتوالف` }
+      { metric: 'صافي الربح الإجمالي النهائي (NET PROFIT)', value: totalNetProfit, notes: `الربح الصافي لـ (${periodLabel}) بعد خصم المصاريف والتوالف` }
     ];
 
-    summarySheet.getRow(1).eachCell(cell => {
-      cell.fill = tigerOrangeFill;
-      cell.font = headerFont;
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    });
+    summaryRows.forEach((item, index) => {
+      const row = summarySheet.getRow(index + 2);
+      row.getCell(1).value = item.metric;
+      row.getCell(2).value = item.value;
+      row.getCell(2).numFmt = currencyNumFmt;
+      row.getCell(3).value = item.notes;
 
-    summaryRows.forEach(row => {
-      const addedRow = summarySheet.addRow(row);
-      addedRow.getCell(2).numFmt = currencyNumFmt;
-      addedRow.eachCell(cell => {
+      [1, 2, 3].forEach(c => {
+        const cell = row.getCell(c);
         cell.border = borderStyle;
         cell.alignment = { vertical: 'middle' };
       });
-      if (row.metric.includes('NET PROFIT')) {
-        addedRow.eachCell(cell => {
+
+      if (item.metric.includes('NET PROFIT')) {
+        [1, 2, 3].forEach(c => {
+          const cell = row.getCell(c);
           cell.font = { name: 'Arial', size: 12, bold: true, color: { argb: totalNetProfit >= 0 ? 'FF007A33' : 'FFCC0000' } };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDF4' } };
         });
       }
     });
+
+    // Query sold items with cashier and customer info
+    const invoiceItems = this.db.query(`
+      SELECT 
+        it.id as item_row_id,
+        it.name as item_name,
+        it.item_type,
+        it.quantity,
+        it.unit_price,
+        it.total as total_price,
+        it.cost_price,
+        (it.total - (it.cost_price * it.quantity)) as profit,
+        it.barcode_or_imei,
+        it.warranty_period,
+        i.invoice_number,
+        i.created_at as sale_date,
+        i.payment_method,
+        i.customer_name,
+        i.customer_phone,
+        i.cashier_name,
+        COALESCE(u.role, 'employee') as cashier_role
+      FROM invoice_items it
+      JOIN invoices i ON it.invoice_id = i.id
+      LEFT JOIN users u ON i.cashier_id = u.id
+      WHERE i.status = 'completed' AND date(i.created_at) >= ? AND date(i.created_at) <= ?
+      ORDER BY i.created_at DESC, it.name ASC
+    `, [startDate, endDate]);
+
+    let sumQty = 0;
+    let sumTotalSales = 0;
+    let sumProfit = 0;
+
+    if (invoiceItems.length === 0) {
+      const row = summarySheet.getRow(2);
+      row.getCell(5).value = `لا توجد مبيعات مسجلة خلال هذه الفترة (${periodLabel})`;
+      row.getCell(5).font = { name: 'Arial', italic: true, color: { argb: 'FF94A3B8' } };
+    } else {
+      invoiceItems.forEach((it: any, idx: number) => {
+        const rowNum = idx + 2;
+        const row = summarySheet.getRow(rowNum);
+
+        const qty = Number(it.quantity) || 1;
+        const unitP = Number(it.unit_price) || 0;
+        const totalP = Number(it.total_price) || (qty * unitP);
+        const costP = Number(it.cost_price) || 0;
+        const profit = Number(it.profit) || (totalP - (costP * qty));
+
+        sumQty += qty;
+        sumTotalSales += totalP;
+        sumProfit += profit;
+
+        const roleTitle = it.cashier_role === 'admin' ? 'مدير' : 'موظف';
+        const sellerStr = it.cashier_name ? `${it.cashier_name} (${roleTitle})` : roleTitle;
+        const custStr = it.customer_name 
+          ? (it.customer_phone && it.customer_phone !== '-' ? `${it.customer_name} (${it.customer_phone})` : it.customer_name)
+          : 'زبون عام';
+        const payStr = it.payment_method === 'cash' ? 'نقدي' :
+                       it.payment_method === 'card' ? 'بطاقة' :
+                       it.payment_method === 'cliq' ? 'CliQ' :
+                       it.payment_method === 'split' ? 'مقسم' : 'ذمم';
+        const typeStr = it.item_type === 'phone' ? 'هاتف ذكي' :
+                        it.item_type === 'repair_part' ? 'قطع صيانة' : 'إكسسوار';
+
+        row.getCell(5).value = it.item_name;
+        row.getCell(6).value = typeStr;
+        row.getCell(7).value = qty;
+        row.getCell(8).value = unitP;
+        row.getCell(9).value = totalP;
+        row.getCell(10).value = (it.sale_date || '').replace('T', ' ').substring(0, 19);
+        row.getCell(11).value = it.invoice_number;
+        row.getCell(12).value = sellerStr;
+        row.getCell(13).value = payStr;
+        row.getCell(14).value = custStr;
+        row.getCell(15).value = costP;
+        row.getCell(16).value = profit;
+
+        // Formats
+        [8, 9, 15, 16].forEach(col => {
+          row.getCell(col).numFmt = currencyNumFmt;
+        });
+
+        [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].forEach(col => {
+          const cell = row.getCell(col);
+          cell.border = borderStyle;
+          cell.alignment = { 
+            horizontal: col === 5 || col === 14 ? 'right' : 'center', 
+            vertical: 'middle' 
+          };
+        });
+      });
+
+      // Total row for items
+      const totalRowNum = Math.max(12, invoiceItems.length + 2);
+      const totalRow = summarySheet.getRow(totalRowNum);
+      totalRow.getCell(5).value = `المجموع الكلي للمبيعات المبينة (${invoiceItems.length} حركة بيع)`;
+      totalRow.getCell(5).font = { name: 'Arial', bold: true, size: 11 };
+      totalRow.getCell(7).value = sumQty;
+      totalRow.getCell(7).font = { name: 'Arial', bold: true };
+      totalRow.getCell(9).value = sumTotalSales;
+      totalRow.getCell(9).numFmt = currencyNumFmt;
+      totalRow.getCell(9).font = { name: 'Arial', bold: true };
+      totalRow.getCell(16).value = sumProfit;
+      totalRow.getCell(16).numFmt = currencyNumFmt;
+      totalRow.getCell(16).font = { name: 'Arial', bold: true, color: { argb: 'FF007A33' } };
+
+      [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].forEach(col => {
+        const cell = totalRow.getCell(col);
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        cell.border = borderStyle;
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+    }
 
     // ==========================================
     // 2. SHEET: فواتير المبيعات (Invoices Summary)
@@ -156,7 +384,7 @@ export class ExcelService {
       { header: 'المدفوع نقداً', key: 'cash_amount', width: 15 },
       { header: 'المدفوع فيزا/CliQ', key: 'card_cliq', width: 16 },
       { header: 'متبقي ذمم', key: 'remaining_amount', width: 15 },
-      { header: 'الكاشير', key: 'cashier_name', width: 16 },
+      { header: 'البائع (الموظف / المدير)', key: 'cashier_name', width: 22 },
       { header: 'الحالة', key: 'status', width: 12 }
     ];
 
@@ -167,12 +395,18 @@ export class ExcelService {
     });
 
     const invoices = this.db.query(`
-      SELECT * FROM invoices 
-      WHERE strftime('%Y-%m', created_at) = ?
-      ORDER BY created_at DESC
-    `, [monthPrefix]);
+      SELECT 
+        i.*,
+        COALESCE(u.role, 'employee') as cashier_role
+      FROM invoices i
+      LEFT JOIN users u ON i.cashier_id = u.id
+      WHERE date(i.created_at) >= ? AND date(i.created_at) <= ?
+      ORDER BY i.created_at DESC
+    `, [startDate, endDate]);
 
     invoices.forEach(inv => {
+      const roleTitle = inv.cashier_role === 'admin' ? 'مدير' : 'موظف';
+      const sellerStr = inv.cashier_name ? `${inv.cashier_name} (${roleTitle})` : roleTitle;
       const addedRow = salesSheet.addRow({
         invoice_number: inv.invoice_number,
         created_at: inv.created_at.replace('T', ' ').substring(0, 19),
@@ -187,7 +421,7 @@ export class ExcelService {
         cash_amount: inv.cash_amount,
         card_cliq: (inv.card_amount + inv.cliq_amount),
         remaining_amount: inv.remaining_amount,
-        cashier_name: inv.cashier_name,
+        cashier_name: sellerStr,
         status: inv.status === 'completed' ? 'مكتملة' : 'مسترجعة'
       });
       [6, 7, 8, 9, 10, 11, 12, 13].forEach(col => {
@@ -209,6 +443,7 @@ export class ExcelService {
     itemsSheet.columns = [
       { header: 'رقم الفاتورة', key: 'invoice_number', width: 18 },
       { header: 'تاريخ البيع', key: 'created_at', width: 18 },
+      { header: 'البائع (الموظف / المدير)', key: 'seller', width: 22 },
       { header: 'نوع الصنف', key: 'item_type', width: 14 },
       { header: 'اسم الصنف والمواصفات', key: 'item_name', width: 30 },
       { header: 'الباركود / الـ IMEI المباع', key: 'barcode_or_imei', width: 22 },
@@ -227,31 +462,14 @@ export class ExcelService {
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
-    const invoiceItems = this.db.query(`
-      SELECT 
-        i.invoice_number,
-        i.created_at,
-        it.item_type,
-        it.name as item_name,
-        it.barcode_or_imei,
-        it.quantity,
-        it.unit_price,
-        it.cost_price,
-        it.item_discount,
-        it.warranty_period,
-        it.total,
-        (it.total - (it.cost_price * it.quantity)) as profit
-      FROM invoice_items it
-      JOIN invoices i ON it.invoice_id = i.id
-      WHERE strftime('%Y-%m', i.created_at) = ? AND i.status = 'completed'
-      ORDER BY i.created_at DESC
-    `, [monthPrefix]);
-
-    invoiceItems.forEach(item => {
+    invoiceItems.forEach((item: any) => {
+      const roleTitle = item.cashier_role === 'admin' ? 'مدير' : 'موظف';
+      const sellerStr = item.cashier_name ? `${item.cashier_name} (${roleTitle})` : roleTitle;
       const addedRow = itemsSheet.addRow({
         invoice_number: item.invoice_number,
-        created_at: item.created_at.substring(0, 10),
-        item_type: item.item_type === 'phone' ? 'هاتف ذكي' : 'إكسسوار / قطعة',
+        created_at: (item.sale_date || '').replace('T', ' ').substring(0, 19),
+        seller: sellerStr,
+        item_type: item.item_type === 'phone' ? 'هاتف ذكي' : item.item_type === 'repair_part' ? 'قطع صيانة' : 'إكسسوار',
         item_name: item.item_name,
         barcode_or_imei: item.barcode_or_imei || '-',
         quantity: item.quantity,
@@ -259,10 +477,10 @@ export class ExcelService {
         cost_price: item.cost_price,
         item_discount: item.item_discount || 0,
         warranty_period: item.warranty_period || 'ضمان قياسي',
-        total_price: item.total,
+        total_price: item.total_price,
         item_profit: item.profit
       });
-      [7, 8, 9, 11, 12].forEach(col => {
+      [8, 9, 10, 12, 13].forEach(col => {
         addedRow.getCell(col).numFmt = currencyNumFmt;
       });
       addedRow.eachCell(cell => {
@@ -305,9 +523,9 @@ export class ExcelService {
         t.*,
         COALESCE((SELECT SUM(rp.total_cost) FROM repair_parts rp WHERE rp.ticket_id = t.id), 0) as parts_cost
       FROM repair_tickets t
-      WHERE strftime('%Y-%m', t.created_at) = ?
+      WHERE date(t.created_at) >= ? AND date(t.created_at) <= ?
       ORDER BY t.created_at DESC
-    `, [monthPrefix]);
+    `, [startDate, endDate]);
 
     tickets.forEach(t => {
       const finalCost = Number(t.final_cost || 0);
@@ -362,9 +580,9 @@ export class ExcelService {
 
     const expenses = this.db.query(`
       SELECT * FROM expenses 
-      WHERE strftime('%Y-%m', expense_date) = ?
+      WHERE date(expense_date) >= ? AND date(expense_date) <= ?
       ORDER BY expense_date DESC
-    `, [monthPrefix]);
+    `, [startDate, endDate]);
 
     expenses.forEach(e => {
       const addedRow = expensesSheet.addRow({
@@ -385,9 +603,9 @@ export class ExcelService {
 
     const damagedItems = this.db.query(`
       SELECT * FROM damaged_items
-      WHERE strftime('%Y-%m', created_at) = ?
+      WHERE date(created_at) >= ? AND date(created_at) <= ?
       ORDER BY created_at DESC
-    `, [monthPrefix]);
+    `, [startDate, endDate]);
 
     damagedItems.forEach(d => {
       const addedRow = expensesSheet.addRow({
@@ -467,15 +685,19 @@ export class ExcelService {
     let savePath = targetFilePath;
     if (!savePath) {
       const desktop = app ? app.getPath('desktop') : process.cwd();
-      savePath = path.join(desktop, `تقرير_شهر_${monthStr}_${year}_TIGER.xlsx`);
+      savePath = path.join(desktop, `${filePrefix}_TIGER.xlsx`);
     }
 
     await workbook.xlsx.writeFile(savePath);
-    console.log(`[ExcelService] Exported monthly report with 6 sheets to: ${savePath}`);
+    console.log(`[ExcelService] Exported comprehensive report (${periodLabel}) to: ${savePath}`);
 
     return {
       success: true,
       filePath: savePath
     };
+  }
+
+  public async exportMonthlyReport(year: number, month: number, targetFilePath?: string): Promise<{ success: boolean; filePath: string }> {
+    return this.exportReport(year, month, targetFilePath);
   }
 }

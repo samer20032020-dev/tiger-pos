@@ -87,7 +87,7 @@ export interface TigerAPI {
   getAuditLogs: (limit?: number) => Promise<AuditLog[]>;
 
   // Excel & Reports
-  exportMonthlyExcel: (year: number, month: number, targetPath?: string) => Promise<{ success: boolean; filePath: string }>;
+  exportMonthlyExcel: (yearOrOptions: number | any, month?: number, targetPath?: string) => Promise<{ success: boolean; filePath: string }>;
 
   // Backups
   createBackup: (folder?: string) => Promise<{ success: boolean; filePath: string; size: number }>;
@@ -190,7 +190,7 @@ const tigerAPI: TigerAPI = {
   getAuditLogs: (limit) => ipcRenderer.invoke('db:getAuditLogs', limit),
 
   // Excel
-  exportMonthlyExcel: (year, month, targetPath) => ipcRenderer.invoke('excel:exportMonthly', year, month, targetPath),
+  exportMonthlyExcel: (yearOrOptions, month, targetPath) => ipcRenderer.invoke('excel:exportMonthly', yearOrOptions, month, targetPath),
 
   // Backups
   createBackup: (folder) => ipcRenderer.invoke('backup:create', folder),

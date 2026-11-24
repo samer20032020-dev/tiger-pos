@@ -58,7 +58,10 @@ export const ReportsTab: React.FC = () => {
     return d.toISOString().split('T')[0];
   });
 
-  // Monthly tab states
+  // Export states
+  const [exportMode, setExportMode] = useState<'custom_range' | 'specific_month'>('custom_range');
+  const [exportStartDate, setExportStartDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [exportEndDate, setExportEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [exporting, setExporting] = useState<boolean>(false);
@@ -274,10 +277,25 @@ export const ReportsTab: React.FC = () => {
     setExporting(true);
     setLastExportPath(null);
     try {
-      const res = await window.tigerAPI.exportMonthlyExcel(selectedYear, selectedMonth);
-      if (res.success) {
-        setLastExportPath(res.filePath);
-        addToast(`تم استخراج تقرير إكسل الشامل بنجاح لشهر ${selectedMonth}/${selectedYear}`, 'success');
+      let res;
+      if (exportMode === 'custom_range') {
+        const s = exportStartDate <= exportEndDate ? exportStartDate : exportEndDate;
+        const e = exportStartDate <= exportEndDate ? exportEndDate : exportStartDate;
+        res = await window.tigerAPI.exportMonthlyExcel({ startDate: s, endDate: e });
+        if (res.success) {
+          setLastExportPath(res.filePath);
+          if (s === e) {
+            addToast(`تم استخراج تقرير إكسل التفصيلي الشامل ليوم ${s} بنجاح!`, 'success');
+          } else {
+            addToast(`تم استخراج تقرير إكسل التفصيلي للفترة من ${s} إلى ${e} بنجاح!`, 'success');
+          }
+        }
+      } else {
+        res = await window.tigerAPI.exportMonthlyExcel(selectedYear, selectedMonth);
+        if (res.success) {
+          setLastExportPath(res.filePath);
+          addToast(`تم استخراج تقرير إكسل الشامل لشهر ${selectedMonth}/${selectedYear} بنجاح!`, 'success');
+        }
       }
     } catch (err: any) {
       addToast(err.message || 'فشل استخراج ملف إكسل', 'error');
@@ -1118,62 +1136,231 @@ export const ReportsTab: React.FC = () => {
           </div>
 
           {/* Modern Excel Export Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center shadow-sm">
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-black text-slate-800 dark:text-white">تصدير تقرير محاسبي كامل إلى Excel</h2>
-                  <p className="text-[11px] text-slate-400">ملف إكسل منسق وجاهز بـ 6 أوراق عمل للمبيعات، الصيانة، والمصاريف</p>
+                  <h2 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
+                    <span>تصدير تقرير محاسبي تفصيلي كامل إلى Excel</span>
+                    <span className="text-[10px] bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 px-2 py-0.5 rounded-full font-bold">شامل بنود البيع والقطع واسم البائع</span>
+                  </h2>
+                  <p className="text-[11px] text-slate-400">ملف إكسل منسق جاهز يحتوي على ملخص الأرباح، تفاصيل كل صنف مباع وكميته وسعره وبائعه، والصيانة والمصاريف</p>
                 </div>
               </div>
+
+              {/* Mode Toggle */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setExportMode('custom_range')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    exportMode === 'custom_range'
+                      ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>تحديد حر (يوم أو فترة محددة)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExportMode('specific_month')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    exportMode === 'specific_month'
+                      ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>شهر وسنة محددة</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-end gap-3 pt-1">
-              <div className="w-full sm:w-44">
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">السنة:</label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold"
-                >
-                  <option value={2026}>2026</option>
-                  <option value={2025}>2025</option>
-                  <option value={2027}>2027</option>
-                </select>
-              </div>
+            {exportMode === 'custom_range' ? (
+              <div className="space-y-3">
+                {/* Quick Presets */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">فترات سريعة:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      setExportStartDate(today);
+                      setExportEndDate(today);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                      exportStartDate === exportEndDate && exportStartDate === new Date().toISOString().split('T')[0]
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    ⚡ اليوم فقط (يوم واحد)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const y = new Date();
+                      y.setDate(y.getDate() - 1);
+                      const ys = y.toISOString().split('T')[0];
+                      setExportStartDate(ys);
+                      setExportEndDate(ys);
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition"
+                  >
+                    أمس فقط
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d1 = new Date();
+                      d1.setDate(d1.getDate() - 1);
+                      setExportStartDate(d1.toISOString().split('T')[0]);
+                      setExportEndDate(new Date().toISOString().split('T')[0]);
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition"
+                  >
+                    أمس واليوم (48 ساعة)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d7 = new Date();
+                      d7.setDate(d7.getDate() - 7);
+                      setExportStartDate(d7.toISOString().split('T')[0]);
+                      setExportEndDate(new Date().toISOString().split('T')[0]);
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition"
+                  >
+                    آخر 7 أيام
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date();
+                      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                      setExportStartDate(firstDay);
+                      setExportEndDate(now.toISOString().split('T')[0]);
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition"
+                  >
+                    هذا الشهر حتى اليوم
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportStartDate(startDate);
+                      setExportEndDate(endDate);
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 hover:bg-orange-100 transition"
+                  >
+                    استخدام تواريخ الفلتر بالأعلى
+                  </button>
+                </div>
 
-              <div className="w-full sm:w-56">
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">الشهر:</label>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold"
-                >
-                  {months.map(m => (
-                    <option key={m.num} value={m.num}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
+                {/* Date Inputs & Export Button */}
+                <div className="flex flex-col sm:flex-row items-end gap-3 pt-1">
+                  <div className="w-full sm:w-48">
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">من تاريخ:</label>
+                    <input
+                      type="date"
+                      value={exportStartDate}
+                      onChange={(e) => setExportStartDate(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
 
-              <button
-                onClick={handleExportMonthlyExcel}
-                disabled={exporting}
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition"
-              >
-                <Download className="w-4 h-4" />
-                <span>{exporting ? 'جاري التصدير...' : 'تصدير ملف Excel الآن'}</span>
-              </button>
-            </div>
+                  <div className="w-full sm:w-48">
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">إلى تاريخ:</label>
+                    <input
+                      type="date"
+                      value={exportEndDate}
+                      onChange={(e) => setExportEndDate(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="flex-1 pb-1">
+                    {exportStartDate === exportEndDate ? (
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 block text-center sm:text-right">
+                        ✓ تقرير مخصص ليوم واحد فقط ({exportStartDate})
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 block text-center sm:text-right">
+                        ✓ تقرير للفترة بين {exportStartDate} و {exportEndDate}
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleExportMonthlyExcel}
+                    disabled={exporting}
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition shrink-0"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{exporting ? 'جاري التصدير...' : 'تصدير ملف Excel الآن'}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-end gap-3 pt-1">
+                <div className="w-full sm:w-44">
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">السنة:</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold"
+                  >
+                    <option value={2026}>2026</option>
+                    <option value={2025}>2025</option>
+                    <option value={2027}>2027</option>
+                  </select>
+                </div>
+
+                <div className="w-full sm:w-56">
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">الشهر:</label>
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold"
+                  >
+                    {months.map(m => (
+                      <option key={m.num} value={m.num}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleExportMonthlyExcel}
+                  disabled={exporting}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition shrink-0"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{exporting ? 'جاري التصدير...' : 'تصدير ملف Excel الآن'}</span>
+                </button>
+              </div>
+            )}
 
             {lastExportPath && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-3 flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                <div className="truncate">
-                  تم تصدير وحفظ الملف بنجاح في: <span className="font-mono font-bold">{lastExportPath}</span>
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300">
+                <div className="flex items-center gap-2 truncate">
+                  <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+                  <div className="truncate">
+                    <span>تم تصدير وحفظ الملف بنجاح على سطح المكتب: </span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white underline">{lastExportPath}</span>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => window.tigerAPI.openExternal(lastExportPath)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition shrink-0"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>فتح ملف Excel الآن</span>
+                </button>
               </div>
             )}
           </div>
