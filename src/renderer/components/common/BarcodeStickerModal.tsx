@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Tag, Printer, X, Plus, Minus, Settings2, Eye, Store } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Tag, Printer, X, Plus, Minus, Check } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import { formatJOD } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
@@ -33,12 +33,10 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
   const [presetSize, setPresetSize] = useState<StickerPresetSize>('50x25');
   const [storeName, setStoreName] = useState('TIGER');
   
-  // Customization Toggles
+  // Customization Toggles - Simple & Soft
   const [showStoreName, setShowStoreName] = useState(true);
   const [showPrice, setShowPrice] = useState(true);
   const [showCodeText, setShowCodeText] = useState(true);
-  const [showSubtitle, setShowSubtitle] = useState(true);
-  const [isSilent, setIsSilent] = useState(true);
 
   // Barcode Base64 Image
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string>('');
@@ -62,8 +60,8 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
         JsBarcode(canvas, code, {
           format: 'CODE128',
           width: 2,
-          height: 52,
-          displayValue: false, // Text will be styled cleanly in HTML
+          height: 50,
+          displayValue: false,
           margin: 0
         });
         setBarcodeDataUrl(canvas.toDataURL('image/png'));
@@ -86,7 +84,6 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
     setPrinting(true);
 
     try {
-      // Escape HTML helper
       const escape = (str: string) =>
         str
           .replace(/&/g, '&amp;')
@@ -109,7 +106,7 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
           </div>
 
           <div class="footer">
-            ${showSubtitle && subtitle ? `<span class="subtitle">${escape(subtitle)}</span>` : '<span></span>'}
+            <span class="subtitle">${subtitle ? escape(subtitle) : ''}</span>
             ${showPrice ? `<span class="price-badge">${formatJOD(price)}</span>` : ''}
           </div>
         </div>
@@ -161,7 +158,7 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
               display: flex;
               justify-content: space-between;
               align-items: center;
-              border-bottom: 1.2px solid #000;
+              border-bottom: 1px solid #000;
               padding-bottom: 0.5mm;
               line-height: 1.1;
             }
@@ -207,7 +204,7 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
               display: flex;
               justify-content: space-between;
               align-items: center;
-              border-top: 1.2px solid #000;
+              border-top: 1px solid #000;
               padding-top: 0.5mm;
               line-height: 1.1;
             }
@@ -235,7 +232,7 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
       `;
 
       if (window.tigerAPI) {
-        await window.tigerAPI.printSilentHtml(fullHtml, true, isSilent);
+        await window.tigerAPI.printSilentHtml(fullHtml, true, true);
         addToast(`تم إرسال ${quantity} ملصق إلى الطابعة بنجاح!`, 'success');
         onClose();
       }
@@ -248,65 +245,62 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 flex flex-col max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 select-none">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 flex flex-col max-h-[92vh] overflow-y-auto">
         
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+        {/* Header - Simple & Clean */}
+        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold">
-              <Tag className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center">
+              <Tag className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800 dark:text-white text-base">طباعة ملصقات الباركود والأسعار</h3>
-              <p className="text-xs text-slate-400">ستيكرات طابعات الملصقات الحرارية للمنتجات وقطع الغيار</p>
+              <h3 className="font-bold text-slate-800 dark:text-white text-sm">طباعة ملصق الباركود</h3>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200 p-1 rounded-lg">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Live Sticker Preview Box */}
-        <div className="my-5 flex flex-col items-center">
-          <div className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 text-orange-500" />
-            <span>معاينة الملصق المباشرة ({presetSize} مم)</span>
-          </div>
-
+        {/* Realistic Sticker Preview Stage - Soft & Sleek */}
+        <div className="my-4 bg-slate-50/80 dark:bg-slate-950/40 p-4 rounded-2xl flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800/60">
           <div
             style={{
               width: `${widthMm * 4.4}px`,
               minHeight: `${heightMm * 4.4}px`
             }}
-            className="border-2 border-dashed border-orange-500 bg-white text-black p-2.5 rounded-xl flex flex-col justify-between shadow-lg select-none font-sans transition-all duration-200"
+            className="bg-white text-black p-2.5 rounded-lg flex flex-col justify-between shadow-md border border-slate-200/90 select-none font-sans transition-all duration-200"
           >
             {/* Top row */}
             <div className="w-full flex items-center justify-between border-b border-black pb-1 text-[11px] font-black">
-              {showStoreName && (
+              {showStoreName ? (
                 <span className="font-black tracking-wider text-orange-600 truncate max-w-[80px]">
                   {storeName || 'TIGER'}
                 </span>
-              )}
+              ) : <span />}
               <span className="truncate max-w-[130px] font-bold text-right" title={title}>
                 {title}
               </span>
             </div>
 
             {/* Barcode Center */}
-            <div className="my-1.5 flex flex-col items-center justify-center">
+            <div className="my-1 flex flex-col items-center justify-center">
               {barcodeDataUrl ? (
                 <img
                   src={barcodeDataUrl}
                   alt="barcode"
-                  className="max-h-[38px] object-contain select-none"
+                  className="max-h-[36px] object-contain select-none"
                   style={{ imageRendering: 'pixelated' }}
                 />
               ) : (
-                <div className="h-9 w-32 bg-slate-200 animate-pulse rounded" />
+                <div className="h-8 w-28 bg-slate-100 animate-pulse rounded" />
               )}
               {showCodeText && (
-                <span className="font-mono text-[10px] font-bold tracking-wider mt-0.5 text-black">
+                <span className="font-mono text-[9.5px] font-bold tracking-wider mt-0.5 text-black">
                   {code}
                 </span>
               )}
@@ -314,13 +308,9 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
 
             {/* Bottom Row */}
             <div className="w-full flex items-center justify-between border-t border-black pt-1 text-[11px]">
-              {showSubtitle && subtitle ? (
-                <span className="text-[10px] font-bold text-gray-700 truncate max-w-[90px]">
-                  {subtitle}
-                </span>
-              ) : (
-                <span />
-              )}
+              <span className="text-[10px] font-bold text-gray-700 truncate max-w-[90px]">
+                {subtitle || ''}
+              </span>
               {showPrice && (
                 <div className="font-black text-xs text-black font-mono">
                   {formatJOD(price)}
@@ -328,166 +318,148 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
               )}
             </div>
           </div>
-
-          {extraInfo && (
-            <p className="text-[11px] text-slate-400 mt-2 font-mono">{extraInfo}</p>
-          )}
         </div>
 
-        {/* Settings & Quantity Section */}
-        <div className="space-y-4 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+        {/* Simple Controls */}
+        <div className="space-y-3.5">
           
-          {/* Quantity Selector */}
+          {/* Quantity Row */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                عدد النسخ المطلوب طباعتها:
-              </label>
+            <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-medium">
+              <span>عدد النسخ:</span>
               {availableStock !== undefined && availableStock > 0 && (
                 <button
                   type="button"
                   onClick={() => setQuantity(availableStock)}
-                  className="text-[11px] text-orange-600 dark:text-orange-400 hover:underline font-bold"
+                  className="text-orange-600 hover:underline font-bold"
                 >
-                  كامل الرصيد ({availableStock} قطعة)
+                  كامل الرصيد ({availableStock})
                 </button>
               )}
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 font-bold active:scale-95 transition"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-
-              <input
-                type="number"
-                min="1"
-                max="500"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
-                className="flex-1 text-center font-bold font-mono text-base bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl py-2 text-slate-900 dark:text-white"
-              />
-
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.min(500, q + 1))}
-                className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 font-bold active:scale-95 transition"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Quick Quantity Chips */}
-            <div className="flex items-center gap-1.5 mt-2">
-              {[1, 2, 5, 10, 20, 50].map((num) => (
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 border border-slate-200 dark:border-slate-700">
                 <button
-                  key={num}
                   type="button"
-                  onClick={() => setQuantity(num)}
-                  className={`flex-1 py-1 text-[11px] font-bold rounded-lg border transition ${
-                    quantity === num
-                      ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-orange-300'
-                  }`}
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition"
                 >
-                  {num}
+                  <Minus className="w-3.5 h-3.5" />
                 </button>
-              ))}
+
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
+                  className="w-16 text-center font-bold font-mono text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-white"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(500, q + 1))}
+                  className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Quick Chips */}
+              <div className="flex items-center gap-1 flex-1">
+                {[1, 2, 5, 10, 20].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setQuantity(num)}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-xl border transition ${
+                      quantity === num
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-700 hover:border-orange-300'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Preset Size Selector */}
+          {/* Size Pills */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              مقاس ملصق الطابعة (Thermal Label Size):
-            </label>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="text-xs text-slate-500 mb-1.5 font-medium">المقاس:</div>
+            <div className="grid grid-cols-3 gap-1.5">
               {[
-                { id: '50x25', label: '50 × 25 مم', desc: 'القياسي' },
-                { id: '40x30', label: '40 × 30 مم', desc: 'مربع' },
-                { id: '40x25', label: '40 × 25 مم', desc: 'صغير' },
-                { id: '38x25', label: '38 × 25 مم', desc: 'شائع' }
+                { id: '50x25', label: '50 × 25 مم' },
+                { id: '40x30', label: '40 × 30 مم' },
+                { id: '40x25', label: '40 × 25 مم' }
               ].map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => setPresetSize(p.id as StickerPresetSize)}
-                  className={`p-2 rounded-xl text-center border transition ${
+                  className={`py-2 px-3 rounded-xl text-center text-xs font-bold border transition ${
                     presetSize === p.id
-                      ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 font-bold'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                      ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-400 text-orange-600 dark:text-orange-400'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                   }`}
                 >
-                  <div className="text-xs font-mono">{p.label}</div>
-                  <div className="text-[10px] text-slate-400">{p.desc}</div>
+                  {p.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Toggles */}
-          <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-            <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={showStoreName}
-                onChange={(e) => setShowStoreName(e.target.checked)}
-                className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
-              />
-              <span>إظهار اسم المحل ({storeName || 'TIGER'})</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+          {/* Soft Toggles */}
+          <div className="flex items-center justify-between pt-1 text-xs text-slate-600 dark:text-slate-400">
+            <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={showPrice}
                 onChange={(e) => setShowPrice(e.target.checked)}
-                className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+                className="w-3.5 h-3.5 rounded text-orange-600 focus:ring-orange-500"
               />
-              <span>إظهار السعر للمستهلك</span>
+              <span>إظهار السعر</span>
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showStoreName}
+                onChange={(e) => setShowStoreName(e.target.checked)}
+                className="w-3.5 h-3.5 rounded text-orange-600 focus:ring-orange-500"
+              />
+              <span>اسم المحل</span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={showCodeText}
                 onChange={(e) => setShowCodeText(e.target.checked)}
-                className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+                className="w-3.5 h-3.5 rounded text-orange-600 focus:ring-orange-500"
               />
-              <span>إظهار رقم الباركود كنص</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={isSilent}
-                onChange={(e) => setIsSilent(e.target.checked)}
-                className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
-              />
-              <span>طباعة مباشرة (بدون نافذة)</span>
+              <span>رقم الكود</span>
             </label>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center gap-2 pt-4">
+        <div className="flex items-center gap-2 pt-5">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition"
           >
             إلغاء
           </button>
           <button
             onClick={handlePrint}
             disabled={printing}
-            className="flex-1 bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30 transition disabled:opacity-50"
+            className="flex-1 bg-orange-600 hover:bg-orange-500 active:scale-[0.99] text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-orange-600/20 transition disabled:opacity-50"
           >
             <Printer className="w-4 h-4" />
-            {printing ? 'جاري إرسال الأمر للطابعة...' : `طباعة (${quantity}) ملصق الآن`}
+            {printing ? 'جاري الطباعة...' : `طباعة (${quantity}) ملصق الآن`}
           </button>
         </div>
 

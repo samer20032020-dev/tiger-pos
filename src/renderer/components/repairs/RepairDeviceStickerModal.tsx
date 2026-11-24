@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tag, Printer, X, Plus, Minus, Smartphone, Check, Eye } from 'lucide-react';
+import { Tag, Printer, X, Plus, Minus, Smartphone } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import { RepairTicket } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
@@ -21,7 +21,6 @@ export const RepairDeviceStickerModal: React.FC<RepairDeviceStickerModalProps> =
   const [printing, setPrinting] = useState(false);
   const [quantity, setQuantity] = useState<number>(1);
   const [presetSize, setPresetSize] = useState<DeviceStickerSize>('40x20');
-  const [isSilent, setIsSilent] = useState(true);
   const [storeName, setStoreName] = useState('TIGER REPAIR');
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string>('');
 
@@ -235,7 +234,7 @@ export const RepairDeviceStickerModal: React.FC<RepairDeviceStickerModalProps> =
       `;
 
       if (window.tigerAPI) {
-        await window.tigerAPI.printSilentHtml(fullHtml, true, isSilent);
+        await window.tigerAPI.printSilentHtml(fullHtml, true, true);
         addToast(`تم إرسال ${quantity} لاصق ظهر الجهاز للطابعة بنجاح!`, 'success');
         onClose();
       }
@@ -248,52 +247,49 @@ export const RepairDeviceStickerModal: React.FC<RepairDeviceStickerModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 flex flex-col max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 select-none">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 flex flex-col max-h-[92vh] overflow-y-auto">
         
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+        {/* Header - Simple & Clean */}
+        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold">
-              <Smartphone className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center">
+              <Smartphone className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800 dark:text-white text-base">استيكر ظهر جهاز الصيانة</h3>
-              <p className="text-xs text-slate-400">لاصق مخصص لظهر هاتف العميل وعلبة حفظ القطع</p>
+              <h3 className="font-bold text-slate-800 dark:text-white text-sm">استيكر ظهر جهاز الصيانة</h3>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200 p-1 rounded-lg">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Live Sticker Preview Box */}
-        <div className="my-5 flex flex-col items-center">
-          <div className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 text-orange-500" />
-            <span>معاينة لاصق ظهر الجهاز ({presetSize} مم)</span>
-          </div>
-
+        {/* Realistic Sticker Preview Stage - Soft & Sleek */}
+        <div className="my-4 bg-slate-50/80 dark:bg-slate-950/40 p-4 rounded-2xl flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800/60">
           <div
             style={{
-              width: `${widthMm * 5.2}px`,
-              minHeight: `${heightMm * 5.2}px`
+              width: `${widthMm * 5}px`,
+              minHeight: `${heightMm * 5}px`
             }}
-            className="border-2 border-dashed border-orange-500 bg-white text-black p-2 rounded-xl flex flex-col justify-between shadow-lg select-none font-sans text-xs transition-all duration-200"
+            className="bg-white text-black p-2 rounded-lg flex flex-col justify-between shadow-md border border-slate-200/90 select-none font-sans text-xs transition-all duration-200"
           >
             {/* Top row */}
             <div className="w-full flex items-center justify-between border-b border-black pb-0.5 text-[10px] font-black">
-              <span className="text-orange-600">{storeName}</span>
+              <span className="text-orange-600 font-bold">{storeName}</span>
               <span className="font-mono text-black font-black">#{ticket.ticketNumber}</span>
             </div>
 
             {/* Details */}
-            <div className="my-1 space-y-0.5 text-[9px] leading-tight text-right">
+            <div className="my-1 space-y-0.5 text-[8.5px] leading-tight text-right">
               <div className="truncate">
                 <span className="font-bold">العميل: </span>
                 <span>{ticket.customerName}</span>
                 {ticket.customerPhone && (
-                  <span className="font-mono text-[8px] text-gray-700 mr-1">({ticket.customerPhone})</span>
+                  <span className="font-mono text-[7.5px] text-gray-700 mr-1">({ticket.customerPhone})</span>
                 )}
               </div>
               <div className="truncate">
@@ -316,152 +312,124 @@ export const RepairDeviceStickerModal: React.FC<RepairDeviceStickerModalProps> =
                 <img
                   src={barcodeDataUrl}
                   alt="barcode"
-                  className="max-h-[18px] max-w-[110px] object-contain"
+                  className="max-h-[16px] max-w-[105px] object-contain"
                   style={{ imageRendering: 'pixelated' }}
                 />
               ) : (
-                <div className="h-4 w-20 bg-slate-200 animate-pulse rounded" />
+                <div className="h-4 w-20 bg-slate-100 animate-pulse rounded" />
               )}
-              <span className="font-mono text-[8px] text-gray-700 font-bold">{dateStr}</span>
+              <span className="font-mono text-[7.5px] text-gray-700 font-bold">{dateStr}</span>
             </div>
           </div>
-          <span className="text-[10px] text-slate-400 mt-2">يلصق على ظهر هاتف الزبون لمنع ضياع الجهاز أو اختلاطه</span>
         </div>
 
-        {/* Options */}
-        <div className="space-y-4 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+        {/* Simple Controls */}
+        <div className="space-y-3.5">
           
-          {/* Quantity Selector */}
+          {/* Quantity Row */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              عدد النسخ المطلوب طباعتها:
-            </label>
+            <div className="text-xs text-slate-500 mb-1.5 font-medium">عدد النسخ:</div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 font-bold active:scale-95 transition"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
 
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
-                className="flex-1 text-center font-bold font-mono text-base bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl py-2 text-slate-900 dark:text-white"
-              />
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+                  className="w-16 text-center font-bold font-mono text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-white"
+                />
 
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.min(20, q + 1))}
-                className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 font-bold active:scale-95 transition"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+                  className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
-            {/* Quick Chips */}
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              <button
-                type="button"
-                onClick={() => setQuantity(1)}
-                className={`py-1.5 text-xs font-bold rounded-xl border transition ${
-                  quantity === 1
-                    ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                }`}
-              >
-                نسخة 1 (ظهر الهاتف)
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuantity(2)}
-                className={`py-1.5 text-xs font-bold rounded-xl border transition ${
-                  quantity === 2
-                    ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                }`}
-              >
-                نسختان (هاتف + علبة)
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuantity(3)}
-                className={`py-1.5 text-xs font-bold rounded-xl border transition ${
-                  quantity === 3
-                    ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                }`}
-              >
-                3 نسخ
-              </button>
+              {/* Quick Chips */}
+              <div className="flex items-center gap-1.5 flex-1">
+                <button
+                  type="button"
+                  onClick={() => setQuantity(1)}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-xl border transition ${
+                    quantity === 1
+                      ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-700 hover:border-orange-300'
+                  }`}
+                >
+                  نسخة واحدة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuantity(2)}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-xl border transition ${
+                    quantity === 2
+                      ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-700 hover:border-orange-300'
+                  }`}
+                >
+                  نسختان (هاتف + علبة)
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Size Preset */}
+          {/* Size Pills */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              مقاس لاصق الطابعة الحرارية:
-            </label>
+            <div className="text-xs text-slate-500 mb-1.5 font-medium">المقاس:</div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setPresetSize('40x20')}
-                className={`p-2.5 rounded-xl text-center border transition ${
+                className={`py-2 px-3 rounded-xl text-center text-xs font-bold border transition ${
                   presetSize === '40x20'
-                    ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 font-bold'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                    ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-400 text-orange-600 dark:text-orange-400'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                 }`}
               >
-                <div className="text-xs font-mono font-bold">40 × 20 مم</div>
-                <div className="text-[10px] text-slate-400">حجم ميني لظهر الهاتف</div>
+                40 × 20 مم (ميني)
               </button>
-
               <button
                 type="button"
                 onClick={() => setPresetSize('50x25')}
-                className={`p-2.5 rounded-xl text-center border transition ${
+                className={`py-2 px-3 rounded-xl text-center text-xs font-bold border transition ${
                   presetSize === '50x25'
-                    ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 font-bold'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                    ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-400 text-orange-600 dark:text-orange-400'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                 }`}
               >
-                <div className="text-xs font-mono font-bold">50 × 25 مم</div>
-                <div className="text-[10px] text-slate-400">حجم قياسي بطباعة أكبر</div>
+                50 × 25 مم (قياسي)
               </button>
             </div>
           </div>
-
-          {/* Silent Print Toggle */}
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 dark:text-slate-300 pt-1">
-            <input
-              type="checkbox"
-              checked={isSilent}
-              onChange={(e) => setIsSilent(e.target.checked)}
-              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
-            />
-            <span>طباعة مباشرة وسريعة (إرسال فوري للطابعة الافتراضية)</span>
-          </label>
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center gap-2 pt-4">
+        <div className="flex items-center gap-2 pt-5">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition"
           >
             إلغاء
           </button>
           <button
             onClick={handlePrint}
             disabled={printing}
-            className="flex-1 bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30 transition disabled:opacity-50"
+            className="flex-1 bg-orange-600 hover:bg-orange-500 active:scale-[0.99] text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-orange-600/20 transition disabled:opacity-50"
           >
             <Printer className="w-4 h-4" />
-            {printing ? 'جاري إرسال الأمر للطابعة...' : `طباعة (${quantity}) لاصق جهاز`}
+            {printing ? 'جاري الطباعة...' : `طباعة (${quantity}) لاصق جهاز`}
           </button>
         </div>
 

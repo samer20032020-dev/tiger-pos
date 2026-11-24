@@ -425,9 +425,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.3';
-      let releaseNotes = '✨ إصدار v0.8.3: نظام متكامل لطباعة ملصقات الباركود والأسعار واستيكر ظهر أجهزة الصيانة، مع دعم كامل لتحديد عدد النسخ، والمقاسات المتعددة، والمعاينة الحية.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.3 - نظام ملصقات الباركود والصيانة';
+      let latestVersion = '0.8.4';
+      let releaseNotes = '✨ إصدار v0.8.4: تصميم فائق النعومة والبساطة لنوافذ طباعة ملصقات الباركود واستيكر الصيانة، مع تحسينات جمالية شاملة للمعاينة والأزرار.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.4';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -475,7 +475,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.3',
+        latestVersion: '0.8.4',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
