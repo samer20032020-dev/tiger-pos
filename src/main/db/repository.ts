@@ -863,6 +863,31 @@ export class TigerRepository {
     });
   }
 
+  public deleteInvoice(invoiceId: string, actorName = 'المدير'): void {
+    this.db.transaction(() => {
+      const invoice = this.db.queryOne('SELECT * FROM invoices WHERE id = ?', [invoiceId]);
+      if (!invoice) throw new Error('الفاتورة غير موجودة');
+
+      // If not already refunded, restock items first
+      if (invoice.status !== 'refunded') {
+        const items = this.db.query('SELECT * FROM invoice_items WHERE invoice_id = ?', [invoiceId]);
+        for (const item of items) {
+          if (item.item_type === 'accessory') {
+            this.db.run('UPDATE accessories SET current_stock = current_stock + ? WHERE id = ?', [item.quantity, item.item_id]);
+          } else if (item.item_type === 'phone') {
+            this.db.run('UPDATE phones SET status = "in_stock", sold_at = NULL, invoice_id = NULL WHERE id = ?', [item.item_id]);
+          }
+        }
+      }
+
+      this.db.run('DELETE FROM trade_in_devices WHERE invoice_id = ?', [invoiceId]);
+      this.db.run('DELETE FROM invoice_items WHERE invoice_id = ?', [invoiceId]);
+      this.db.run('DELETE FROM invoices WHERE id = ?', [invoiceId]);
+
+      this.logAudit('invoice_deleted', 'usr', actorName, `تم حذف الفاتورة ${invoice.invoice_number} نهائياً من النظام`);
+    });
+  }
+
   public getAllInvoices(limit = 100): Invoice[] {
     const rows = this.db.query(`
       SELECT inv.*, 

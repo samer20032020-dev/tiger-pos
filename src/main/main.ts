@@ -219,6 +219,10 @@ function registerIpcHandlers() {
     return repository!.refundInvoice(invoiceId, actorName);
   });
 
+  ipcMain.handle('db:deleteInvoice', async (_, invoiceId: string, actorName?: string) => {
+    return repository!.deleteInvoice(invoiceId, actorName);
+  });
+
   ipcMain.handle('db:getAllInvoices', async (_, limit?: number) => {
     return repository!.getAllInvoices(limit);
   });
@@ -425,9 +429,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.4';
-      let releaseNotes = '✨ إصدار v0.8.4: تصميم فائق النعومة والبساطة لنوافذ طباعة ملصقات الباركود واستيكر الصيانة، مع تحسينات جمالية شاملة للمعاينة والأزرار.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.4';
+      let latestVersion = '0.8.5';
+      let releaseNotes = '✨ إصدار v0.8.5: معالجة شاملة للفواتير المسترجعة في التقارير والأرشيف، استبعادها من الأرباح والمبيعات، تمييزها باللون الأحمر، وإتاحة حذفها للمدير.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.5';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -475,7 +479,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.4',
+        latestVersion: '0.8.5',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

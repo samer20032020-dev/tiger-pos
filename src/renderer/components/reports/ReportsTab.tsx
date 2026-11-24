@@ -4,7 +4,8 @@ import {
   CheckCircle2, TrendingUp, Receipt, Wrench,
   CreditCard, Wallet, Banknote, Search, Layers,
   ChevronDown, CheckSquare, Square, ArrowDownToLine,
-  Lock, AlertTriangle, Sparkles, RefreshCw, Eye
+  Lock, AlertTriangle, Sparkles, RefreshCw, Eye,
+  RotateCcw, Trash2
 } from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
 import { Invoice, RepairTicket, Expense } from '../../../shared/types';
@@ -13,11 +14,12 @@ import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { sendWhatsAppMessage, buildInvoiceWhatsAppMessage } from '../../utils/whatsapp';
 
 type ReportTabMode = 'settlement' | 'monthly';
-type PostingFilter = 'unposted' | 'posted' | 'all';
+type PostingFilter = 'unposted' | 'posted' | 'refunded' | 'all';
 type TimeFilter = 'today' | 'yesterday_today' | 'week' | 'month' | 'custom' | 'all';
 
 export const ReportsTab: React.FC = () => {
-  const { addToast } = useAppStore();
+  const { addToast, currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'admin';
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -147,24 +149,26 @@ export const ReportsTab: React.FC = () => {
     return true;
   };
 
-  // Monthly stats
+  // Monthly stats (Exclude refunded invoices from sales and profit)
   const filteredInvoices = invoices.filter(inv => filterByDate(inv.createdAt));
+  const activeFilteredInvoices = filteredInvoices.filter(inv => inv.status !== 'refunded');
+  const refundedInvoices = filteredInvoices.filter(inv => inv.status === 'refunded');
   const filteredRepairs = repairs.filter(rep => filterByDate(rep.createdAt));
   const filteredExpenses = expenses.filter(exp => filterByDate(exp.createdAt));
 
-  const totalSales = filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
-  const totalInvoicesCount = filteredInvoices.length;
-  const cashSales = filteredInvoices.reduce((sum, inv) => sum + (inv.cashAmount || 0), 0);
-  const cardSales = filteredInvoices.reduce((sum, inv) => sum + (inv.cardAmount || 0), 0);
-  const cliqSales = filteredInvoices.reduce((sum, inv) => sum + (inv.cliqAmount || 0), 0);
-  const creditSales = filteredInvoices.reduce((sum, inv) => sum + (inv.creditAmount || 0), 0);
+  const totalSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+  const totalInvoicesCount = activeFilteredInvoices.length;
+  const cashSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.cashAmount || 0), 0);
+  const cardSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.cardAmount || 0), 0);
+  const cliqSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.cliqAmount || 0), 0);
+  const creditSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.creditAmount || 0), 0);
   const totalRepairsRevenue = filteredRepairs.reduce((sum, rep) => sum + (rep.finalCost || rep.advancePayment || 0), 0);
   const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
   // Settlement / Unposted Calculations (All pending unposted transactions in drawer)
-  const unpostedInvoices = invoices.filter(i => !i.isPosted);
+  const unpostedInvoices = invoices.filter(i => !i.isPosted && i.status !== 'refunded');
   const periodInvoices = invoices.filter(i => filterByDate(i.createdAt));
-  const postedInvoices = invoices.filter(i => i.isPosted && filterByDate(i.createdAt));
+  const postedInvoices = invoices.filter(i => i.isPosted && i.status !== 'refunded' && filterByDate(i.createdAt));
 
   const unpostedSales = unpostedInvoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
   const unpostedCost = unpostedInvoices.reduce((sum, i) => sum + (i.totalCost || 0), 0);
@@ -191,9 +195,12 @@ export const ReportsTab: React.FC = () => {
   const displayedInvoices = invoices.filter(inv => {
     // When viewing 'unposted', ALWAYS show all unposted invoices so cashier can review and settle them!
     if (postingFilter === 'unposted') {
-      if (inv.isPosted) return false;
+      if (inv.isPosted || inv.status === 'refunded') return false;
     } else if (postingFilter === 'posted') {
-      if (!inv.isPosted) return false;
+      if (!inv.isPosted || inv.status === 'refunded') return false;
+      if (!filterByDate(inv.createdAt)) return false;
+    } else if (postingFilter === 'refunded') {
+      if (inv.status !== 'refunded') return false;
       if (!filterByDate(inv.createdAt)) return false;
     } else {
       // 'all'
@@ -721,7 +728,7 @@ export const ReportsTab: React.FC = () => {
                   سجل العمليات وتفاصيل التكلفة والخصومات
                 </h2>
 
-                {/* Filter: Unposted vs Posted vs All */}
+                {/* Filter: Unposted vs Posted vs Refunded vs All */}
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
                   <button
                     onClick={() => setPostingFilter('unposted')}
@@ -740,6 +747,15 @@ export const ReportsTab: React.FC = () => {
                       }`}
                   >
                     مرحّل ومغلق ({postedInvoices.length})
+                  </button>
+                  <button
+                    onClick={() => setPostingFilter('refunded')}
+                    className={`px-2.5 py-1 rounded-lg transition ${postingFilter === 'refunded'
+                      ? 'bg-rose-500 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
+                  >
+                    مسترجعة ({refundedInvoices.length})
                   </button>
                   <button
                     onClick={() => setPostingFilter('all')}
@@ -821,14 +837,24 @@ export const ReportsTab: React.FC = () => {
                     displayedInvoices.slice(0, 100).map(inv => {
                       const isSelected = selectedInvoiceIds.includes(inv.id);
                       const isPriorShift = !inv.isPosted && !filterByDate(inv.createdAt);
+                      const isRefunded = inv.status === 'refunded';
                       return (
                         <tr
                           key={inv.id}
-                          className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition ${isSelected ? 'bg-orange-50/40 dark:bg-orange-950/20' : ''
-                            }`}
+                          className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition ${
+                            isRefunded
+                              ? 'bg-rose-50/30 dark:bg-rose-950/20'
+                              : isSelected
+                              ? 'bg-orange-50/40 dark:bg-orange-950/20'
+                              : ''
+                          }`}
                         >
                           <td className="p-3 text-center">
-                            {!inv.isPosted ? (
+                            {isRefunded ? (
+                              <span title="فاتورة مسترجعة وملغاة">
+                                <RotateCcw className="w-4 h-4 text-rose-500 mx-auto" />
+                              </span>
+                            ) : !inv.isPosted ? (
                               <button
                                 onClick={() => toggleSelectInvoice(inv.id)}
                                 className="text-slate-400 hover:text-orange-500 transition"
@@ -844,7 +870,12 @@ export const ReportsTab: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
-                            {inv.invoiceNumber}
+                            <div>{inv.invoiceNumber}</div>
+                            {isRefunded && (
+                              <span className="inline-block text-[9px] font-extrabold text-rose-600 dark:text-rose-400">
+                                مسترجعة
+                              </span>
+                            )}
                           </td>
                           <td className="p-3 font-mono text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap">
                             <div className="font-bold">{inv.createdAt ? inv.createdAt.replace('T', ' ').substring(5, 16) : '-'}</div>
@@ -860,7 +891,11 @@ export const ReportsTab: React.FC = () => {
                                 inv.items.map((it, idx) => (
                                   <span
                                     key={idx}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60 shadow-sm"
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold border shadow-sm ${
+                                      isRefunded
+                                        ? 'bg-rose-50 dark:bg-rose-950/40 text-slate-500 line-through border-rose-200 dark:border-rose-900'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/60 dark:border-slate-700/60'
+                                    }`}
                                   >
                                     <span>{it.name}</span>
                                     <span className="font-mono text-orange-600 dark:text-orange-400 font-extrabold">
@@ -877,7 +912,14 @@ export const ReportsTab: React.FC = () => {
                             {formatJOD(inv.totalCost || 0)}
                           </td>
                           <td className="p-3 font-mono font-black text-slate-900 dark:text-white">
-                            {formatJOD(inv.totalAmount)}
+                            {isRefunded ? (
+                              <div>
+                                <span className="line-through text-slate-400 font-normal text-xs">{formatJOD(inv.totalAmount)}</span>
+                                <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold block">0.000 د.أ (مسترد)</span>
+                              </div>
+                            ) : (
+                              formatJOD(inv.totalAmount)
+                            )}
                           </td>
                           <td className="p-3 font-mono font-bold">
                             {inv.discount > 0 ? (
@@ -888,8 +930,15 @@ export const ReportsTab: React.FC = () => {
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
-                          <td className="p-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                            +{formatJOD(inv.totalProfit || 0)}
+                          <td className="p-3 font-mono font-bold">
+                            {isRefunded ? (
+                              <div>
+                                <span className="line-through text-slate-400 font-normal text-xs">+{formatJOD(inv.totalProfit || 0)}</span>
+                                <span className="text-[10px] text-slate-400 font-bold block">0.000 د.أ</span>
+                              </div>
+                            ) : (
+                              <span className="text-emerald-600 dark:text-emerald-400">+{formatJOD(inv.totalProfit || 0)}</span>
+                            )}
                           </td>
                           <td className="p-3">
                             <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
@@ -900,7 +949,12 @@ export const ReportsTab: React.FC = () => {
                             </span>
                           </td>
                           <td className="p-3 text-center">
-                            {inv.isPosted ? (
+                            {isRefunded ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                <RotateCcw className="w-3 h-3 text-rose-600" />
+                                <span>مسترجعة (ملغاة)</span>
+                              </span>
+                            ) : inv.isPosted ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
                                 <CheckCircle2 className="w-3 h-3" />
                                 <span>مرحّل للأرشيف</span>
@@ -916,26 +970,48 @@ export const ReportsTab: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3 text-center">
-                            {inv.customerPhone ? (
-                              <button
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  const msg = buildInvoiceWhatsAppMessage(inv);
-                                  const res = await sendWhatsAppMessage(inv.customerPhone!, msg);
-                                  if (res.success) {
-                                    addToast(`تم فتح واتساب للعميل (${inv.customerName})`, 'success');
-                                  } else {
-                                    addToast(res.error || 'فشل إرسال الفاتورة', 'error');
-                                  }
-                                }}
-                                title={`إرسال الفاتورة عبر واتساب (${inv.customerPhone})`}
-                                className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 transition"
-                              >
-                                <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
-                              </button>
-                            ) : (
-                              <span className="text-slate-300 dark:text-slate-600">-</span>
-                            )}
+                            <div className="flex items-center justify-center gap-1">
+                              {inv.customerPhone && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    const msg = buildInvoiceWhatsAppMessage(inv);
+                                    const res = await sendWhatsAppMessage(inv.customerPhone!, msg);
+                                    if (res.success) {
+                                      addToast(`تم فتح واتساب للعميل (${inv.customerName})`, 'success');
+                                    } else {
+                                      addToast(res.error || 'فشل إرسال الفاتورة', 'error');
+                                    }
+                                  }}
+                                  title={`إرسال الفاتورة عبر واتساب (${inv.customerPhone})`}
+                                  className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 transition"
+                                >
+                                  <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
+                                </button>
+                              )}
+
+                              {/* Admin Delete Action for Refunded / Testing Invoices */}
+                              {isAdmin && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`هل أنت متأكد من حذف الفاتورة ${inv.invoiceNumber} نهائياً من السجل والأرشيف؟`)) {
+                                      try {
+                                        await window.tigerAPI.deleteInvoice(inv.id, currentUser?.fullName || 'المدير');
+                                        addToast(`تم حذف الفاتورة ${inv.invoiceNumber} نهائياً`, 'success');
+                                        await loadReportData();
+                                      } catch (err: any) {
+                                        addToast(err.message || 'فشل حذف الفاتورة', 'error');
+                                      }
+                                    }
+                                  }}
+                                  title="حذف الفاتورة نهائياً من السجل (للمدير)"
+                                  className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/60 hover:bg-red-100 text-red-600 dark:text-red-400 transition"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

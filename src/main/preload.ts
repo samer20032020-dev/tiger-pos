@@ -47,6 +47,7 @@ export interface TigerAPI {
     tradeIn?: Omit<TradeInDevice, 'id' | 'invoiceId' | 'createdAt'> | null
   ) => Promise<Invoice>;
   refundInvoice: (invoiceId: string, actorName?: string) => Promise<void>;
+  deleteInvoice: (invoiceId: string, actorName?: string) => Promise<void>;
   getAllInvoices: (limit?: number) => Promise<Invoice[]>;
   getInvoiceDetails: (invoiceId: string) => Promise<Invoice | null>;
   postInvoices: (invoiceIds: string[]) => Promise<{ count: number }>;
@@ -150,6 +151,7 @@ const tigerAPI: TigerAPI = {
   // Invoices & POS
   createInvoice: (invoiceData, items, tradeIn) => ipcRenderer.invoke('db:createInvoice', invoiceData, items, tradeIn),
   refundInvoice: (invoiceId, actorName) => ipcRenderer.invoke('db:refundInvoice', invoiceId, actorName),
+  deleteInvoice: (invoiceId, actorName) => ipcRenderer.invoke('db:deleteInvoice', invoiceId, actorName),
   getAllInvoices: (limit) => ipcRenderer.invoke('db:getAllInvoices', limit),
   getInvoiceDetails: (invoiceId) => ipcRenderer.invoke('db:getInvoiceDetails', invoiceId),
   postInvoices: (invoiceIds) => ipcRenderer.invoke('db:postInvoices', invoiceIds),

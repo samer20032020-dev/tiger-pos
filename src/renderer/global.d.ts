@@ -32,6 +32,7 @@ export interface TigerAPI {
   importAccessoriesBatch: (items: any[]) => Promise<{ importedCount: number; updatedCount: number; errors: string[] }>;
   createInvoice: (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'createdAt'>, items: Omit<InvoiceItem, 'id' | 'invoiceId'>[], tradeIn?: Omit<TradeInDevice, 'id' | 'invoiceId' | 'createdAt'> | null) => Promise<Invoice>;
   refundInvoice: (invoiceId: string, actorName?: string) => Promise<void>;
+  deleteInvoice: (invoiceId: string, actorName?: string) => Promise<void>;
   getAllInvoices: (limit?: number) => Promise<Invoice[]>;
   getInvoiceDetails: (invoiceId: string) => Promise<Invoice | null>;
   postInvoices: (invoiceIds: string[]) => Promise<{ count: number }>;
