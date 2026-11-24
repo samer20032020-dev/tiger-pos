@@ -1156,11 +1156,10 @@ export const ReportsTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportMode('custom_range')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    exportMode === 'custom_range'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${exportMode === 'custom_range'
                       ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400'
-                  }`}
+                    }`}
                 >
                   <Calendar className="w-3.5 h-3.5" />
                   <span>تحديد حر (يوم أو فترة محددة)</span>
@@ -1168,11 +1167,10 @@ export const ReportsTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExportMode('specific_month')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    exportMode === 'specific_month'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${exportMode === 'specific_month'
                       ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400'
-                  }`}
+                    }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
                   <span>شهر وسنة محددة</span>
@@ -1192,11 +1190,10 @@ export const ReportsTab: React.FC = () => {
                       setExportStartDate(today);
                       setExportEndDate(today);
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                      exportStartDate === exportEndDate && exportStartDate === new Date().toISOString().split('T')[0]
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${exportStartDate === exportEndDate && exportStartDate === new Date().toISOString().split('T')[0]
                         ? 'bg-emerald-500 text-white shadow-sm'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-                    }`}
+                      }`}
                   >
                     ⚡ اليوم فقط (يوم واحد)
                   </button>
