@@ -58,6 +58,64 @@ export class LocalDatabase {
       }
     }
 
+    // Migrate customers table: allow non-unique or empty phone numbers
+    try {
+      const custTableInfo = this.queryOne<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'customers'");
+      if (custTableInfo && (custTableInfo.sql.includes('phone TEXT UNIQUE') || custTableInfo.sql.includes('phone TEXT NOT NULL'))) {
+        this.db.run(`
+          CREATE TABLE IF NOT EXISTS customers_new (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT,
+            id_number TEXT,
+            balance REAL NOT NULL DEFAULT 0,
+            notes TEXT,
+            created_at TEXT NOT NULL
+          );
+          INSERT OR IGNORE INTO customers_new SELECT id, name, phone, id_number, balance, notes, created_at FROM customers;
+          DROP TABLE customers;
+          ALTER TABLE customers_new RENAME TO customers;
+        `);
+        this.isDirty = true;
+      }
+    } catch {
+      // Table already migrated
+    }
+
+    // Automatically reconcile and link any past unlinked debt invoices to their customers
+    try {
+      const unlinked = this.query<any>(`
+        SELECT id, customer_name, customer_phone, remaining_amount, created_at 
+        FROM invoices 
+        WHERE (customer_id IS NULL OR customer_id = '') 
+          AND remaining_amount > 0 
+          AND customer_name IS NOT NULL 
+          AND customer_name != 'زبون نقدي' 
+          AND status != 'refunded'
+      `);
+
+      for (const inv of unlinked) {
+        const name = (inv.customer_name || '').trim();
+        if (!name) continue;
+
+        let cust = this.queryOne<any>('SELECT * FROM customers WHERE LOWER(TRIM(name)) = LOWER(?)', [name]);
+        if (!cust) {
+          const custId = `cust-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          this.run(`
+            INSERT INTO customers (id, name, phone, balance, notes, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [custId, name, inv.customer_phone || '', inv.remaining_amount || 0, 'ذمة مؤجلة: مستحقة من فاتورة سابقة', inv.created_at || new Date().toISOString()]);
+          this.run('UPDATE invoices SET customer_id = ? WHERE id = ?', [custId, inv.id]);
+        } else {
+          this.run('UPDATE invoices SET customer_id = ? WHERE id = ?', [cust.id, inv.id]);
+          this.run('UPDATE customers SET balance = balance + ? WHERE id = ?', [inv.remaining_amount, cust.id]);
+        }
+        this.isDirty = true;
+      }
+    } catch (e) {
+      console.warn('[Database] Customer reconciliation warning:', e);
+    }
+
     this.saveToDiskSync();
   }
 

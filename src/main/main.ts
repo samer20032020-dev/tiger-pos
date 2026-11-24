@@ -429,9 +429,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.5';
-      let releaseNotes = '✨ إصدار v0.8.5: معالجة شاملة للفواتير المسترجعة في التقارير والأرشيف، استبعادها من الأرباح والمبيعات، تمييزها باللون الأحمر، وإتاحة حذفها للمدير.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.5';
+      let latestVersion = '0.8.6';
+      let releaseNotes = '✨ إصدار v0.8.6: إصلاح إنشاء العملاء والذمم بدون رقم هاتف، ومطابقة وربط الذمم السابقة تلقائياً بالعملاء.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.6';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -479,7 +479,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.5',
+        latestVersion: '0.8.6',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

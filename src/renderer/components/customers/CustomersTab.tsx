@@ -67,18 +67,18 @@ export const CustomersTab: React.FC = () => {
 
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName || !newPhone) return;
+    if (!newName.trim()) return;
 
     setSubmittingCustomer(true);
     try {
       await window.tigerAPI.addCustomer({
-        name: newName,
-        phone: newPhone,
-        idNumber: newIdNumber || null,
+        name: newName.trim(),
+        phone: newPhone.trim() || '',
+        idNumber: newIdNumber.trim() || null,
         balance: 0,
-        notes: newNotes || null
+        notes: newNotes.trim() || null
       });
-      addToast(`تم تسجيل العميل ${newName} بنجاح!`, 'success');
+      addToast(`تم تسجيل العميل ${newName.trim()} بنجاح!`, 'success');
       setNewName('');
       setNewPhone('');
       setNewIdNumber('');
@@ -324,13 +324,12 @@ export const CustomersTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">رقم الهاتف:</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">رقم الهاتف (اختياري):</label>
                 <input
                   type="text"
-                  placeholder="079... أو 078..."
+                  placeholder="079... أو 078... (يمكن تركه فارغاً)"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
-                  required
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left"
                 />
               </div>

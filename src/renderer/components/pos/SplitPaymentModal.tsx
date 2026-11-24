@@ -131,8 +131,8 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
 
         // Check if customer already exists by phone or name
         const match = existingCustomers.find(c => 
-          (quickPhone.trim() && c.phone === quickPhone.trim()) || 
-          c.name.toLowerCase() === targetCustomerName.toLowerCase()
+          (targetCustomerPhone && targetCustomerPhone.length >= 7 && c.phone === targetCustomerPhone) || 
+          c.name.trim().toLowerCase() === targetCustomerName.toLowerCase()
         );
 
         if (match) {
@@ -149,8 +149,10 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
             });
             targetCustomerId = newCust.id;
             setCustomer(newCust);
-          } catch (e) {
-            console.warn('Could not auto-create customer, saving on invoice name directly:', e);
+            addToast(`تم فتح حساب ذمة جديد للعميل (${targetCustomerName}) بنجاح`, 'info');
+          } catch (e: any) {
+            console.error('Could not auto-create customer:', e);
+            addToast(`تعذر إنشاء حساب العميل تلقائياً: ${e?.message || 'خطأ غير متوقع'}`, 'error');
           }
         }
       } else {

@@ -236,7 +236,7 @@ CREATE INDEX IF NOT EXISTS idx_installment_payments_status ON installment_paymen
 CREATE TABLE IF NOT EXISTS customers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  phone TEXT UNIQUE NOT NULL,
+  phone TEXT,
   id_number TEXT,
   balance REAL NOT NULL DEFAULT 0,
   notes TEXT,
