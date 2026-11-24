@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Wrench, Package, Plus, Trash2, CheckCircle2, DollarSign } from 'lucide-react';
 import { Accessory, RepairTicket } from '../../../shared/types';
+import { cleanNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
 
 interface RepairPartsModalProps {
@@ -136,10 +137,15 @@ export const RepairPartsModal: React.FC<RepairPartsModalProps> = ({
             </div>
             <div className="w-20">
               <input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
                 value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value).replace(/[^0-9]/g, '');
+                  setQuantity(clean === '' ? 1 : Math.max(1, parseInt(clean, 10)));
+                }}
                 className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-center font-bold font-mono"
               />
             </div>

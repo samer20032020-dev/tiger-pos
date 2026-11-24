@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Package, Check, Sparkles } from 'lucide-react';
-import { ACCESSORY_CATEGORIES } from '../../../shared/constants';
+import { ACCESSORY_CATEGORIES, cleanNumberInput } from '../../../shared/constants';
 import { Accessory } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
 
@@ -197,12 +197,16 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر التكلفة (د.أ):</label>
               <input
-                type="number"
-                step="any"
-                min="0"
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
                 placeholder="0.00"
                 value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value ? Number(e.target.value) : '')}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value);
+                  setCostPrice(clean === '' ? '' : Number(clean));
+                }}
                 required
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
               />
@@ -210,12 +214,16 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-orange-600 dark:text-orange-400 mb-1">سعر المفرق (البيع):</label>
               <input
-                type="number"
-                step="any"
-                min="0"
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
                 placeholder="0.00"
                 value={retailPrice}
-                onChange={(e) => setRetailPrice(e.target.value ? Number(e.target.value) : '')}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value);
+                  setRetailPrice(clean === '' ? '' : Number(clean));
+                }}
                 required
                 className="w-full bg-orange-50 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-700 rounded-xl p-2.5 text-xs font-black text-orange-600 dark:text-orange-400 font-mono text-left"
               />
@@ -223,12 +231,16 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر الجملة (د.أ):</label>
               <input
-                type="number"
-                step="any"
-                min="0"
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
                 placeholder="0.00"
                 value={wholesalePrice}
-                onChange={(e) => setWholesalePrice(e.target.value ? Number(e.target.value) : '')}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value);
+                  setWholesalePrice(clean === '' ? '' : Number(clean));
+                }}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
               />
             </div>
@@ -238,11 +250,16 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الكمية المتوفرة بالمخزن:</label>
               <input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
                 placeholder="10"
                 value={currentStock}
-                onChange={(e) => setCurrentStock(e.target.value ? Number(e.target.value) : '')}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value).replace(/[^0-9]/g, '');
+                  setCurrentStock(clean === '' ? '' : Number(clean));
+                }}
                 required
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-center font-bold"
               />

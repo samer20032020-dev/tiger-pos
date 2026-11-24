@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Wrench, Check, Lock, Calendar, DollarSign, Smartphone, ShieldAlert, KeyRound, Grid3X3 } from 'lucide-react';
 import { ConditionChecklist, RepairTicket } from '../../../shared/types';
+import { cleanNumberInput } from '../../../shared/constants';
 import { PatternLockInput } from '../common/PatternLockInput';
 import { useAppStore } from '../../stores/useAppStore';
 
@@ -187,11 +188,10 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
               <button
                 type="button"
                 onClick={() => setLockType('passcode')}
-                className={`py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${
-                  lockType === 'passcode'
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${lockType === 'passcode'
                     ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                }`}
+                  }`}
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>رمز رقمي (PIN)</span>
@@ -200,11 +200,10 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
               <button
                 type="button"
                 onClick={() => setLockType('pattern')}
-                className={`py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${
-                  lockType === 'pattern'
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${lockType === 'pattern'
                     ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                }`}
+                  }`}
               >
                 <Grid3X3 className="w-3.5 h-3.5" />
                 <span>نمط الشاشة</span>
@@ -217,11 +216,10 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
                   setLockPasscode('');
                   setLockPattern('');
                 }}
-                className={`py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${
-                  lockType === 'none'
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${lockType === 'none'
                     ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                }`}
+                  }`}
               >
                 <span>بدون قفل (مفتوح)</span>
               </button>
@@ -348,12 +346,16 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">التكلفة التقديرية (د.أ):</label>
               <input
-                type="number"
-                step="0.001"
-                min="0"
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
                 placeholder="0.000"
                 value={estimatedCost}
-                onChange={(e) => setEstimatedCost(e.target.value ? Number(e.target.value) : '')}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value);
+                  setEstimatedCost(clean === '' ? '' : Number(clean));
+                }}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
               />
             </div>
@@ -361,12 +363,16 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">الدفعة المقدمة (العربون):</label>
               <input
-                type="number"
-                step="0.001"
-                min="0"
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
                 placeholder="0.000"
                 value={advancePayment}
-                onChange={(e) => setAdvancePayment(e.target.value ? Number(e.target.value) : '')}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value);
+                  setAdvancePayment(clean === '' ? '' : Number(clean));
+                }}
                 className="w-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl p-2.5 text-xs text-emerald-700 dark:text-emerald-300 font-mono text-left font-bold"
               />
             </div>

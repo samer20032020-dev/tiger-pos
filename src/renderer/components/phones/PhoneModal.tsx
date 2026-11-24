@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Smartphone, Plus, Check } from 'lucide-react';
-import { PHONE_BRANDS, PHONE_STORAGE_OPTIONS, PHONE_RAM_OPTIONS, WARRANTY_OPTIONS } from '../../../shared/constants';
+import { PHONE_BRANDS, PHONE_STORAGE_OPTIONS, PHONE_RAM_OPTIONS, WARRANTY_OPTIONS, cleanNumberInput } from '../../../shared/constants';
 import { Phone, PhoneCondition } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
 
@@ -221,36 +221,51 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر التكلفة (د.أ):</label>
               <input
-                type="number"
-                step="0.001"
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
                 placeholder="مثال: 450.000"
                 value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value);
+                  setCostPrice(clean === '' ? '' : Number(clean));
+                }}
                 required
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-left"
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر البيع بالمفرق (د.أ):</label>
               <input
-                type="number"
-                step="0.001"
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
                 placeholder="مثال: 520.000"
                 value={sellingPrice}
-                onChange={(e) => setSellingPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value);
+                  setSellingPrice(clean === '' ? '' : Number(clean));
+                }}
                 required
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-orange-600"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-orange-600 text-left"
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر الجملة (Wholesale):</label>
               <input
-                type="number"
-                step="0.001"
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
                 placeholder="مثال: 490.000"
                 value={wholesalePrice}
-                onChange={(e) => setWholesalePrice(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-amber-600"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const clean = cleanNumberInput(e.target.value);
+                  setWholesalePrice(clean === '' ? '' : Number(clean));
+                }}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-amber-600 text-left"
               />
             </div>
           </div>

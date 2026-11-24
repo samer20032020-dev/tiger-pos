@@ -7,7 +7,7 @@ import { useCartStore } from '../../stores/useCartStore';
 import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { PaymentMethod, Customer } from '../../../shared/types';
-import { formatJOD } from '../../../shared/constants';
+import { formatJOD, cleanNumberInput } from '../../../shared/constants';
 
 interface SplitPaymentModalProps {
   isOpen: boolean;
@@ -344,15 +344,18 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 </button>
               </div>
               <input
-                type="number"
-                step="0.001"
-                min="0"
-                value={cashAmount}
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
+                placeholder="0.000"
+                value={cashAmount === 0 ? '' : cashAmount}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => {
                   setPaymentMethod('split');
-                  setCashAmount(Number(e.target.value) || 0);
+                  const clean = cleanNumberInput(e.target.value);
+                  setCashAmount(clean === '' ? 0 : parseFloat(clean));
                 }}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-left"
               />
             </div>
 
@@ -369,15 +372,18 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 </button>
               </div>
               <input
-                type="number"
-                step="0.001"
-                min="0"
-                value={cardAmount}
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
+                placeholder="0.000"
+                value={cardAmount === 0 ? '' : cardAmount}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => {
                   setPaymentMethod('split');
-                  setCardAmount(Number(e.target.value) || 0);
+                  const clean = cleanNumberInput(e.target.value);
+                  setCardAmount(clean === '' ? 0 : parseFloat(clean));
                 }}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-left"
               />
             </div>
 
@@ -394,15 +400,18 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 </button>
               </div>
               <input
-                type="number"
-                step="0.001"
-                min="0"
-                value={cliqAmount}
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
+                placeholder="0.000"
+                value={cliqAmount === 0 ? '' : cliqAmount}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => {
                   setPaymentMethod('split');
-                  setCliqAmount(Number(e.target.value) || 0);
+                  const clean = cleanNumberInput(e.target.value);
+                  setCliqAmount(clean === '' ? 0 : parseFloat(clean));
                 }}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-left"
               />
             </div>
           </div>

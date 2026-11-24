@@ -5,7 +5,7 @@ import {
   AlertCircle, Smartphone, Wrench, CalendarClock, Trash2, CheckCircle2
 } from 'lucide-react';
 import { Customer, CustomerStatement, PaymentMethod } from '../../../shared/types';
-import { formatJOD } from '../../../shared/constants';
+import { formatJOD, cleanNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const CustomersTab: React.FC = () => {
@@ -545,15 +545,18 @@ export const CustomersTab: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">المبلغ المدفوع (د.أ):</label>
                 <input
-                  type="number"
-                  step="0.001"
-                  min="0.001"
-                  max={debtPayCustomer.balance > 0 ? debtPayCustomer.balance : undefined}
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
                   value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const clean = cleanNumberInput(e.target.value);
+                    setPayAmount(clean === '' ? '' : Number(clean));
+                  }}
                   required
                   placeholder="0.000"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-sm font-mono font-bold text-emerald-600"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-sm font-mono font-bold text-emerald-600 text-left"
                 />
               </div>
 

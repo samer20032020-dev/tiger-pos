@@ -433,9 +433,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.7';
-      let releaseNotes = '✨ إصدار v0.8.7: إخفاء تلقائي للعملاء المسددين بالكامل من جدول الذمم، تبويب خالصين ومسددين، وإمكانية حذف سجل العميل المسدد نهائياً.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.7';
+      let latestVersion = '0.8.8';
+      let releaseNotes = '✨ إصدار v0.8.8: مرونة تامة في كتابة الأرقام ودعم الأرقام العربية والإنجليزية بكافة الحقول وخانات المبالغ، والتركيز التلقائي وعرض آخر الفواتير في شاشة المرتجعات.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.8';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -483,7 +483,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.7',
+        latestVersion: '0.8.8',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

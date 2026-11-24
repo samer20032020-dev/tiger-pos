@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt, Plus, Search, DollarSign, Check } from 'lucide-react';
 import { Expense } from '../../../shared/types';
-import { EXPENSE_CATEGORIES, formatJOD } from '../../../shared/constants';
+import { EXPENSE_CATEGORIES, formatJOD, cleanNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 
@@ -162,12 +162,16 @@ export const ExpensesTab: React.FC = () => {
                 <div>
                   <label className="block text-xs font-bold text-red-600 dark:text-red-400 mb-1">المبلغ (د.أ):</label>
                   <input
-                    type="number"
-                    step="any"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
                     placeholder="0.000"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value ? Number(e.target.value) : '')}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const clean = cleanNumberInput(e.target.value);
+                      setAmount(clean === '' ? '' : Number(clean));
+                    }}
                     required
                     className="w-full bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-2.5 text-xs font-black text-red-600 font-mono text-left"
                   />

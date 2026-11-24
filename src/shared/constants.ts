@@ -110,3 +110,26 @@ export function formatJOD(amount: number, symbol: string = 'د.أ', decimals: nu
   }
   return `${Number(amount).toFixed(decimals)} ${symbol}`;
 }
+
+/**
+ * Normalizes Arabic-Indic (٠-٩) and Persian digits to Western ASCII (0-9),
+ * handles Arabic comma (،) and normal comma (,) as decimal point (.),
+ * and removes any illegal non-numeric characters.
+ */
+export function cleanNumberInput(input: string): string {
+  if (!input) return '';
+  return input
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString())
+    .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString())
+    .replace(/[،,]/g, '.')
+    .replace(/[^0-9.]/g, '')
+    .replace(/(\..*?)\..*/g, '$1');
+}
+
+export function parseNumberInput(input: string | number): number {
+  if (typeof input === 'number') return isNaN(input) ? 0 : input;
+  if (!input) return 0;
+  const cleaned = cleanNumberInput(String(input));
+  const val = parseFloat(cleaned);
+  return isNaN(val) ? 0 : val;
+}

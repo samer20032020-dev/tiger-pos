@@ -5,7 +5,7 @@ import {
   Percent, DollarSign, ShieldCheck, Briefcase 
 } from 'lucide-react';
 import { useCartStore } from '../../stores/useCartStore';
-import { formatJOD } from '../../../shared/constants';
+import { formatJOD, cleanNumberInput } from '../../../shared/constants';
 
 interface PosCartProps {
   onOpenTradeIn: () => void;
@@ -231,13 +231,15 @@ export const PosCart: React.FC<PosCartProps> = ({
           </div>
           <div className="flex items-center gap-1">
             <input
-              type="number"
-              step="any"
-              min="0"
+              type="text"
+              inputMode="decimal"
+              dir="ltr"
               value={discount || ''}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => {
+                const clean = cleanNumberInput(e.target.value);
                 setDiscountType('fixed');
-                setDiscount(Number(e.target.value));
+                setDiscount(clean === '' ? 0 : parseFloat(clean));
               }}
               placeholder="0.00"
               className="w-24 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 text-xs text-left font-mono font-bold text-red-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
