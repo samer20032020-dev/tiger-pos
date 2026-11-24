@@ -419,11 +419,11 @@ function registerIpcHandlers() {
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.7';
+      const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.7.8';
-      let releaseNotes = '✨ تعديل حر وكامل لكافة مبالغ حاسبة الصندوق (الافتتاحي، المقبوضات، المفترض، الفعلي) مع أزرار تصفير فورية وتصفير اليومية بالكامل عند الترحيل.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.7.8';
+      let latestVersion = '0.7.9';
+      let releaseNotes = '✨ إصلاح شامل ودائم لآلية التحديثات: تنزيل وتثبيت ملف التحديث التلقائي، واستبدال ملفات البرنامج في النظام، وإعادة التشغيل بالإصدار الجديد فوراً.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.7.9';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -460,18 +460,18 @@ function registerIpcHandlers() {
         latestVersion,
         releaseName,
         releaseNotes,
-        downloadUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
+        downloadUrl: `https://github.com/samer20032020-dev/tiger-pos/releases/download/v${latestVersion}/TIGER-Setup.exe`,
         htmlUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
         publishedAt
       };
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = (settings?.installedVersion && settings.installedVersion.trim()) || '0.6.7';
+      const curVer = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.7.8',
+        latestVersion: '0.7.9',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
@@ -479,31 +479,51 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:downloadUpdate', async (_, url: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.8';
-      if (repository) {
-        repository.updateSettings({ installedVersion: targetVer });
-      }
-      if (dbInstance) {
-        try {
-          dbInstance.saveToDiskSync();
-        } catch { }
-      }
       const tempDir = app.getPath('temp');
       const targetPath = path.join(tempDir, 'TIGER-Update-Setup.exe');
 
-      if (url && url.startsWith('http') && url.endsWith('.exe')) {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`فشل تحميل التحديث (رمز ${res.status})`);
-        const arrayBuf = await res.arrayBuffer();
-        fs.writeFileSync(targetPath, Buffer.from(arrayBuf));
-        return { success: true, filePath: targetPath };
+      let downloadSuccess = false;
+
+      // 1. Attempt online download if valid URL provided
+      if (url && url.startsWith('http')) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const arrayBuf = await res.arrayBuffer();
+            if (arrayBuf.byteLength > 20 * 1024 * 1024) { // Valid setup binary > 20MB
+              fs.writeFileSync(targetPath, Buffer.from(arrayBuf));
+              downloadSuccess = true;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('[DownloadUpdate] Online fetch error, checking local fallbacks', fetchErr);
+        }
       }
 
-      // Check if local installer exists on Desktop to prepare seamless instant local update
-      const desktopSetup = path.join(app.getPath('desktop'), 'TIGER-Setup.exe');
-      if (fs.existsSync(desktopSetup)) {
-        fs.copyFileSync(desktopSetup, targetPath);
-        return { success: true, filePath: targetPath };
+      // 2. If online download didn't produce the installer, fallback to local installer files
+      if (!downloadSuccess) {
+        const localCandidates = [
+          path.join(app.getPath('desktop'), 'TIGER-Setup.exe'),
+          path.join(process.cwd(), 'release', 'TIGER-Setup.exe'),
+          path.join(process.cwd(), 'TIGER-Setup.exe')
+        ];
+
+        for (const loc of localCandidates) {
+          try {
+            if (fs.existsSync(loc)) {
+              const stats = fs.statSync(loc);
+              if (stats.size > 20 * 1024 * 1024) {
+                fs.copyFileSync(loc, targetPath);
+                downloadSuccess = true;
+                break;
+              }
+            }
+          } catch { }
+        }
+      }
+
+      if (!downloadSuccess) {
+        throw new Error('لم يتم العثور على ملف التثبيت التحديثي (TIGER-Setup.exe). يرجى التأكد من توفر الملف على سطح المكتب.');
       }
 
       return { success: true, filePath: targetPath };
@@ -515,36 +535,82 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:installUpdateAndRestart', async (_, filePath?: string, newVersion?: string) => {
     try {
-      const targetVer = newVersion || '0.7.8';
-      if (repository) {
-        repository.updateSettings({ installedVersion: targetVer });
-      }
       if (dbInstance) {
         try {
           dbInstance.saveToDiskSync();
         } catch { }
       }
 
-      try {
-        app.relaunch();
-      } catch {
-        const { spawn } = require('child_process');
-        const targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
-        const child = spawn(targetExe, [], {
-          detached: true,
-          stdio: 'ignore'
-        });
-        child.unref();
+      const tempDir = app.getPath('temp');
+      const candidatePaths = [
+        filePath,
+        path.join(tempDir, 'TIGER-Update-Setup.exe'),
+        path.join(app.getPath('desktop'), 'TIGER-Setup.exe'),
+        path.join(process.cwd(), 'release', 'TIGER-Setup.exe'),
+        path.join(process.cwd(), 'TIGER-Setup.exe')
+      ].filter(Boolean) as string[];
+
+      let installerPath = '';
+      for (const p of candidatePaths) {
+        try {
+          if (fs.existsSync(p)) {
+            const stats = fs.statSync(p);
+            if (stats.size > 20 * 1024 * 1024) {
+              installerPath = p;
+              break;
+            }
+          }
+        } catch { }
       }
+
+      if (!installerPath) {
+        throw new Error('ملف التحديث غير موجود، يرجى إعادة تنزيل التحديث أولاً.');
+      }
+
+      const installedExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+      const batPath = path.join(tempDir, 'tiger_apply_update.bat');
+      const batContent = `@echo off
+chcp 65001 >nul
+echo [TIGER] Closing running instance...
+timeout /t 1 /nobreak >nul
+taskkill /F /IM TIGER.exe >nul 2>&1
+timeout /t 1 /nobreak >nul
+
+echo [TIGER] Running installer: "${installerPath}"
+start "" /wait "${installerPath}" /S
+
+if %ERRORLEVEL% NEQ 0 (
+  echo [TIGER] Silent install returned %ERRORLEVEL%, opening interactive setup wizard...
+  start "" "${installerPath}"
+  exit /b
+)
+
+timeout /t 1 /nobreak >nul
+if exist "${installedExe}" (
+  echo [TIGER] Launching updated application...
+  start "" "${installedExe}"
+)
+exit /b
+`;
+
+      fs.writeFileSync(batPath, batContent, 'utf8');
+
+      const { spawn } = require('child_process');
+      const child = spawn('cmd.exe', ['/c', batPath], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
 
       setTimeout(() => {
         app.exit(0);
-      }, 300);
-    } catch (err) {
-      try {
-        app.relaunch();
-      } catch { }
-      app.exit(0);
+      }, 500);
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('[Install Update Error]:', err);
+      return { success: false, error: err.message };
     }
   });
 }
@@ -558,6 +624,17 @@ app.whenReady().then(async () => {
     repository = new TigerRepository(db);
     excelService = new ExcelService(db);
     backupService = new BackupService(db);
+
+    // Sync installedVersion with app.getVersion()
+    try {
+      const realVer = app.getVersion();
+      if (realVer && repository) {
+        repository.updateSettings({ installedVersion: realVer });
+        db.saveToDiskSync();
+      }
+    } catch (e) {
+      console.warn('[VersionSync] Could not sync version:', e);
+    }
 
     registerIpcHandlers();
     await createWindow();

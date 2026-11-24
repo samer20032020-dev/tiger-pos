@@ -104,7 +104,7 @@ export interface TigerAPI {
   getAppVersion: () => Promise<string>;
   checkGithubUpdate: (repoOverride?: string) => Promise<UpdateCheckResult>;
   downloadUpdate: (url: string, newVersion?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
-  installUpdateAndRestart: (filePath?: string, newVersion?: string) => Promise<void>;
+  installUpdateAndRestart: (filePath?: string, newVersion?: string) => Promise<{ success: boolean; error?: string } | void>;
   openExternal: (url: string) => Promise<void>;
 
   // Zoom & Viewport

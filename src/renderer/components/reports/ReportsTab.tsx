@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FileSpreadsheet, Download, Calendar, DollarSign, 
-  CheckCircle2, TrendingUp, Receipt, Wrench, 
+import {
+  FileSpreadsheet, Download, Calendar, DollarSign,
+  CheckCircle2, TrendingUp, Receipt, Wrench,
   CreditCard, Wallet, Banknote, Search, Layers,
   ChevronDown, CheckSquare, Square, ArrowDownToLine,
   Lock, AlertTriangle, Sparkles, RefreshCw, Eye
@@ -168,19 +168,19 @@ export const ReportsTab: React.FC = () => {
   const unpostedDiscounts = unpostedInvoices.reduce((sum, i) => sum + (i.discount || 0), 0);
   const unpostedProfit = unpostedInvoices.reduce((sum, i) => sum + (i.totalProfit || 0), 0);
   const unpostedCash = unpostedInvoices.reduce((sum, i) => sum + (i.cashAmount || 0), 0);
-  
+
   // Repairs cash from unposted repairs in drawer
   const unpostedRepairsCash = repairs
     .filter(r => !r.isPosted)
     .reduce((sum, r) => sum + (r.advancePayment || 0) + (r.status === 'delivered' ? Math.max(0, r.finalCost - r.advancePayment) : 0), 0);
 
   const autoReceipts = unpostedCash + unpostedRepairsCash;
-  const effectiveReceipts = isManualReceipts 
-    ? (parseFloat(receiptsOverrideInput) || 0) 
+  const effectiveReceipts = isManualReceipts
+    ? (parseFloat(receiptsOverrideInput) || 0)
     : autoReceipts;
   const autoExpectedDrawerCash = startingCash + effectiveReceipts;
-  const totalExpectedDrawerCash = isManualExpected 
-    ? (parseFloat(expectedOverrideInput) || 0) 
+  const totalExpectedDrawerCash = isManualExpected
+    ? (parseFloat(expectedOverrideInput) || 0)
     : autoExpectedDrawerCash;
   const cashDifference = actualCash - totalExpectedDrawerCash;
 
@@ -217,7 +217,7 @@ export const ReportsTab: React.FC = () => {
   };
 
   const toggleSelectInvoice = (id: string) => {
-    setSelectedInvoiceIds(prev => 
+    setSelectedInvoiceIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
@@ -288,7 +288,7 @@ export const ReportsTab: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 select-none max-w-6xl mx-auto pb-28 font-cairo">
-      
+
       {/* Top Header & Main Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
@@ -306,11 +306,10 @@ export const ReportsTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveMode('settlement')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${
-              activeMode === 'settlement'
-                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${activeMode === 'settlement'
+              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
           >
             <Banknote className="w-4 h-4" />
             <span>إغلاق الخزينة والترحيل اليومي (الجرد)</span>
@@ -324,11 +323,10 @@ export const ReportsTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveMode('monthly')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${
-              activeMode === 'monthly'
-                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${activeMode === 'monthly'
+              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>التقارير المالية وتصدير Excel</span>
@@ -366,11 +364,10 @@ export const ReportsTab: React.FC = () => {
                 key={f.id}
                 type="button"
                 onClick={() => setTimeFilter(f.id as TimeFilter)}
-                className={`px-4 py-2.5 rounded-xl text-sm sm:text-base font-black transition ${
-                  timeFilter === f.id
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/35 ring-2 ring-orange-400'
-                    : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
+                className={`px-4 py-2.5 rounded-xl text-sm sm:text-base font-black transition ${timeFilter === f.id
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/35 ring-2 ring-orange-400'
+                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
               >
                 {f.label}
               </button>
@@ -413,7 +410,7 @@ export const ReportsTab: React.FC = () => {
 
           {/* Top 5 KPI Cards for Unposted/Current Drawer Session */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            
+
             {/* 1. Unposted Sales */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-1">
               <span className="text-[11px] font-bold text-slate-500 block">إجمالي مبيعات الصندوق</span>
@@ -494,7 +491,7 @@ export const ReportsTab: React.FC = () => {
 
             {/* Reconciliation Equation: Starting + Today Sales = Expected vs Actual (Fully Editable With Glowing Highlights) */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-              
+
               {/* 1. Starting Cash */}
               <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-1.5 shadow-sm">
                 <div className="flex items-center justify-between">
@@ -630,13 +627,12 @@ export const ReportsTab: React.FC = () => {
               </div>
 
               {/* 4. Actual Cash Input & Difference (Glowing Status) */}
-              <div className={`bg-slate-800/80 rounded-2xl p-4 space-y-1.5 transition ${
-                hasActualCashEntered && Math.abs(cashDifference) > 0.005 && cashDifference < 0
-                  ? 'border-2 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.35)] ring-2 ring-red-500/50'
-                  : hasActualCashEntered && Math.abs(cashDifference) < 0.005
+              <div className={`bg-slate-800/80 rounded-2xl p-4 space-y-1.5 transition ${hasActualCashEntered && Math.abs(cashDifference) > 0.005 && cashDifference < 0
+                ? 'border-2 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.35)] ring-2 ring-red-500/50'
+                : hasActualCashEntered && Math.abs(cashDifference) < 0.005
                   ? 'border-2 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.35)] ring-2 ring-emerald-500/50'
                   : 'border border-slate-700'
-              }`}>
+                }`}>
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-300 block">الكاش الفعلي بعد العد بالدرج:</label>
                   <div className="flex items-center gap-1.5">
@@ -700,7 +696,7 @@ export const ReportsTab: React.FC = () => {
 
           {/* Detailed Transactions Ledger Table with Posting & Cost/Profit Breakdown */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
-            
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <h2 className="text-sm font-black text-slate-800 dark:text-white">
@@ -711,31 +707,28 @@ export const ReportsTab: React.FC = () => {
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
                   <button
                     onClick={() => setPostingFilter('unposted')}
-                    className={`px-2.5 py-1 rounded-lg transition ${
-                      postingFilter === 'unposted'
-                        ? 'bg-orange-500 text-white shadow-sm'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg transition ${postingFilter === 'unposted'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
                   >
                     غير مرحل ({unpostedInvoices.length})
                   </button>
                   <button
                     onClick={() => setPostingFilter('posted')}
-                    className={`px-2.5 py-1 rounded-lg transition ${
-                      postingFilter === 'posted'
-                        ? 'bg-orange-500 text-white shadow-sm'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg transition ${postingFilter === 'posted'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
                   >
                     مرحّل ومغلق ({postedInvoices.length})
                   </button>
                   <button
                     onClick={() => setPostingFilter('all')}
-                    className={`px-2.5 py-1 rounded-lg transition ${
-                      postingFilter === 'all'
-                        ? 'bg-orange-500 text-white shadow-sm'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg transition ${postingFilter === 'all'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
                   >
                     الكل ({periodInvoices.length})
                   </button>
@@ -813,9 +806,8 @@ export const ReportsTab: React.FC = () => {
                       return (
                         <tr
                           key={inv.id}
-                          className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition ${
-                            isSelected ? 'bg-orange-50/40 dark:bg-orange-950/20' : ''
-                          }`}
+                          className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition ${isSelected ? 'bg-orange-50/40 dark:bg-orange-950/20' : ''
+                            }`}
                         >
                           <td className="p-3 text-center">
                             {!inv.isPosted ? (
@@ -884,9 +876,9 @@ export const ReportsTab: React.FC = () => {
                           <td className="p-3">
                             <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                               {inv.paymentMethod === 'cash' ? 'نقدي' :
-                               inv.paymentMethod === 'card' ? 'بطاقة' :
-                               inv.paymentMethod === 'cliq' ? 'كليك' :
-                               inv.paymentMethod === 'split' ? 'مقسم' : 'ذمم'}
+                                inv.paymentMethod === 'card' ? 'بطاقة' :
+                                  inv.paymentMethod === 'cliq' ? 'كليك' :
+                                    inv.paymentMethod === 'split' ? 'مقسم' : 'ذمم'}
                             </span>
                           </td>
                           <td className="p-3 text-center">
@@ -997,11 +989,10 @@ export const ReportsTab: React.FC = () => {
                   key={tab.id}
                   type="button"
                   onClick={() => setTimeFilter(tab.id as TimeFilter)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-                    timeFilter === tab.id
-                      ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  }`}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${timeFilter === tab.id
+                    ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -1011,7 +1002,7 @@ export const ReportsTab: React.FC = () => {
 
           {/* KPI Financial Overview Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
+
             {/* 1. Total Sales */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
               <div className="flex items-center justify-between">

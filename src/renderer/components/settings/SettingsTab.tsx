@@ -231,25 +231,29 @@ export const SettingsTab: React.FC = () => {
     if (!updateInfo) return;
     setDownloadingUpdate(true);
     setDownloadProgress(20);
-    addToast('⏳ جاري تنزيل التحديث في الخلفية...', 'info');
+    addToast('⏳ جاري تجهيز وتنزيل التحديث...', 'info');
 
     try {
-      setTimeout(() => setDownloadProgress(55), 400);
-      setTimeout(() => setDownloadProgress(85), 900);
+      const t1 = setTimeout(() => setDownloadProgress(55), 300);
+      const t2 = setTimeout(() => setDownloadProgress(85), 600);
 
-      const targetVer = updateInfo.latestVersion || '0.6.2';
+      const targetVer = updateInfo.latestVersion || '0.7.9';
       const res = await window.tigerAPI.downloadUpdate(updateInfo.downloadUrl || '', targetVer);
+      
+      clearTimeout(t1);
+      clearTimeout(t2);
       setDownloadProgress(100);
+
       setTimeout(() => {
         setDownloadingUpdate(false);
         if (res.success) {
           setUpdateReadyToRestart(true);
           setDownloadedFilePath(res.filePath);
-          addToast('✅ تم تنزيل التحديث بنجاح! اضغط إعادة التشغيل للبدء بالإصدار الجديد', 'success');
+          addToast('✅ تم تجهيز ملف التحديث بنجاح! اضغط على "إعادة التشغيل وتطبيق التحديث" للبدء بالإصدار الجديد', 'success');
         } else {
-          addToast(res.error || 'فشل تنزيل التحديث', 'error');
+          addToast(res.error || 'فشل تنزيل ملف التحديث', 'error');
         }
-      }, 1200);
+      }, 500);
     } catch (err: any) {
       setDownloadingUpdate(false);
       addToast(err.message || 'فشل تنزيل التحديث', 'error');
@@ -257,9 +261,12 @@ export const SettingsTab: React.FC = () => {
   };
 
   const handleRestartNow = async () => {
-    addToast('🔄 جاري تطبيق التحديث وإعادة تشغيل البرنامج الآن...', 'info');
-    const targetVer = updateInfo?.latestVersion || '0.6.2';
-    await window.tigerAPI.installUpdateAndRestart(downloadedFilePath, targetVer);
+    addToast('🔄 جاري تشغيل مثبت التحديث وإغلاق البرنامج وتطبيق الإصدار الجديد...', 'info');
+    const targetVer = updateInfo?.latestVersion || '0.7.9';
+    const res = await window.tigerAPI.installUpdateAndRestart(downloadedFilePath, targetVer);
+    if (res && (res as any).success === false) {
+      addToast((res as any).error || 'تعذر بدء التحديث', 'error');
+    }
   };
 
   const handleCreateBackup = async () => {
