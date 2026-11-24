@@ -337,23 +337,23 @@ export const ReportsTab: React.FC = () => {
       </div>
 
       {/* Universal Date Filter Bar (+25% Bigger, Ultra Clear & Vibrant) */}
-      <div className="bg-white dark:bg-slate-900 border-2 border-orange-500/30 dark:border-orange-500/20 rounded-3xl p-5 shadow-md space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-bold shadow-md shadow-orange-500/30">
-              <Calendar className="w-5 h-5" />
+      <div className="bg-white dark:bg-slate-900 border-2 border-orange-500/40 dark:border-orange-500/30 rounded-3xl p-6 shadow-lg space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-bold shadow-lg shadow-orange-500/40 shrink-0">
+              <Calendar className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-sm font-black text-slate-900 dark:text-white block">
+              <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white block">
                 تصفية الفترة الزمنية للتقارير والعمليات
               </span>
-              <span className="text-xs text-slate-400 block font-medium">
+              <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 block font-medium mt-0.5">
                 اختر الفترة أو حدد تاريخاً حراً (متاح للشفتات المسائية وما بعد منتصف الليل)
               </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-2 rounded-2xl border border-slate-200 dark:border-slate-700/60">
+          <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-800/90 p-2 rounded-2xl border border-slate-200 dark:border-slate-700/70">
             {[
               { id: 'today', label: 'اليوم' },
               { id: 'yesterday_today', label: 'أمس واليوم (48 ساعة)' },
@@ -366,10 +366,10 @@ export const ReportsTab: React.FC = () => {
                 key={f.id}
                 type="button"
                 onClick={() => setTimeFilter(f.id as TimeFilter)}
-                className={`px-4 py-2 rounded-xl text-sm font-black transition ${
+                className={`px-4 py-2.5 rounded-xl text-sm sm:text-base font-black transition ${
                   timeFilter === f.id
-                    ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30 ring-2 ring-orange-400/50'
-                    : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/35 ring-2 ring-orange-400'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 {f.label}
@@ -379,26 +379,26 @@ export const ReportsTab: React.FC = () => {
         </div>
 
         {timeFilter === 'custom' && (
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-6 text-sm animate-fadeIn">
+          <div className="pt-4 border-t-2 border-orange-500/20 dark:border-orange-500/20 flex flex-wrap items-center gap-6 animate-fadeIn">
             <div className="flex items-center gap-3">
-              <span className="text-slate-900 dark:text-white font-black text-sm">من تاريخ:</span>
+              <span className="text-slate-900 dark:text-white font-black text-base sm:text-lg">من تاريخ:</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-950 border-2 border-orange-500/60 rounded-2xl px-4 py-2 font-mono text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 shadow-sm"
+                className="bg-white dark:bg-slate-950 border-2 border-orange-500 rounded-2xl px-5 py-3 font-mono text-base sm:text-lg font-black text-slate-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-orange-500/20 shadow-md shadow-orange-500/10 cursor-pointer"
               />
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-slate-900 dark:text-white font-black text-sm">إلى تاريخ:</span>
+              <span className="text-slate-900 dark:text-white font-black text-base sm:text-lg">إلى تاريخ:</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-950 border-2 border-orange-500/60 rounded-2xl px-4 py-2 font-mono text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 shadow-sm"
+                className="bg-white dark:bg-slate-950 border-2 border-orange-500 rounded-2xl px-5 py-3 font-mono text-base sm:text-lg font-black text-slate-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-orange-500/20 shadow-md shadow-orange-500/10 cursor-pointer"
               />
             </div>
-            <span className="text-xs text-orange-600 dark:text-orange-400 font-black bg-orange-50 dark:bg-orange-950/40 px-3 py-1.5 rounded-xl border border-orange-200 dark:border-orange-800/40">
+            <span className="text-sm text-orange-600 dark:text-orange-400 font-black bg-orange-100 dark:bg-orange-950/60 px-4 py-2 rounded-2xl border-2 border-orange-300 dark:border-orange-700/50 shadow-sm">
               ✓ يتم عرض وتحديث الحسابات بين هذين التاريخين فوراً
             </span>
           </div>
@@ -836,10 +836,10 @@ export const ReportsTab: React.FC = () => {
                           <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
                             {inv.invoiceNumber}
                           </td>
-                          <td className="p-3 font-mono text-slate-500 text-[11px] whitespace-nowrap">
-                            <div>{inv.createdAt ? inv.createdAt.replace('T', ' ').substring(5, 16) : '-'}</div>
+                          <td className="p-3 font-mono text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap">
+                            <div className="font-bold">{inv.createdAt ? inv.createdAt.replace('T', ' ').substring(5, 16) : '-'}</div>
                             {isPriorShift && (
-                              <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[9px] font-bold">
+                              <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200 text-[10px] font-black">
                                 شفت سابق
                               </span>
                             )}
