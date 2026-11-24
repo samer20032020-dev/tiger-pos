@@ -13,7 +13,7 @@ export interface TigerAPI {
 
   // Users & Auth
   getAllUsers: () => Promise<User[]>;
-  getUserByPin: (pin: string) => Promise<User | null>;
+  getUserByPin: (pin: string, userId?: string) => Promise<User | null>;
   createUser: (user: Omit<User, 'id' | 'createdAt'>) => Promise<User>;
   toggleUserActive: (userId: string, active: boolean) => Promise<void>;
   updateUser: (id: string, updates: Partial<User>) => Promise<void>;
@@ -120,7 +120,7 @@ const tigerAPI: TigerAPI = {
 
   // Users
   getAllUsers: () => ipcRenderer.invoke('db:getAllUsers'),
-  getUserByPin: (pin) => ipcRenderer.invoke('db:getUserByPin', pin),
+  getUserByPin: (pin, userId) => ipcRenderer.invoke('db:getUserByPin', pin, userId),
   createUser: (user) => ipcRenderer.invoke('db:createUser', user),
   toggleUserActive: (userId, active) => ipcRenderer.invoke('db:toggleUserActive', userId, active),
   updateUser: (id, updates) => ipcRenderer.invoke('db:updateUser', id, updates),

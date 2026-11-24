@@ -10,7 +10,7 @@ import type {
 export interface TigerAPI {
   getDashboardStats: () => Promise<DashboardStats>;
   getAllUsers: () => Promise<User[]>;
-  getUserByPin: (pin: string) => Promise<User | null>;
+  getUserByPin: (pin: string, userId?: string) => Promise<User | null>;
   createUser: (user: Omit<User, 'id' | 'createdAt'>) => Promise<User>;
   toggleUserActive: (userId: string, active: boolean) => Promise<void>;
   updateUser: (id: string, updates: Partial<User>) => Promise<void>;

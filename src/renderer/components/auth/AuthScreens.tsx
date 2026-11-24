@@ -73,21 +73,40 @@ export const AuthScreen: React.FC = () => {
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError('');
-    if (!pin) {
+    const cleanPin = pin.trim();
+    if (!cleanPin) {
       setError('يرجى إدخال رمز الدخول');
+      return;
+    }
+    if (!currentTargetUser) {
+      setError('يرجى اختيار الحساب المطلوب لتسجيل الدخول');
       return;
     }
     setSubmitting(true);
     try {
-      const user = await window.tigerAPI.getUserByPin(pin);
-      if (!user || user.id !== currentTargetUser?.id) {
+      const normalizePin = (s: string) =>
+        (s || '')
+          .toString()
+          .replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)])
+          .replace(/[۰-۹]/g, d => '0123456789'['۰۱۲۳۴۵۶۷۸۹'.indexOf(d)])
+          .trim();
+
+      const user = await window.tigerAPI.getUserByPin(cleanPin, currentTargetUser.id);
+      
+      const pinMatches = user
+        ? true
+        : normalizePin(cleanPin) === normalizePin(currentTargetUser.pinCode);
+
+      if (!pinMatches) {
         setError('رمز الدخول غير صحيح');
         setPin('');
         return;
       }
-      setCurrentUser(user);
+
+      const loggedInUser = user || currentTargetUser;
+      setCurrentUser(loggedInUser);
       setScreen('app');
-      addToast(`مرحباً ${user.fullName} 👋`, 'success');
+      addToast(`مرحباً ${loggedInUser.fullName} 👋`, 'success');
     } catch (err: any) {
       setError(err?.message || 'حدث خطأ في تسجيل الدخول');
     } finally {

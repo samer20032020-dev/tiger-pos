@@ -68,8 +68,22 @@ export class TigerRepository {
     }));
   }
 
-  public getUserByPin(pin: string): User | null {
-    const r = this.db.queryOne('SELECT * FROM users WHERE pin_code = ? AND active = 1', [pin]);
+  public getUserByPin(pin: string, userId?: string): User | null {
+    const cleanPin = pin.trim();
+    let r;
+    if (userId) {
+      r = this.db.queryOne('SELECT * FROM users WHERE id = ? AND pin_code = ? AND active = 1', [userId, cleanPin]);
+      if (!r) {
+        // Fallback: check all active users and compare normalized PINs
+        const userRow = this.db.queryOne('SELECT * FROM users WHERE id = ? AND active = 1', [userId]);
+        if (userRow && userRow.pin_code && userRow.pin_code.trim() === cleanPin) {
+          r = userRow;
+        }
+      }
+    } else {
+      r = this.db.queryOne('SELECT * FROM users WHERE pin_code = ? AND active = 1', [cleanPin]);
+    }
+
     if (!r) return null;
     return {
       id: r.id,

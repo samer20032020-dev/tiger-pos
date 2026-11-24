@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getDatabase, LocalDatabase } from './db/database';
@@ -127,8 +127,8 @@ function registerIpcHandlers() {
     return repository!.getAllUsers();
   });
 
-  ipcMain.handle('db:getUserByPin', async (_, pin: string) => {
-    return repository!.getUserByPin(pin);
+  ipcMain.handle('db:getUserByPin', async (_, pin: string, userId?: string) => {
+    return repository!.getUserByPin(pin, userId);
   });
 
   ipcMain.handle('db:createUser', async (_, user) => {
@@ -425,9 +425,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.1';
-      let releaseNotes = '✨ إصدار v0.8.1: حل مشكلة تحديد مبالغ المصاريف والسلف وإتاحة إدخال أي رقم بحرية تامة دون قيود المتصفح.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.1';
+      let latestVersion = '0.8.2';
+      let releaseNotes = '✨ إصدار v0.8.2: إصلاح شامل لتسجيل دخول الموظفين ودعم تطابق كلمات المرور والـ PIN المشتركة والأرقام العربية والإنجليزية.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.2';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -475,7 +475,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.1',
+        latestVersion: '0.8.2',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
@@ -571,45 +571,31 @@ function registerIpcHandlers() {
         throw new Error('ملف التحديث غير موجود، يرجى إعادة تنزيل التحديث أولاً.');
       }
 
-      const installedExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
-      const batPath = path.join(tempDir, 'tiger_apply_update.bat');
+      // Launch installer directly via shell and exit app so files can be replaced
+      shell.openPath(installerPath).catch(() => {});
+
+      const { spawn } = require('child_process');
+      const batPath = path.join(tempDir, 'tiger_launch_installer.bat');
       const batContent = `@echo off
 chcp 65001 >nul
-echo [TIGER] Closing running instance...
 timeout /t 1 /nobreak >nul
 taskkill /F /IM TIGER.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
-
-echo [TIGER] Running installer: "${installerPath}"
-start "" /wait "${installerPath}" /S
-
-if %ERRORLEVEL% NEQ 0 (
-  echo [TIGER] Silent install returned %ERRORLEVEL%, opening interactive setup wizard...
-  start "" "${installerPath}"
-  exit /b
-)
-
-timeout /t 1 /nobreak >nul
-if exist "${installedExe}" (
-  echo [TIGER] Launching updated application...
-  start "" "${installedExe}"
-)
+start "" "${installerPath}"
 exit /b
 `;
-
-      fs.writeFileSync(batPath, batContent, 'utf8');
-
-      const { spawn } = require('child_process');
-      const child = spawn('cmd.exe', ['/c', batPath], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true
-      });
-      child.unref();
+      try {
+        fs.writeFileSync(batPath, batContent, 'utf8');
+        const child = spawn('cmd.exe', ['/c', batPath], {
+          detached: true,
+          stdio: 'ignore'
+        });
+        child.unref();
+      } catch { }
 
       setTimeout(() => {
         app.exit(0);
-      }, 500);
+      }, 600);
 
       return { success: true };
     } catch (err: any) {
