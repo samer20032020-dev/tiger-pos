@@ -9,6 +9,7 @@ import { REPAIR_PART_CATEGORIES, formatJOD, isRepairCategory } from '../../../sh
 import { AccessoryModal } from '../accessories/AccessoryModal';
 import { BarcodeStickerModal } from '../common/BarcodeStickerModal';
 import { DamagedItemModal } from '../common/DamagedItemModal';
+import { RowActionsMenu, RowActionItem } from '../common/RowActionsMenu';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const RepairPartsTab: React.FC = () => {
@@ -554,52 +555,50 @@ export const RepairPartsTab: React.FC = () => {
                         )}
                       </td>
                       <td className="p-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => setBarcodePart(part)}
-                            title="طباعة استيكر الباركود 50x25mm"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-orange-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-                          {isAdmin && (
-                            <>
-                              <button
-                                onClick={() => {
+                        <RowActionsMenu
+                          actions={(() => {
+                            const items: RowActionItem[] = [
+                              {
+                                label: 'طباعة باركود 50x25',
+                                icon: <Printer className="w-3.5 h-3.5" />,
+                                variant: 'orange',
+                                onClick: () => setBarcodePart(part)
+                              }
+                            ];
+                            if (isAdmin) {
+                              items.push({
+                                label: 'تعديل القطعة',
+                                icon: <Edit2 className="w-3.5 h-3.5" />,
+                                variant: 'info',
+                                onClick: () => {
                                   setEditingPart(part);
                                   setAddOpen(true);
-                                }}
-                                title="تعديل قطعة الصيانة"
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleMoveToAccessories(part)}
-                                title="نقل إلى قسم الإكسسوارات"
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-purple-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                              >
-                                <ArrowLeftRight className="w-4 h-4" />
-                              </button>
-                              {part.currentStock > 0 && (
-                                <button
-                                  onClick={() => setDamagedPart(part)}
-                                  title="تسجيل قطعة تالفة أو شطب أو مرتجع"
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                >
-                                  <AlertTriangle className="w-4 h-4" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleDeletePart(part)}
-                                title="حذف قطعة الصيانة نهائياً"
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-                        </div>
+                                }
+                              });
+                              items.push({
+                                label: 'نقل للإكسسوارات',
+                                icon: <ArrowLeftRight className="w-3.5 h-3.5" />,
+                                variant: 'purple',
+                                onClick: () => handleMoveToAccessories(part)
+                              });
+                              if (part.currentStock > 0) {
+                                items.push({
+                                  label: 'تسجيل تالف / مرتجع',
+                                  icon: <AlertTriangle className="w-3.5 h-3.5" />,
+                                  variant: 'warning',
+                                  onClick: () => setDamagedPart(part)
+                                });
+                              }
+                              items.push({
+                                label: 'حذف نهائي',
+                                icon: <Trash2 className="w-3.5 h-3.5" />,
+                                variant: 'danger',
+                                onClick: () => handleDeletePart(part)
+                              });
+                            }
+                            return items;
+                          })()}
+                        />
                       </td>
                     </tr>
                   );

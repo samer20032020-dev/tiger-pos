@@ -445,9 +445,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.9.1';
-      let releaseNotes = '✨ إصدار v0.9.1: إخفاء سعر التكلفة وصافي الأرباح عن بوابة الموظف بالكامل، إضافة شريط إجمالي التكلفة والبيع للمدير بالهواتف، تفعيل تعديل سعر البيع مباشرة بالسلة، وتجهيز بنود الحوالات وصافي الصيانة بتكلفة 0 وكمية لا نهائية ∞.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.1';
+      let latestVersion = '0.9.2';
+      let releaseNotes = '✨ إصدار v0.9.2: تحويل عمود الإجراءات بالجداول إلى قائمة منسدلة أنيقة بسهم لكل صف لتقليص عرض الجدول وترتيبه.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.2';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -495,7 +495,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.9.1',
+        latestVersion: '0.9.2',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

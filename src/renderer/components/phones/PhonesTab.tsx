@@ -10,6 +10,7 @@ import { PhoneModal } from './PhoneModal';
 import { ImeiHistoryModal } from './ImeiHistoryModal';
 import { BarcodeStickerModal } from '../common/BarcodeStickerModal';
 import { DamagedItemModal } from '../common/DamagedItemModal';
+import { RowActionsMenu, RowActionItem } from '../common/RowActionsMenu';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const PhonesTab: React.FC = () => {
@@ -236,31 +237,33 @@ export const PhonesTab: React.FC = () => {
                       {getStatusBadge(phone.status)}
                     </td>
                     <td className="p-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => setBarcodePhone(phone)}
-                          title="طباعة استيكر الباركود والـ IMEI"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-orange-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setHistoryImei({ imei: phone.imei1, title: `${phone.brand} ${phone.model}` })}
-                          title="عرض دورة حياة الجهاز وسجل الحركات"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                        >
-                          <History className="w-4 h-4" />
-                        </button>
-                        {isAdmin && phone.status === 'in_stock' && (
-                          <button
-                            onClick={() => setDamagedPhone(phone)}
-                            title="تسجيل جهاز تالف / شطب أو مرتجع للمورد"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
+                      <RowActionsMenu
+                        actions={(() => {
+                          const items: RowActionItem[] = [
+                            {
+                              label: 'طباعة باركود / IMEI',
+                              icon: <Printer className="w-3.5 h-3.5" />,
+                              variant: 'orange',
+                              onClick: () => setBarcodePhone(phone)
+                            },
+                            {
+                              label: 'دورة حياة الجهاز',
+                              icon: <History className="w-3.5 h-3.5" />,
+                              variant: 'info',
+                              onClick: () => setHistoryImei({ imei: phone.imei1, title: `${phone.brand} ${phone.model}` })
+                            }
+                          ];
+                          if (isAdmin && phone.status === 'in_stock') {
+                            items.push({
+                              label: 'تسجيل تالف / مرتجع',
+                              icon: <Trash2 className="w-3.5 h-3.5" />,
+                              variant: 'danger',
+                              onClick: () => setDamagedPhone(phone)
+                            });
+                          }
+                          return items;
+                        })()}
+                      />
                     </td>
                   </tr>
                 ))
