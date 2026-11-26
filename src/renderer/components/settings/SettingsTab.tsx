@@ -35,7 +35,7 @@ export const SettingsTab: React.FC = () => {
 
   // GitHub Auto-Update State (shared background store)
   const [githubRepo, setGithubRepo] = useState('samer20032020-dev/tiger-pos');
-  const [appVersion, setAppVersion] = useState('0.9.8');
+  const [appVersion, setAppVersion] = useState('0.9.9');
   const {
     status: updateStatus,
     updateInfo,

@@ -166,7 +166,13 @@ export const ReportsTab: React.FC = () => {
   const filteredInvoices = invoices.filter(inv => filterByDate(inv.createdAt));
   const activeFilteredInvoices = filteredInvoices.filter(inv => inv.status !== 'refunded');
   const refundedInvoices = filteredInvoices.filter(inv => inv.status === 'refunded');
-  const filteredRepairs = repairs.filter(rep => filterByDate(rep.createdAt));
+  // Only count delivered or paid repairs (exclude cancelled/in-progress) filtered by actual delivery date
+  const isSettledRepair = (rep: RepairTicket) =>
+    rep.status !== 'cancelled' && (rep.status === 'delivered' || Boolean(rep.isPaid));
+
+  const filteredRepairs = repairs.filter(
+    rep => isSettledRepair(rep) && filterByDate(rep.deliveredAt || rep.createdAt)
+  );
   const filteredExpenses = expenses.filter(exp => filterByDate(exp.createdAt));
 
   const totalSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
@@ -175,19 +181,29 @@ export const ReportsTab: React.FC = () => {
   const cardSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.cardAmount || 0), 0);
   const cliqSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.cliqAmount || 0), 0);
   const creditSales = activeFilteredInvoices.reduce((sum, inv) => sum + (inv.creditAmount || 0), 0);
-  const totalRepairsRevenue = filteredRepairs.reduce((sum, rep) => sum + (rep.finalCost || rep.advancePayment || 0), 0);
+  const totalRepairsRevenue = filteredRepairs.reduce((sum, rep) => sum + (rep.finalCost || rep.estimatedCost || 0), 0);
   const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
-  // Settlement / Unposted Calculations (All pending unposted transactions in drawer)
+  // Settlement / Unposted Calculations (POS Invoices + Delivered/Paid Repairs in Drawer)
   const unpostedInvoices = invoices.filter(i => !i.isPosted && i.status !== 'refunded');
+  const unpostedRepairs = repairs.filter(rep => !rep.isPosted && isSettledRepair(rep));
   const periodInvoices = invoices.filter(i => filterByDate(i.createdAt));
   const postedInvoices = invoices.filter(i => i.isPosted && i.status !== 'refunded' && filterByDate(i.createdAt));
 
-  const unpostedSales = unpostedInvoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
-  const unpostedCost = unpostedInvoices.reduce((sum, i) => sum + (i.totalCost || 0), 0);
+  const unpostedInvoiceSales = unpostedInvoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
+  const unpostedInvoiceCost = unpostedInvoices.reduce((sum, i) => sum + (i.totalCost || 0), 0);
   const unpostedDiscounts = unpostedInvoices.reduce((sum, i) => sum + (i.discount || 0), 0);
-  const unpostedProfit = unpostedInvoices.reduce((sum, i) => sum + (i.totalProfit || 0), 0);
-  const unpostedCash = unpostedInvoices.reduce((sum, i) => sum + (i.cashAmount || 0), 0);
+  const unpostedInvoiceProfit = unpostedInvoices.reduce((sum, i) => sum + (i.totalProfit || 0), 0);
+  const unpostedInvoiceCash = unpostedInvoices.reduce((sum, i) => sum + (i.cashAmount || 0), 0);
+
+  const unpostedRepairRevenue = unpostedRepairs.reduce((sum, rep) => sum + (rep.finalCost || rep.estimatedCost || 0), 0);
+  const unpostedRepairCost = unpostedRepairs.reduce((sum, rep) => sum + (rep.partsCost || 0), 0);
+  const unpostedRepairProfit = unpostedRepairRevenue - unpostedRepairCost;
+
+  const unpostedSales = unpostedInvoiceSales + unpostedRepairRevenue;
+  const unpostedCost = unpostedInvoiceCost + unpostedRepairCost;
+  const unpostedProfit = unpostedInvoiceProfit + unpostedRepairProfit;
+  const unpostedCash = unpostedInvoiceCash + unpostedRepairRevenue;
 
   // Repair Parts straight to Financial Reports (without sitting in Daily Closing)
   const filteredRepairParts = repairPartsReport.filter(rp => filterByDate(rp.createdAt));
@@ -230,6 +246,28 @@ export const ReportsTab: React.FC = () => {
       (inv.customerName && inv.customerName.toLowerCase().includes(q)) ||
       (inv.cashierName && inv.cashierName.toLowerCase().includes(q)) ||
       (inv.items && inv.items.some(it => it.name.toLowerCase().includes(q)))
+    );
+  });
+
+  const displayedRepairs = repairs.filter(rep => {
+    if (!isSettledRepair(rep)) return false;
+    if (postingFilter === 'unposted') {
+      if (rep.isPosted) return false;
+    } else if (postingFilter === 'posted') {
+      if (!rep.isPosted) return false;
+      if (!filterByDate(rep.deliveredAt || rep.createdAt)) return false;
+    } else if (postingFilter === 'refunded') {
+      return false;
+    } else {
+      if (!filterByDate(rep.deliveredAt || rep.createdAt)) return false;
+    }
+
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      rep.ticketNumber.toLowerCase().includes(q) ||
+      (rep.customerName && rep.customerName.toLowerCase().includes(q)) ||
+      (rep.deviceModel && rep.deviceModel.toLowerCase().includes(q))
     );
   });
 
@@ -351,9 +389,9 @@ export const ReportsTab: React.FC = () => {
           >
             <Banknote className="w-4 h-4" />
             <span>إغلاق الخزينة والترحيل اليومي (الجرد)</span>
-            {unpostedInvoices.length > 0 && (
+            {(unpostedInvoices.length + unpostedRepairs.length) > 0 && (
               <span className="bg-white/20 text-white px-2 py-0.5 rounded-full text-[10px]">
-                {unpostedInvoices.length} نشط
+                {unpostedInvoices.length + unpostedRepairs.length} نشط
               </span>
             )}
           </button>
@@ -455,7 +493,9 @@ export const ReportsTab: React.FC = () => {
               <div className="text-xl font-black font-mono text-slate-900 dark:text-white">
                 {formatJOD(unpostedSales)}
               </div>
-              <span className="text-[10px] text-slate-400 block">{unpostedInvoices.length} فاتورة غير مرحلة</span>
+              <span className="text-[10px] text-slate-400 block">
+                {unpostedInvoices.length} فواتير{unpostedRepairs.length > 0 ? ` + ${unpostedRepairs.length} صيانة` : ''} غير مرحلة
+              </span>
             </div>
 
             {/* 2. Total Cost / Wholesale */}
@@ -464,7 +504,7 @@ export const ReportsTab: React.FC = () => {
               <div className="text-xl font-black font-mono text-slate-600 dark:text-slate-300">
                 {formatJOD(unpostedCost)}
               </div>
-              <span className="text-[10px] text-slate-400 block">تكلفة البضاعة المباعة</span>
+              <span className="text-[10px] text-slate-400 block">تكلفة البضاعة وقطع الصيانة</span>
             </div>
 
             {/* 3. Discounts given by employee */}
@@ -482,16 +522,16 @@ export const ReportsTab: React.FC = () => {
               <div className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
                 {formatJOD(unpostedProfit)}
               </div>
-              <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 block">البيع - الجملة</span>
+              <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 block">البيع والصيانة - التكلفة</span>
             </div>
 
             {/* 5. Total Cash in Drawer */}
             <div className="col-span-2 sm:col-span-1 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-3xl p-4 shadow-sm space-y-1">
-              <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 block">نقدية المبيعات (الصندوق)</span>
+              <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 block">نقدية المبيعات والصيانة</span>
               <div className="text-xl font-black font-mono text-blue-600 dark:text-blue-400">
                 {formatJOD(unpostedCash)}
               </div>
-              <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70 block">المقبوض نقداً بالجرد (قطع الصيانة للتقارير مباشرة)</span>
+              <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70 block">المبيعات + صيانة مسلّمة ومدفوعة</span>
             </div>
 
           </div>
@@ -522,7 +562,7 @@ export const ReportsTab: React.FC = () => {
                 <span>
                   {postingLoading
                     ? 'جاري الترحيل وتصفير الصندوق...'
-                    : `ترحيل الصندوق وتصفير اليومية بالكامل (${unpostedInvoices.length} فواتير)`}
+                    : `ترحيل الصندوق وتصفير اليومية بالكامل (${unpostedInvoices.length} فواتير${unpostedRepairs.length > 0 ? ` + ${unpostedRepairs.length} صيانة` : ''})`}
                 </span>
               </button>
             </div>
@@ -740,7 +780,7 @@ export const ReportsTab: React.FC = () => {
                       : 'text-slate-600 dark:text-slate-300'
                       }`}
                   >
-                    غير مرحل ({unpostedInvoices.length})
+                    غير مرحل ({unpostedInvoices.length + unpostedRepairs.length})
                   </button>
                   <button
                     onClick={() => setPostingFilter('posted')}
@@ -816,28 +856,103 @@ export const ReportsTab: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {displayedInvoices.length === 0 ? (
+                  {displayedInvoices.length === 0 && displayedRepairs.length === 0 ? (
                     <tr>
                       <td colSpan={12} className="p-8 text-center text-slate-400 text-xs">
                         {postingFilter === 'unposted' ? (
                           <div className="flex flex-col items-center justify-center gap-2 py-4">
                             <CheckCircle2 className="w-7 h-7 text-emerald-500 animate-bounce" />
                             <span className="font-bold text-slate-700 dark:text-slate-200 text-sm">
-                              ممتاز! لا توجد فواتير غير مرحلة حالياً
+                              ممتاز! لا توجد عمليات غير مرحلة حالياً
                             </span>
                             <span className="text-[11px] text-slate-400">
-                              كافة مبيعات الصندوق مرحلة ومغلقة بنجاح ومطابقة للخزينة
+                              كافة مبيعات الصندوق وأجهزة الصيانة المسلمة مرحلة ومغلقة بنجاح
                             </span>
                           </div>
                         ) : postingFilter === 'posted' ? (
-                          'لا توجد فواتير مرحلة ومغلقة ضمن الفترة الزمنية المحددة'
+                          'لا توجد عمليات مرحلة ومغلقة ضمن الفترة الزمنية المحددة'
                         ) : (
-                          'لا توجد فواتير مسجلة ضمن هذه الفترة'
+                          'لا توجد عمليات مسجلة ضمن هذه الفترة'
                         )}
                       </td>
                     </tr>
                   ) : (
-                    displayedInvoices.slice(0, 100).map(inv => {
+                    <>
+                    {displayedRepairs.map(rep => {
+                      const effCost = rep.finalCost || rep.estimatedCost || 0;
+                      const partsC = rep.partsCost || 0;
+                      const repProfit = effCost - partsC;
+                      const effDate = rep.deliveredAt || rep.createdAt;
+                      return (
+                        <tr
+                          key={`rep-row-${rep.id}`}
+                          className="hover:bg-blue-50/40 dark:hover:bg-blue-950/20 bg-blue-50/20 dark:bg-blue-950/10 transition"
+                        >
+                          <td className="p-3 text-center">
+                            {rep.isPosted ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
+                            ) : (
+                              <Wrench className="w-4 h-4 text-blue-500 mx-auto" />
+                            )}
+                          </td>
+                          <td className="p-3 font-mono font-bold text-blue-700 dark:text-blue-400">
+                            <div>{rep.ticketNumber}</div>
+                            <span className="inline-block text-[9px] font-black bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                              صيانة مسلّمة
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap">
+                            <div>{effDate ? effDate.replace('T', ' ').substring(5, 16) : '-'}</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex flex-wrap items-center gap-1 max-w-xs">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-200 border border-blue-200/70 dark:border-blue-800/70">
+                                <Wrench className="w-3 h-3 shrink-0" />
+                                <span>{rep.deviceModel}</span>
+                                <span className="text-slate-500 dark:text-slate-400">({rep.customerName})</span>
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3 font-mono font-semibold text-slate-500">
+                            {formatJOD(partsC)}
+                          </td>
+                          <td className="p-3 font-mono font-black text-slate-900 dark:text-white">
+                            {formatJOD(effCost)}
+                          </td>
+                          <td className="p-3 font-mono font-bold">
+                            <span className="text-slate-400">-</span>
+                          </td>
+                          <td className="p-3 font-mono font-bold">
+                            <span className="text-emerald-600 dark:text-emerald-400">+{formatJOD(repProfit)}</span>
+                          </td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
+                              نقدي / صيانة
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            {rep.isPosted ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>مرحّل للأرشيف</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                                </span>
+                                <span>غير مرحّل (نشط)</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center text-slate-400 text-[10px]">
+                            تذكرة صيانة
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {displayedInvoices.slice(0, 100).map(inv => {
                       const isSelected = selectedInvoiceIds.includes(inv.id);
                       const isPriorShift = !inv.isPosted && !filterByDate(inv.createdAt);
                       const isRefunded = inv.status === 'refunded';
@@ -1019,7 +1134,8 @@ export const ReportsTab: React.FC = () => {
                           </td>
                         </tr>
                       );
-                    })
+                    })}
+                    </>
                   )}
                 </tbody>
               </table>
@@ -1057,7 +1173,7 @@ export const ReportsTab: React.FC = () => {
                 <span>
                   {postingLoading
                     ? 'جاري الترحيل وتصفير الصندوق...'
-                    : `ترحيل الصندوق وتصفير اليومية بالكامل (${unpostedInvoices.length} فواتير)`}
+                    : `ترحيل الصندوق وتصفير اليومية بالكامل (${unpostedInvoices.length} فواتير${unpostedRepairs.length > 0 ? ` + ${unpostedRepairs.length} صيانة` : ''})`}
                 </span>
               </button>
             </div>
@@ -1129,7 +1245,7 @@ export const ReportsTab: React.FC = () => {
                 {formatJOD(totalRepairsRevenue)}
               </div>
               <div className="text-[11px] text-slate-400">
-                {filteredRepairs.length} أجهزة تم استلامها
+                {filteredRepairs.length} جهاز مسلّم / مدفوع
               </div>
             </div>
 

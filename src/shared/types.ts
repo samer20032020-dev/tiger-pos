@@ -179,6 +179,7 @@ export interface RepairTicket {
   postedAt?: string | null;
   expectedDeliveryDate?: string | null;
   deliveredAt?: string | null;
+  partsCost?: number;
   parts?: RepairPart[];
 }
 

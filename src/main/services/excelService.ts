@@ -120,13 +120,22 @@ export class ExcelService {
         COALESCE(SUM(final_cost), 0) as total_repairs,
         COUNT(*) as repair_count
       FROM repair_tickets
-      WHERE status = 'delivered' AND date(created_at) >= ? AND date(created_at) <= ?
+      WHERE status != 'cancelled'
+        AND (status = 'delivered' OR is_paid = 1)
+        AND date(COALESCE(delivered_at, created_at)) >= ?
+        AND date(COALESCE(delivered_at, created_at)) <= ?
     `, [startDate, endDate]);
 
     const repairPartsCost = this.db.queryOne(`
       SELECT COALESCE(SUM(total_cost), 0) as parts_cost
       FROM repair_parts
-      WHERE ticket_id IN (SELECT id FROM repair_tickets WHERE status = 'delivered' AND date(created_at) >= ? AND date(created_at) <= ?)
+      WHERE ticket_id IN (
+        SELECT id FROM repair_tickets
+        WHERE status != 'cancelled'
+          AND (status = 'delivered' OR is_paid = 1)
+          AND date(COALESCE(delivered_at, created_at)) >= ?
+          AND date(COALESCE(delivered_at, created_at)) <= ?
+      )
     `, [startDate, endDate]);
 
     const expenseStats = this.db.queryOne(`
@@ -523,8 +532,8 @@ export class ExcelService {
         t.*,
         COALESCE((SELECT SUM(rp.total_cost) FROM repair_parts rp WHERE rp.ticket_id = t.id), 0) as parts_cost
       FROM repair_tickets t
-      WHERE date(t.created_at) >= ? AND date(t.created_at) <= ?
-      ORDER BY t.created_at DESC
+      WHERE date(COALESCE(t.delivered_at, t.created_at)) >= ? AND date(COALESCE(t.delivered_at, t.created_at)) <= ?
+      ORDER BY COALESCE(t.delivered_at, t.created_at) DESC
     `, [startDate, endDate]);
 
     tickets.forEach(t => {

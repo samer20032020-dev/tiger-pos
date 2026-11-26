@@ -437,9 +437,9 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.8';
+      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.9';
     } catch {
-      return '0.9.8';
+      return '0.9.9';
     }
   });
 
@@ -469,15 +469,15 @@ function registerIpcHandlers() {
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.8';
-      let releaseNotes = '✨ إصدار v0.9.8: تبسيط وتنعيم رسائل واتساب الصيانة (جاهز للاستلام، تم التسليم، تعذر الإصلاح) وإزالة الرموز التي لا تظهر بوضوح.';
+      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.9';
+      let releaseNotes = '✨ إصدار v0.9.9: إدراج أجهزة الصيانة المسلمة والمدفوعة تلقائياً في الجرد اليومي والترحيل، لوحة التحكم، والتقارير المالية وExcel حسب تاريخ التسليم الفعلي.';
       const repo = (repoOverride && repoOverride.trim()) || (settings?.githubRepo && settings.githubRepo.trim()) || 'samer20032020-dev/tiger-pos';
 
       return await checkLatestGitHubRelease(repo, currentVersion, releaseNotes);
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.8';
+      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.9';
       return {
         hasUpdate: false,
         currentVersion: curVer,

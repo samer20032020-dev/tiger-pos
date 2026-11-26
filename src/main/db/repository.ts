@@ -1044,7 +1044,10 @@ export class TigerRepository {
     const now = new Date().toISOString();
     return this.db.transaction(() => {
       const invRes = this.db.run('UPDATE invoices SET is_posted = 1, posted_at = ? WHERE is_posted = 0', [now]);
-      const repRes = this.db.run('UPDATE repair_tickets SET is_posted = 1, posted_at = ? WHERE is_posted = 0 OR is_posted IS NULL', [now]);
+      const repRes = this.db.run(
+        "UPDATE repair_tickets SET is_posted = 1, posted_at = ? WHERE (is_posted = 0 OR is_posted IS NULL) AND (status IN ('delivered', 'cancelled') OR is_paid = 1)",
+        [now]
+      );
       const expRes = this.db.run('UPDATE expenses SET is_posted = 1, posted_at = ? WHERE is_posted = 0 OR is_posted IS NULL', [now]);
       
       this.db.run('UPDATE shifts SET closed_at = ?, status = "closed", note = COALESCE(note, "") || " [تم ترحيل وتصفير الصندوق]" WHERE status = "open"', [now]);
@@ -1126,13 +1129,18 @@ export class TigerRepository {
 
   // ==================== REPAIR CENTER ====================
   public getAllRepairTickets(status?: string): RepairTicket[] {
-    let sql = 'SELECT * FROM repair_tickets';
+    let sql = `
+      SELECT 
+        rt.*,
+        COALESCE((SELECT SUM(rp.total_cost) FROM repair_parts rp WHERE rp.ticket_id = rt.id), 0) as parts_cost
+      FROM repair_tickets rt
+    `;
     const params: any[] = [];
     if (status) {
-      sql += ' WHERE status = ?';
+      sql += ' WHERE rt.status = ?';
       params.push(status);
     }
-    sql += ' ORDER BY created_at DESC';
+    sql += ' ORDER BY rt.created_at DESC';
     const rows = this.db.query(sql, params);
 
     return rows.map(r => {
@@ -1165,7 +1173,8 @@ export class TigerRepository {
         isPosted: r.is_posted === 1,
         postedAt: r.posted_at || null,
         expectedDeliveryDate: r.expected_delivery_date,
-        deliveredAt: r.delivered_at
+        deliveredAt: r.delivered_at,
+        partsCost: Number(r.parts_cost || 0)
       };
     });
   }
@@ -1749,7 +1758,7 @@ export class TigerRepository {
   public getDashboardStats(): DashboardStats {
     const today = new Date().toISOString().split('T')[0];
 
-    // Today sales: only unposted invoices (active shift/day sales)
+    // Today sales: unposted invoices + unposted delivered/paid repairs
     const salesRow = this.db.queryOne(`
       SELECT 
         COALESCE(SUM(total_amount), 0) as total_sales,
@@ -1763,6 +1772,28 @@ export class TigerRepository {
       SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cogs
       FROM invoice_items
       WHERE invoice_id IN (SELECT id FROM invoices WHERE status = 'completed' AND is_posted = 0)
+    `);
+
+    // Today unposted settled repairs (delivered or paid, not cancelled)
+    const repairRevRow = this.db.queryOne(`
+      SELECT
+        COALESCE(SUM(final_cost), 0) as total_repairs,
+        COUNT(*) as repair_count
+      FROM repair_tickets
+      WHERE status != 'cancelled'
+        AND (status = 'delivered' OR is_paid = 1)
+        AND (is_posted = 0 OR is_posted IS NULL)
+    `);
+
+    const repairCogsRow = this.db.queryOne(`
+      SELECT COALESCE(SUM(total_cost), 0) as total_repair_cogs
+      FROM repair_parts
+      WHERE ticket_id IN (
+        SELECT id FROM repair_tickets
+        WHERE status != 'cancelled'
+          AND (status = 'delivered' OR is_paid = 1)
+          AND (is_posted = 0 OR is_posted IS NULL)
+      )
     `);
 
     // Today Expenses: only unposted expenses
@@ -1793,8 +1824,10 @@ export class TigerRepository {
       WHERE (is_unlimited = 0 OR is_unlimited IS NULL) AND (current_stock <= min_stock_alert OR current_stock <= 2)
     `);
 
-    const totalSales = Number(salesRow?.total_sales || 0);
-    const totalCogs = Number(cogsRow?.total_cogs || 0);
+    const totalInvoiceSales = Number(salesRow?.total_sales || 0);
+    const totalRepairRevenue = Number(repairRevRow?.total_repairs || 0);
+    const totalSales = totalInvoiceSales + totalRepairRevenue;
+    const totalCogs = Number(cogsRow?.total_cogs || 0) + Number(repairCogsRow?.total_repair_cogs || 0);
     const totalExp = Number(expRow?.total_exp || 0);
     const netProfit = totalSales - totalCogs - totalExp;
 
@@ -1804,7 +1837,7 @@ export class TigerRepository {
       activeRepairsCount: Number(repairsRow?.active_repairs || 0),
       dueInstallmentsCount: Number(dueInstallmentsRow?.due_count || 0),
       lowStockCount: Number(lowStockRow?.low_stock || 0),
-      todayInvoicesCount: Number(salesRow?.invoice_count || 0),
+      todayInvoicesCount: Number(salesRow?.invoice_count || 0) + Number(repairRevRow?.repair_count || 0),
       activeShift: this.getActiveShift()
     };
   }
