@@ -14,6 +14,7 @@ import { Invoice, RepairTicket, Expense, RepairPartReportEntry } from '../../../
 import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { sendWhatsAppMessage, buildInvoiceWhatsAppMessage } from '../../utils/whatsapp';
+import { InvoiceDetailsModal } from './InvoiceDetailsModal';
 
 type ReportTabMode = 'settlement' | 'monthly';
 type PostingFilter = 'unposted' | 'posted' | 'refunded' | 'all';
@@ -82,6 +83,7 @@ export const ReportsTab: React.FC = () => {
 
   // Search in transactions
   const [searchQuery, setSearchQuery] = useState('');
+  const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
 
   const months = [
     { num: 1, name: 'يناير (شهر 1)' },
@@ -103,7 +105,7 @@ export const ReportsTab: React.FC = () => {
     setLoading(true);
     try {
       const [invList, repList, expList, activeShift, partsRepList] = await Promise.all([
-        window.tigerAPI.getAllInvoices(300),
+        window.tigerAPI.getAllInvoices(1000),
         window.tigerAPI.getAllRepairTickets(),
         window.tigerAPI.getAllExpenses(200),
         window.tigerAPI.getActiveShift().catch(() => null),
@@ -270,6 +272,33 @@ export const ReportsTab: React.FC = () => {
       (rep.deviceModel && rep.deviceModel.toLowerCase().includes(q))
     );
   });
+
+  // Accumulated table totals across currently displayed rows (including posted/archived dates!)
+  const postedRepairsCount = repairs.filter(
+    rep => isSettledRepair(rep) && Boolean(rep.isPosted) && filterByDate(rep.deliveredAt || rep.createdAt)
+  ).length;
+  const periodRepairsCount = repairs.filter(
+    rep => isSettledRepair(rep) && filterByDate(rep.deliveredAt || rep.createdAt)
+  ).length;
+
+  const activeDisplayedInvoices = displayedInvoices.filter(inv => inv.status !== 'refunded');
+  const tableTotalCost =
+    activeDisplayedInvoices.reduce((s, inv) => s + (inv.totalCost || 0), 0) +
+    displayedRepairs.reduce((s, rep) => s + (rep.partsCost || 0), 0);
+  const tableTotalSales =
+    activeDisplayedInvoices.reduce((s, inv) => s + (inv.totalAmount || 0), 0) +
+    displayedRepairs.reduce((s, rep) => s + (rep.finalCost || rep.estimatedCost || 0), 0);
+  const tableTotalDiscounts =
+    activeDisplayedInvoices.reduce((s, inv) => s + (inv.discount || 0), 0);
+  const tableTotalProfit =
+    activeDisplayedInvoices.reduce((s, inv) => s + (inv.totalProfit || 0), 0) +
+    displayedRepairs.reduce((s, rep) => s + ((rep.finalCost || rep.estimatedCost || 0) - (rep.partsCost || 0)), 0);
+  const tableTotalItemsCount =
+    activeDisplayedInvoices.reduce(
+      (s, inv) => s + (inv.items ? inv.items.reduce((q, it) => q + (it.quantity || 1), 0) : 0),
+      0
+    ) + displayedRepairs.length;
+  const tableTotalOpsCount = activeDisplayedInvoices.length + displayedRepairs.length;
 
   const handleSelectAll = () => {
     const visibleUnpostedIds = displayedInvoices.filter(i => !i.isPosted).map(i => i.id);
@@ -789,7 +818,7 @@ export const ReportsTab: React.FC = () => {
                       : 'text-slate-600 dark:text-slate-300'
                       }`}
                   >
-                    مرحّل ومغلق ({postedInvoices.length})
+                    مرحّل ومغلق ({postedInvoices.length + postedRepairsCount})
                   </button>
                   <button
                     onClick={() => setPostingFilter('refunded')}
@@ -807,7 +836,7 @@ export const ReportsTab: React.FC = () => {
                       : 'text-slate-600 dark:text-slate-300'
                       }`}
                   >
-                    الكل ({periodInvoices.length})
+                    الكل ({periodInvoices.length + periodRepairsCount})
                   </button>
                 </div>
               </div>
@@ -852,13 +881,13 @@ export const ReportsTab: React.FC = () => {
                     <th className="p-3">صافي الربح</th>
                     <th className="p-3">طريقة الدفع</th>
                     <th className="p-3 text-center">حالة الترحيل</th>
-                    <th className="p-3 text-center">واتساب</th>
+                    <th className="p-3 text-center">التفاصيل والإجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {displayedInvoices.length === 0 && displayedRepairs.length === 0 ? (
                     <tr>
-                      <td colSpan={12} className="p-8 text-center text-slate-400 text-xs">
+                      <td colSpan={11} className="p-8 text-center text-slate-400 text-xs">
                         {postingFilter === 'unposted' ? (
                           <div className="flex flex-col items-center justify-center gap-2 py-4">
                             <CheckCircle2 className="w-7 h-7 text-emerald-500 animate-bounce" />
@@ -952,14 +981,17 @@ export const ReportsTab: React.FC = () => {
                         </tr>
                       );
                     })}
-                    {displayedInvoices.slice(0, 100).map(inv => {
+                    {displayedInvoices.slice(0, 300).map(inv => {
                       const isSelected = selectedInvoiceIds.includes(inv.id);
                       const isPriorShift = !inv.isPosted && !filterByDate(inv.createdAt);
                       const isRefunded = inv.status === 'refunded';
+                      const itemCount = inv.items ? inv.items.length : 0;
                       return (
                         <tr
                           key={inv.id}
-                          className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition ${
+                          onClick={() => setDetailInvoice(inv)}
+                          title="اضغط لعرض تفاصيل كل قطعة وسعرها وتكلفتها وربحها"
+                          className={`cursor-pointer hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition ${
                             isRefunded
                               ? 'bg-rose-50/30 dark:bg-rose-950/20'
                               : isSelected
@@ -967,14 +999,17 @@ export const ReportsTab: React.FC = () => {
                               : ''
                           }`}
                         >
-                          <td className="p-3 text-center">
+                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                             {isRefunded ? (
                               <span title="فاتورة مسترجعة وملغاة">
                                 <RotateCcw className="w-4 h-4 text-rose-500 mx-auto" />
                               </span>
                             ) : !inv.isPosted ? (
                               <button
-                                onClick={() => toggleSelectInvoice(inv.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleSelectInvoice(inv.id);
+                                }}
                                 className="text-slate-400 hover:text-orange-500 transition"
                               >
                                 {isSelected ? (
@@ -1004,7 +1039,7 @@ export const ReportsTab: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3">
-                            <div className="flex flex-wrap gap-1 max-w-xs">
+                            <div className="flex flex-wrap items-center gap-1 max-w-xs">
                               {inv.items && inv.items.length > 0 ? (
                                 inv.items.map((it, idx) => (
                                   <span
@@ -1023,6 +1058,12 @@ export const ReportsTab: React.FC = () => {
                                 ))
                               ) : (
                                 <span className="text-slate-400 text-xs">-</span>
+                              )}
+                              {itemCount > 1 && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/70">
+                                  <Eye className="w-2.5 h-2.5" />
+                                  تفاصيل ({itemCount})
+                                </span>
                               )}
                             </div>
                           </td>
@@ -1087,8 +1128,21 @@ export const ReportsTab: React.FC = () => {
                               </span>
                             )}
                           </td>
-                          <td className="p-3 text-center">
+                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDetailInvoice(inv);
+                                }}
+                                title="عرض تفاصيل كل قطعة داخل الفاتورة"
+                                className="px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-300 font-bold text-[10px] inline-flex items-center gap-1 transition"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>تفاصيل</span>
+                              </button>
+
                               {inv.customerPhone && (
                                 <button
                                   onClick={async (e) => {
@@ -1138,7 +1192,63 @@ export const ReportsTab: React.FC = () => {
                     </>
                   )}
                 </tbody>
+                {(displayedInvoices.length > 0 || displayedRepairs.length > 0) && (
+                  <tfoot className="bg-slate-900 text-white border-t-2 border-orange-500/70 font-black">
+                    <tr>
+                      <td colSpan={4} className="p-3.5 text-xs">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-orange-400">الإجمالي المتراكم للعمليات الظاهرة:</span>
+                          <span className="bg-slate-800 px-2.5 py-0.5 rounded-lg text-[11px] font-mono">
+                            {tableTotalOpsCount} عملية
+                          </span>
+                          <span className="bg-slate-800 px-2.5 py-0.5 rounded-lg text-[11px] font-mono text-amber-300">
+                            {tableTotalItemsCount} قطعة مباعة
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-mono text-xs text-slate-200 whitespace-nowrap">
+                        {formatJOD(tableTotalCost)}
+                      </td>
+                      <td className="p-3.5 font-mono text-sm text-orange-400 whitespace-nowrap">
+                        {formatJOD(tableTotalSales)}
+                      </td>
+                      <td className="p-3.5 font-mono text-xs text-amber-300 whitespace-nowrap">
+                        {tableTotalDiscounts > 0 ? `-${formatJOD(tableTotalDiscounts)}` : '-'}
+                      </td>
+                      <td className="p-3.5 font-mono text-sm text-emerald-400 whitespace-nowrap">
+                        +{formatJOD(tableTotalProfit)}
+                      </td>
+                      <td colSpan={3} className="p-3.5 text-center text-[10px] text-slate-300 font-bold">
+                        متراكم حسب التصفية والتاريخ المختار (لا يختفي بعد الترحيل)
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
+            </div>
+
+            {/* Accumulated Totals Summary Box below table */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-900/95 border border-slate-700/80 rounded-2xl p-4 text-white shadow-md">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block">عدد الفواتير والعمليات</span>
+                <span className="text-base font-black font-mono text-white">{tableTotalOpsCount} عملية</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block">إجمالي القطع المباعة</span>
+                <span className="text-base font-black font-mono text-amber-300">{tableTotalItemsCount} قطعة</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block">إجمالي التكلفة (الجملة)</span>
+                <span className="text-base font-black font-mono text-slate-200">{formatJOD(tableTotalCost)}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block">إجمالي سعر البيع</span>
+                <span className="text-base font-black font-mono text-orange-400">{formatJOD(tableTotalSales)}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block">إجمالي صافي الربح</span>
+                <span className="text-base font-black font-mono text-emerald-400">+{formatJOD(tableTotalProfit)}</span>
+              </div>
             </div>
 
             {/* Audio 3: Bottom Shift Settlement & Day Closing Bar */}
@@ -1654,6 +1764,21 @@ export const ReportsTab: React.FC = () => {
 
         </div>
       )}
+
+      <InvoiceDetailsModal
+        invoice={detailInvoice}
+        onClose={() => setDetailInvoice(null)}
+        onSendWhatsApp={async (inv) => {
+          if (!inv.customerPhone) return;
+          const msg = buildInvoiceWhatsAppMessage(inv);
+          const res = await sendWhatsAppMessage(inv.customerPhone, msg);
+          if (res.success) {
+            addToast(`تم فتح واتساب للعميل (${inv.customerName})`, 'success');
+          } else {
+            addToast(res.error || 'فشل إرسال الفاتورة', 'error');
+          }
+        }}
+      />
 
     </div>
   );
