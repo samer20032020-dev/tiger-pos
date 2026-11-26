@@ -10,7 +10,7 @@ export const isRepairCategory = (category: string = '', name: string = ''): bool
   const c = (category || '').trim().toLowerCase();
   const n = (name || '').trim().toLowerCase();
 
-  // 1. Explicit exclusion: standard consumer accessories
+  // 1. Explicit exclusion: standard consumer accessories and open services
   if (
     c.includes('حماية') ||
     c.includes('سكرين') ||
@@ -27,6 +27,9 @@ export const isRepairCategory = (category: string = '', name: string = ''): bool
     c.includes('حوامل') ||
     c.includes('سيارة') ||
     c.includes('محول') ||
+    c.includes('حوالات') ||
+    c.includes('خدمات مفتوحة') ||
+    c.includes('تحويلات') ||
     n.includes('حماية') ||
     n.includes('سكرين') ||
     n.includes('عدسة') ||
@@ -74,6 +77,19 @@ export const isRepairCategory = (category: string = '', name: string = ''): bool
   );
 };
 
+export const isUnlimitedCategory = (category: string = '', name: string = ''): boolean => {
+  const c = (category || '').trim().toLowerCase();
+  const n = (name || '').trim().toLowerCase();
+  return (
+    c.includes('حوالات') ||
+    c.includes('خدمات مفتوحة') ||
+    c.includes('تحويلات') ||
+    c.includes('تحويل رصيد') ||
+    n.startsWith('حوالة') ||
+    n.startsWith('حوالات')
+  );
+};
+
 export const ACCESSORY_CATEGORIES = [
   'شواحن وكوابل',
   'كفرات وحافظات',
@@ -82,6 +98,7 @@ export const ACCESSORY_CATEGORIES = [
   'بطاريات وبنك طاقة',
   'حوامل وسكسوارات سيارة',
   'محولات وتوصيلات',
+  'حوالات وخدمات مفتوحة',
   'أخرى'
 ];
 
@@ -165,7 +182,7 @@ export function cleanNumberInput(input: string): string {
   return input
     .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString())
     .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString())
-    .replace(/[،,]/g, '.')
+    .replace(/[،,٫]/g, '.')
     .replace(/[^0-9.]/g, '')
     .replace(/(\..*?)\..*/g, '$1');
 }

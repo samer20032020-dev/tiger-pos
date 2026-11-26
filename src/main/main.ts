@@ -252,6 +252,14 @@ function registerIpcHandlers() {
     return repository!.updateRepairStatus(ticketId, newStatus, notes, finalCost);
   });
 
+  ipcMain.handle('db:markRepairTicketPaid', async (_, ticketId: string, finalCostOverride?: number, actorName?: string) => {
+    return repository!.markRepairTicketPaid(ticketId, finalCostOverride, actorName);
+  });
+
+  ipcMain.handle('db:getAllRepairPartsReport', async () => {
+    return repository!.getAllRepairPartsReport();
+  });
+
   ipcMain.handle('db:attachPartToRepair', async (_, ticketId: string, accessoryId: string, quantity?: number) => {
     return repository!.attachPartToRepair(ticketId, accessoryId, quantity);
   });
@@ -437,9 +445,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.8.9';
-      let releaseNotes = '✨ إصدار v0.8.9: تفريغ وتنظيف مخزون قطع الصيانة لتمكين إضافة القطع من الصفر، وحذف الأصناف التلقائية ودمج إمكانية الحذف النهائي لأي صنف أو قطعة صيانة.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.8.9';
+      let latestVersion = '0.9.0';
+      let releaseNotes = '✨ إصدار v0.9.0: إصلاح الكتابة العشرية والأعشار بكافة الخانات، إضافة إجماليات وجرد المخزون أسفل الإكسسوارات وقطع الصيانة، إضافة خيار المبيع اللانهائي (∞) للحوالات، إصلاح حالة الدفع ورسائل الواتساب بالصيانة، ونقل قطع الصيانة للتقارير مباشرة بدون الجرد النهائي.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.0';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -487,7 +495,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.8.9',
+        latestVersion: '0.9.0',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

@@ -11,6 +11,7 @@ import {
 import { User, SystemSettings, UpdateCheckResult } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
 import { playCashDrawerSound } from '../../utils/soundUtils';
+import { cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 
 const POPULAR_CURRENCIES = [
   { symbol: 'د.أ', label: 'د.أ (دينار أردني)' },
@@ -44,7 +45,8 @@ export const SettingsTab: React.FC = () => {
   const [customCurrency, setCustomCurrency] = useState('');
   const [isCustomMode, setIsCustomMode] = useState(false);
   const [currencyDecimals, setCurrencyDecimals] = useState(3);
-  const [defaultTaxRate, setDefaultTaxRate] = useState(0);
+  const [defaultTaxRateInput, setDefaultTaxRateInput] = useState<string>('0');
+  const defaultTaxRate = Math.min(5.5, Math.max(0, parseNumberInput(defaultTaxRateInput)));
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [storeName, setStoreName] = useState('TIGER');
   const [storePhone, setStorePhone] = useState('');
@@ -95,7 +97,7 @@ export const SettingsTab: React.FC = () => {
 
         setCurrencyDecimals(stgs.currencyDecimals !== undefined ? stgs.currencyDecimals : 3);
         const loadedTax = Math.min(5.5, Math.max(0, stgs.defaultTaxRate || 0));
-        setDefaultTaxRate(loadedTax);
+        setDefaultTaxRateInput(String(loadedTax));
         setTaxEnabled(loadedTax > 0);
         setStoreName(stgs.storeName || 'TIGER');
         setStorePhone(stgs.storePhone || '');
@@ -628,13 +630,13 @@ export const SettingsTab: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        max="5.5"
-                        value={defaultTaxRate}
-                        onChange={(e) => setDefaultTaxRate(Math.min(5.5, Math.max(0, Number(e.target.value))))}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2 text-xs font-mono font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
+                        type="text"
+                        inputMode="decimal"
+                        dir="ltr"
+                        value={defaultTaxRateInput}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setDefaultTaxRateInput(cleanNumberInput(e.target.value))}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2 text-xs font-mono font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition text-left"
                       />
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">%</span>
                     </div>
@@ -644,7 +646,7 @@ export const SettingsTab: React.FC = () => {
                         <button
                           key={rate}
                           type="button"
-                          onClick={() => setDefaultTaxRate(rate)}
+                          onClick={() => setDefaultTaxRateInput(String(rate))}
                           className={`px-2.5 py-2 rounded-xl text-xs font-mono font-bold border transition ${defaultTaxRate === rate
                             ? 'bg-orange-500 text-white border-orange-500'
                             : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'

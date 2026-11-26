@@ -8,8 +8,8 @@ import {
   RotateCcw, Trash2
 } from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
-import { Invoice, RepairTicket, Expense } from '../../../shared/types';
-import { formatJOD } from '../../../shared/constants';
+import { Invoice, RepairTicket, Expense, RepairPartReportEntry } from '../../../shared/types';
+import { formatJOD, cleanNumberInput } from '../../../shared/constants';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { sendWhatsAppMessage, buildInvoiceWhatsAppMessage } from '../../utils/whatsapp';
 
@@ -30,6 +30,7 @@ export const ReportsTab: React.FC = () => {
   // Data states
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [repairs, setRepairs] = useState<RepairTicket[]>([]);
+  const [repairPartsReport, setRepairPartsReport] = useState<RepairPartReportEntry[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -91,15 +92,17 @@ export const ReportsTab: React.FC = () => {
     if (!window.tigerAPI) return;
     setLoading(true);
     try {
-      const [invList, repList, expList, activeShift] = await Promise.all([
+      const [invList, repList, expList, activeShift, partsRepList] = await Promise.all([
         window.tigerAPI.getAllInvoices(300),
         window.tigerAPI.getAllRepairTickets(),
         window.tigerAPI.getAllExpenses(200),
-        window.tigerAPI.getActiveShift().catch(() => null)
+        window.tigerAPI.getActiveShift().catch(() => null),
+        window.tigerAPI.getAllRepairPartsReport ? window.tigerAPI.getAllRepairPartsReport().catch(() => []) : Promise.resolve([])
       ]);
       setInvoices(invList);
       setRepairs(repList);
       setExpenses(expList);
+      setRepairPartsReport(partsRepList);
       if (activeShift && activeShift.startingCash !== undefined && activeShift.startingCash !== null) {
         setStartingCashInput(String(activeShift.startingCash));
       }
@@ -176,12 +179,15 @@ export const ReportsTab: React.FC = () => {
   const unpostedProfit = unpostedInvoices.reduce((sum, i) => sum + (i.totalProfit || 0), 0);
   const unpostedCash = unpostedInvoices.reduce((sum, i) => sum + (i.cashAmount || 0), 0);
 
-  // Repairs cash from unposted repairs in drawer
-  const unpostedRepairsCash = repairs
-    .filter(r => !r.isPosted)
-    .reduce((sum, r) => sum + (r.advancePayment || 0) + (r.status === 'delivered' ? Math.max(0, r.finalCost - r.advancePayment) : 0), 0);
+  // Repair Parts straight to Financial Reports (without sitting in Daily Closing)
+  const filteredRepairParts = repairPartsReport.filter(rp => filterByDate(rp.createdAt));
+  const totalRepairPartsQty = filteredRepairParts.reduce((s, rp) => s + rp.quantity, 0);
+  const totalRepairPartsCostValue = filteredRepairParts.reduce((s, rp) => s + rp.totalCost, 0);
+  const totalRepairPartsSalesValue = filteredRepairParts.reduce((s, rp) => s + rp.totalPrice, 0);
+  const totalRepairPartsProfit = filteredRepairParts.reduce((s, rp) => s + rp.profit, 0);
 
-  const autoReceipts = unpostedCash + unpostedRepairsCash;
+  // Daily Drawer Settlement keeps purely retail POS cash (repair parts go straight to Reports)
+  const autoReceipts = unpostedCash;
   const effectiveReceipts = isManualReceipts
     ? (parseFloat(receiptsOverrideInput) || 0)
     : autoReceipts;
@@ -474,11 +480,11 @@ export const ReportsTab: React.FC = () => {
 
             {/* 5. Total Cash in Drawer */}
             <div className="col-span-2 sm:col-span-1 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-3xl p-4 shadow-sm space-y-1">
-              <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 block">نقدية المبيعات والصيانة</span>
+              <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 block">نقدية المبيعات (الصندوق)</span>
               <div className="text-xl font-black font-mono text-blue-600 dark:text-blue-400">
-                {formatJOD(unpostedCash + unpostedRepairsCash)}
+                {formatJOD(unpostedCash)}
               </div>
-              <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70 block">المقبوض نقداً اليوم</span>
+              <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70 block">المقبوض نقداً بالجرد (قطع الصيانة للتقارير مباشرة)</span>
             </div>
 
           </div>
@@ -536,12 +542,7 @@ export const ReportsTab: React.FC = () => {
                     dir="ltr"
                     placeholder="0.000"
                     value={startingCashInput}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9.]/g, '');
-                      const parts = val.split('.');
-                      const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
-                      setStartingCashInput(sanitized);
-                    }}
+                    onChange={(e) => setStartingCashInput(cleanNumberInput(e.target.value))}
                     className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-black text-white focus:outline-none focus:border-orange-500 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
@@ -587,17 +588,14 @@ export const ReportsTab: React.FC = () => {
                     placeholder="0.000"
                     value={isManualReceipts ? receiptsOverrideInput : (autoReceipts > 0 ? autoReceipts.toFixed(3) : '0.000')}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9.]/g, '');
-                      const parts = val.split('.');
-                      const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
                       setIsManualReceipts(true);
-                      setReceiptsOverrideInput(sanitized);
+                      setReceiptsOverrideInput(cleanNumberInput(e.target.value));
                     }}
                     className="w-full bg-slate-900 border border-emerald-500/50 rounded-xl px-3 py-2 text-sm font-mono font-black text-emerald-400 focus:outline-none focus:border-emerald-400 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block">مبيعات ({formatJOD(unpostedCash)}) + صيانة ({formatJOD(unpostedRepairsCash)})</span>
+                <span className="text-[10px] text-slate-400 block">مبيعات الكاشير بالجرد ({formatJOD(unpostedCash)}) — الصيانة للتقارير مباشرة</span>
               </div>
 
               {/* 3. Expected Total (Glowing Prominent / Editable) */}
@@ -638,11 +636,8 @@ export const ReportsTab: React.FC = () => {
                     placeholder="0.000"
                     value={isManualExpected ? expectedOverrideInput : (autoExpectedDrawerCash > 0 ? autoExpectedDrawerCash.toFixed(3) : '0.000')}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9.]/g, '');
-                      const parts = val.split('.');
-                      const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
                       setIsManualExpected(true);
-                      setExpectedOverrideInput(sanitized);
+                      setExpectedOverrideInput(cleanNumberInput(e.target.value));
                     }}
                     className="w-full bg-slate-900 border border-orange-500/60 rounded-xl px-3 py-2 text-base font-mono font-black text-orange-400 focus:outline-none focus:border-orange-400 select-text text-left"
                   />
@@ -685,12 +680,7 @@ export const ReportsTab: React.FC = () => {
                     dir="ltr"
                     placeholder="0.000"
                     value={actualCashInput}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9.]/g, '');
-                      const parts = val.split('.');
-                      const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
-                      setActualCashInput(sanitized);
-                    }}
+                    onChange={(e) => setActualCashInput(cleanNumberInput(e.target.value))}
                     className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-bold text-white focus:outline-none focus:border-orange-500 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
@@ -1208,6 +1198,100 @@ export const ReportsTab: React.FC = () => {
                   {formatJOD(creditSales)}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Direct Repair Parts Financial Report Section (Bypasses Daily Closing straight to Reports) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 flex items-center justify-center">
+                  <Wrench className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black text-slate-800 dark:text-white">
+                    تقرير قطع الصيانة المباشر (انتقال مباشر للتقارير بدون الجرد النهائي)
+                  </h2>
+                  <p className="text-[11px] text-slate-400">
+                    كافة قطع الغيار وقطع الصيانة المصروفة في تذاكر الصيانة أو المباعة تنتقل هنا مباشرة فور استخدامها
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-bold bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 px-3 py-1 rounded-full">
+                {filteredRepairParts.length} حركة ({totalRepairPartsQty} قطعة)
+              </span>
+            </div>
+
+            {/* Repair Parts KPI Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] font-bold text-slate-500 block">عدد قطع الصيانة</span>
+                <div className="text-lg font-black font-mono text-slate-900 dark:text-white">{totalRepairPartsQty} قطعة</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] font-bold text-slate-500 block">إجمالي تكلفة القطع</span>
+                <div className="text-lg font-black font-mono text-slate-700 dark:text-slate-300">{formatJOD(totalRepairPartsCostValue)}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] font-bold text-slate-500 block">إجمالي قيمة القطع</span>
+                <div className="text-lg font-black font-mono text-orange-600 dark:text-orange-400">{formatJOD(totalRepairPartsSalesValue)}</div>
+              </div>
+              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 p-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/60">
+                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 block">صافي أرباح قطع الصيانة</span>
+                <div className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">+{formatJOD(totalRepairPartsProfit)}</div>
+              </div>
+            </div>
+
+            {/* Direct Repair Parts Table */}
+            <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                  <tr>
+                    <th className="p-3">اسم قطعة الصيانة</th>
+                    <th className="p-3">المصدر</th>
+                    <th className="p-3">رقم التذكرة / الفاتورة</th>
+                    <th className="p-3">العميل / الجهاز</th>
+                    <th className="p-3 text-center">الكمية</th>
+                    <th className="p-3">التكلفة</th>
+                    <th className="p-3">القيمة / البيع</th>
+                    <th className="p-3">صافي الربح</th>
+                    <th className="p-3">التاريخ والوقت</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredRepairParts.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="p-6 text-center text-slate-400">
+                        لا توجد حركات لقطع الصيانة ضمن الفترة الزمنية المحددة
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRepairParts.map(rp => (
+                      <tr key={rp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                        <td className="p-3 font-bold text-slate-900 dark:text-white">{rp.partName}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            rp.source === 'repair_ticket'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                              : 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300'
+                          }`}>
+                            {rp.statusLabel}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono font-bold text-slate-600 dark:text-slate-300">{rp.referenceNumber}</td>
+                        <td className="p-3 text-slate-600 dark:text-slate-300">{rp.customerName || '-'}</td>
+                        <td className="p-3 text-center font-mono font-bold">{rp.quantity}</td>
+                        <td className="p-3 font-mono text-slate-500">{formatJOD(rp.totalCost)}</td>
+                        <td className="p-3 font-mono font-bold text-orange-600 dark:text-orange-400">{formatJOD(rp.totalPrice)}</td>
+                        <td className="p-3 font-mono font-black text-emerald-600 dark:text-emerald-400">+{formatJOD(rp.profit)}</td>
+                        <td className="p-3 font-mono text-[11px] text-slate-400">
+                          {rp.createdAt ? rp.createdAt.replace('T', ' ').substring(5, 16) : '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 

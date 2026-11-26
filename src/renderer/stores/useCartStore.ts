@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Phone, Accessory, Customer, PaymentMethod, TradeInDevice } from '../../shared/types';
+import { isUnlimitedCategory } from '../../shared/constants';
 
 export interface CartItem {
   id: string; // unique cart line id
@@ -104,10 +105,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   addAccessoryItem: (acc) => {
     const isWholesale = get().wholesaleMode;
     const items = get().items;
+    const isUnlimited = Boolean(acc.isUnlimitedStock || isUnlimitedCategory(acc.category, acc.name));
     const existingIndex = items.findIndex(it => it.itemId === acc.id && it.itemType === 'accessory');
     if (existingIndex >= 0) {
       const existing = items[existingIndex];
-      if (existing.quantity >= acc.currentStock) {
+      if (!isUnlimited && existing.quantity >= acc.currentStock) {
         throw new Error(`المخزون المتوفر (${acc.currentStock}) غير كافٍ لإضافة المزيد`);
       }
       const updated = [...items];
@@ -117,7 +119,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       };
       set({ items: updated });
     } else {
-      if (acc.currentStock <= 0) {
+      if (!isUnlimited && acc.currentStock <= 0) {
         throw new Error(`الصنف ${acc.name} نفد من المخزون!`);
       }
       const wholesaleP = acc.wholesalePrice || acc.retailPrice;
@@ -135,8 +137,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         costPrice: acc.costPrice,
         quantity: 1,
         itemDiscount: 0,
-        warrantyPeriod: 'ضمان تشغيل 3 أيام',
-        maxStock: acc.currentStock
+        warrantyPeriod: isUnlimited ? 'خدمة فورية' : 'ضمان تشغيل 3 أيام',
+        maxStock: isUnlimited ? undefined : acc.currentStock
       };
       set({ items: [...items, newItem] });
     }

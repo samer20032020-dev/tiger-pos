@@ -1,11 +1,12 @@
 import { LocalDatabase } from './database';
 import { 
   User, Shift, Phone, Accessory, Invoice, InvoiceItem, 
-  TradeInDevice, RepairTicket, RepairPart, InstallmentPlan, 
+  TradeInDevice, RepairTicket, RepairPart, RepairPartReportEntry, InstallmentPlan, 
   InstallmentPayment, Customer, CustomerStatement, CustomerDebtPayment,
   DamagedItem, Supplier, SupplierInvoice, Expense, AuditLog, 
   DashboardStats, ImeiHistory, SystemSettings, PaymentMethod 
 } from '../../shared/types';
+import { isRepairCategory, isUnlimitedCategory } from '../../shared/constants';
 
 export class TigerRepository {
   constructor(private db: LocalDatabase) {}
@@ -440,6 +441,7 @@ export class TigerRepository {
       wholesalePrice: r.wholesale_price,
       currentStock: r.current_stock,
       minStockAlert: r.min_stock_alert,
+      isUnlimitedStock: Boolean(r.is_unlimited || isUnlimitedCategory(r.category, r.name)),
       description: r.description,
       createdAt: r.created_at
     }));
@@ -459,6 +461,7 @@ export class TigerRepository {
       wholesalePrice: r.wholesale_price,
       currentStock: r.current_stock,
       minStockAlert: r.min_stock_alert,
+      isUnlimitedStock: Boolean(r.is_unlimited || isUnlimitedCategory(r.category, r.name)),
       description: r.description,
       createdAt: r.created_at
     };
@@ -470,12 +473,13 @@ export class TigerRepository {
 
     const id = `acc-${Date.now()}`;
     const createdAt = new Date().toISOString();
+    const isUnlimited = Boolean(acc.isUnlimitedStock || isUnlimitedCategory(acc.category, acc.name));
     this.db.run(`
-      INSERT INTO accessories (id, barcode, sku, name, category, cost_price, retail_price, wholesale_price, current_stock, min_stock_alert, description, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [id, acc.barcode, acc.sku, acc.name, acc.category, acc.costPrice, acc.retailPrice, acc.wholesalePrice, acc.currentStock, acc.minStockAlert, acc.description || null, createdAt]);
+      INSERT INTO accessories (id, barcode, sku, name, category, cost_price, retail_price, wholesale_price, current_stock, min_stock_alert, is_unlimited, description, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [id, acc.barcode, acc.sku, acc.name, acc.category, acc.costPrice, acc.retailPrice, acc.wholesalePrice, isUnlimited ? 999999 : acc.currentStock, isUnlimited ? 0 : acc.minStockAlert, isUnlimited ? 1 : 0, acc.description || null, createdAt]);
 
-    return { id, createdAt, ...acc };
+    return { id, createdAt, ...acc, isUnlimitedStock: isUnlimited };
   }
 
   public updateAccessory(id: string, updates: Partial<Accessory>): void {
@@ -492,6 +496,7 @@ export class TigerRepository {
     if (updates.wholesalePrice !== undefined) { fields.push('wholesale_price = ?'); values.push(updates.wholesalePrice); }
     if (updates.currentStock !== undefined) { fields.push('current_stock = ?'); values.push(updates.currentStock); }
     if (updates.minStockAlert !== undefined) { fields.push('min_stock_alert = ?'); values.push(updates.minStockAlert); }
+    if (updates.isUnlimitedStock !== undefined) { fields.push('is_unlimited = ?'); values.push(updates.isUnlimitedStock ? 1 : 0); }
     if (updates.description !== undefined) { fields.push('description = ?'); values.push(updates.description); }
     if (updates.barcode !== undefined) { fields.push('barcode = ?'); values.push(updates.barcode); }
     if (updates.sku !== undefined) { fields.push('sku = ?'); values.push(updates.sku); }
@@ -556,11 +561,12 @@ export class TigerRepository {
           }
 
           const category = (item.category || 'أخرى').trim();
+          const isUnlimited = isUnlimitedCategory(category, name) ? 1 : 0;
           const costPrice = Number(item.costPrice) || 0;
           const retailPrice = Number(item.retailPrice) || 0;
           const wholesalePrice = Number(item.wholesalePrice) || retailPrice;
-          const currentStock = Number(item.currentStock) || 0;
-          const minStockAlert = Number(item.minStockAlert) || 3;
+          const currentStock = isUnlimited ? 999999 : (Number(item.currentStock) || 0);
+          const minStockAlert = isUnlimited ? 0 : (Number(item.minStockAlert) || 3);
           const description = (item.description || '').trim() || null;
 
           const existing = this.db.queryOne('SELECT * FROM accessories WHERE barcode = ?', [barcode]);
@@ -574,17 +580,18 @@ export class TigerRepository {
                   wholesale_price = ?,
                   min_stock_alert = ?,
                   category = ?,
+                  is_unlimited = ?,
                   description = COALESCE(?, description)
               WHERE id = ?
-            `, [currentStock, costPrice, retailPrice, wholesalePrice, minStockAlert, category, description, existing.id]);
+            `, [currentStock, costPrice, retailPrice, wholesalePrice, minStockAlert, category, isUnlimited, description, existing.id]);
             updatedCount++;
           } else {
             const id = `acc-${Date.now()}-${i}`;
             const createdAt = new Date().toISOString();
             this.db.run(`
-              INSERT INTO accessories (id, barcode, sku, name, category, cost_price, retail_price, wholesale_price, current_stock, min_stock_alert, description, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `, [id, barcode, sku, name, category, costPrice, retailPrice, wholesalePrice, currentStock, minStockAlert, description, createdAt]);
+              INSERT INTO accessories (id, barcode, sku, name, category, cost_price, retail_price, wholesale_price, current_stock, min_stock_alert, is_unlimited, description, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [id, barcode, sku, name, category, costPrice, retailPrice, wholesalePrice, currentStock, minStockAlert, isUnlimited, description, createdAt]);
             importedCount++;
           }
         } catch (err: any) {
@@ -718,14 +725,28 @@ export class TigerRepository {
       const countRes = this.db.queryOne('SELECT COUNT(*) as count FROM invoices');
       const invoiceNumber = `INV-${new Date().getFullYear()}-${String((countRes?.count || 0) + 1).padStart(5, '0')}`;
 
+      // Check if invoice contains ONLY repair parts -> send directly to Reports (auto-post) without sitting in Daily Closing (الجرد النهائي)
+      let allRepairParts = items.length > 0;
+      for (const item of items) {
+        if (item.itemType !== 'accessory') {
+          allRepairParts = false;
+          break;
+        }
+        const accMeta = this.db.queryOne('SELECT category, name FROM accessories WHERE id = ?', [item.itemId]);
+        if (!accMeta || !isRepairCategory(accMeta.category, accMeta.name)) {
+          allRepairParts = false;
+          break;
+        }
+      }
+
       // Insert invoice
       this.db.run(`
         INSERT INTO invoices (
           id, invoice_number, shift_id, customer_id, customer_name, customer_phone,
           subtotal, discount, discount_type, tax_rate, tax_amount, trade_in_discount, total_amount, paid_amount, remaining_amount,
           payment_method, cash_amount, card_amount, cliq_amount, credit_amount,
-          status, notes, cashier_id, cashier_name, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          status, notes, cashier_id, cashier_name, is_posted, posted_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         invoiceId, invoiceNumber, invoiceData.shiftId || null, invoiceData.customerId || null,
         invoiceData.customerName, invoiceData.customerPhone || null,
@@ -734,7 +755,8 @@ export class TigerRepository {
         invoiceData.totalAmount, invoiceData.paidAmount, invoiceData.remainingAmount,
         invoiceData.paymentMethod, invoiceData.cashAmount, invoiceData.cardAmount,
         invoiceData.cliqAmount, invoiceData.creditAmount, 'completed',
-        invoiceData.notes || null, invoiceData.cashierId, invoiceData.cashierName, now
+        invoiceData.notes || null, invoiceData.cashierId, invoiceData.cashierName,
+        allRepairParts ? 1 : 0, allRepairParts ? now : null, now
       ]);
 
       // Insert Items & adjust stock
@@ -751,7 +773,11 @@ export class TigerRepository {
         ]);
 
         if (item.itemType === 'accessory') {
-          this.db.run('UPDATE accessories SET current_stock = current_stock - ? WHERE id = ?', [item.quantity, item.itemId]);
+          const accRow = this.db.queryOne('SELECT is_unlimited, category, name FROM accessories WHERE id = ?', [item.itemId]);
+          const unlimited = accRow && (accRow.is_unlimited === 1 || isUnlimitedCategory(accRow.category, accRow.name));
+          if (!unlimited) {
+            this.db.run('UPDATE accessories SET current_stock = current_stock - ? WHERE id = ?', [item.quantity, item.itemId]);
+          }
         } else if (item.itemType === 'phone') {
           this.db.run('UPDATE phones SET status = "sold", sold_at = ?, invoice_id = ? WHERE id = ?', [now, invoiceId, item.itemId]);
           this.addImeiHistory({
@@ -840,7 +866,11 @@ export class TigerRepository {
       const items = this.db.query('SELECT * FROM invoice_items WHERE invoice_id = ?', [invoiceId]);
       for (const item of items) {
         if (item.item_type === 'accessory') {
-          this.db.run('UPDATE accessories SET current_stock = current_stock + ? WHERE id = ?', [item.quantity, item.item_id]);
+          const accRow = this.db.queryOne('SELECT is_unlimited, category, name FROM accessories WHERE id = ?', [item.item_id]);
+          const unlimited = accRow && (accRow.is_unlimited === 1 || isUnlimitedCategory(accRow.category, accRow.name));
+          if (!unlimited) {
+            this.db.run('UPDATE accessories SET current_stock = current_stock + ? WHERE id = ?', [item.quantity, item.item_id]);
+          }
         } else if (item.item_type === 'phone') {
           this.db.run('UPDATE phones SET status = "in_stock", sold_at = NULL, invoice_id = NULL WHERE id = ?', [item.item_id]);
           this.addImeiHistory({
@@ -1094,6 +1124,7 @@ export class TigerRepository {
         advancePayment: r.advance_payment,
         finalCost: r.final_cost,
         status: r.status,
+        isPaid: r.is_paid === 1,
         technicianNotes: r.technician_notes,
         createdAt: r.created_at,
         isPosted: r.is_posted === 1,
@@ -1144,6 +1175,7 @@ export class TigerRepository {
       advancePayment: r.advance_payment,
       finalCost: r.final_cost,
       status: r.status,
+      isPaid: r.is_paid === 1,
       technicianNotes: r.technician_notes,
       createdAt: r.created_at,
       isPosted: r.is_posted === 1,
@@ -1212,11 +1244,112 @@ export class TigerRepository {
     this.logAudit('repair_updated', 'tech', 'فني الصيانة', `تحديث حالة تذكرة الصيانة ${ticketId} إلى (${newStatus})`);
   }
 
+  public markRepairTicketPaid(ticketId: string, finalCostOverride?: number, actorName = 'الكاشير'): void {
+    this.db.transaction(() => {
+      const ticket = this.db.queryOne('SELECT * FROM repair_tickets WHERE id = ?', [ticketId]);
+      if (!ticket) throw new Error('تذكرة الصيانة غير موجودة');
+
+      const effectiveCost = finalCostOverride !== undefined
+        ? finalCostOverride
+        : (ticket.final_cost || ticket.estimated_cost || 0);
+      const prevPaid = Number(ticket.advance_payment || 0);
+      const collectedNow = Math.max(0, effectiveCost - prevPaid);
+
+      this.db.run(
+        'UPDATE repair_tickets SET final_cost = ?, advance_payment = ?, is_paid = 1 WHERE id = ?',
+        [effectiveCost, effectiveCost, ticketId]
+      );
+
+      if (collectedNow > 0) {
+        const activeShift = this.getActiveShift();
+        if (activeShift) {
+          this.db.run('UPDATE shifts SET expected_cash = expected_cash + ? WHERE id = ?', [collectedNow, activeShift.id]);
+        }
+      }
+
+      this.logAudit('repair_paid', 'usr', actorName, `تم تسديد تذكرة الصيانة ${ticket.ticket_number} بالكامل (الإجمالي: ${effectiveCost.toFixed(3)} د.أ)`);
+    });
+  }
+
+  public getAllRepairPartsReport(): RepairPartReportEntry[] {
+    const entries: RepairPartReportEntry[] = [];
+
+    // 1. Parts attached directly inside Repair Tickets (straight to Reports)
+    const repairRows = this.db.query(`
+      SELECT 
+        rp.id, rp.part_name, rp.quantity, rp.unit_cost, rp.unit_price,
+        rp.total_cost, rp.total_price, rp.added_at,
+        rt.ticket_number, rt.customer_name, rt.device_model, rt.status
+      FROM repair_parts rp
+      LEFT JOIN repair_tickets rt ON rp.ticket_id = rt.id
+      ORDER BY rp.added_at DESC
+    `);
+
+    for (const r of repairRows) {
+      const totalCost = Number(r.total_cost || 0);
+      const totalPrice = Number(r.total_price || 0);
+      entries.push({
+        id: r.id,
+        source: 'repair_ticket',
+        referenceNumber: r.ticket_number || '-',
+        partName: r.part_name,
+        quantity: Number(r.quantity || 1),
+        unitCost: Number(r.unit_cost || 0),
+        unitPrice: Number(r.unit_price || 0),
+        totalCost,
+        totalPrice,
+        profit: totalPrice - totalCost,
+        customerName: r.customer_name ? `${r.customer_name} (${r.device_model || ''})` : null,
+        statusLabel: 'صيانة جهاز',
+        createdAt: r.added_at
+      });
+    }
+
+    // 2. Repair parts sold directly via POS invoices
+    const invoiceItemRows = this.db.query(`
+      SELECT 
+        ii.id, ii.item_id, ii.name, ii.quantity, ii.unit_price, ii.cost_price, ii.total,
+        inv.invoice_number, inv.customer_name, inv.created_at,
+        a.category as acc_category, a.name as acc_name
+      FROM invoice_items ii
+      JOIN invoices inv ON ii.invoice_id = inv.id
+      LEFT JOIN accessories a ON ii.item_id = a.id
+      WHERE inv.status != 'refunded' AND ii.item_type = 'accessory'
+      ORDER BY inv.created_at DESC
+    `);
+
+    for (const r of invoiceItemRows) {
+      if (isRepairCategory(r.acc_category || '', r.acc_name || r.name || '')) {
+        const qty = Number(r.quantity || 1);
+        const totalCost = Number(r.cost_price || 0) * qty;
+        const totalPrice = Number(r.total || (Number(r.unit_price || 0) * qty));
+        entries.push({
+          id: r.id,
+          source: 'pos_sale',
+          referenceNumber: r.invoice_number,
+          partName: r.name,
+          quantity: qty,
+          unitCost: Number(r.cost_price || 0),
+          unitPrice: Number(r.unit_price || 0),
+          totalCost,
+          totalPrice,
+          profit: totalPrice - totalCost,
+          customerName: r.customer_name || 'زبون نقدي',
+          statusLabel: 'بيع قطعة مباشرة',
+          createdAt: r.created_at
+        });
+      }
+    }
+
+    return entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
   public attachPartToRepair(ticketId: string, accessoryId: string, quantity = 1): void {
     this.db.transaction(() => {
       const acc = this.db.queryOne('SELECT * FROM accessories WHERE id = ?', [accessoryId]);
       if (!acc) throw new Error('قطعة الغيار غير موجودة');
-      if (acc.current_stock < quantity) throw new Error(`المخزون المتوفر (${acc.current_stock}) غير كافٍ`);
+      const unlimited = acc.is_unlimited === 1 || isUnlimitedCategory(acc.category, acc.name);
+      if (!unlimited && acc.current_stock < quantity) throw new Error(`المخزون المتوفر (${acc.current_stock}) غير كافٍ`);
 
       const partId = `rpart-${Date.now()}`;
       const now = new Date().toISOString();
@@ -1230,8 +1363,10 @@ export class TigerRepository {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [partId, ticketId, accessoryId, acc.name, quantity, unitCost, unitPrice, totalCost, totalPrice, now]);
 
-      // Deduct from stock
-      this.db.run('UPDATE accessories SET current_stock = current_stock - ? WHERE id = ?', [quantity, accessoryId]);
+      // Deduct from stock if finite
+      if (!unlimited) {
+        this.db.run('UPDATE accessories SET current_stock = current_stock - ? WHERE id = ?', [quantity, accessoryId]);
+      }
     });
   }
 
@@ -1394,6 +1529,7 @@ export class TigerRepository {
       advancePayment: r.advance_payment,
       finalCost: r.final_cost,
       status: r.status,
+      isPaid: r.is_paid === 1,
       technicianNotes: r.technician_notes,
       createdAt: r.created_at,
       expectedDeliveryDate: r.expected_delivery_date,
@@ -1616,11 +1752,11 @@ export class TigerRepository {
       WHERE status != 'paid' AND due_date <= ?
     `, [today]);
 
-    // Low stock count (accounts for min_stock_alert and critical shortage <= 2 pieces)
+    // Low stock count (accounts for min_stock_alert and critical shortage <= 2 pieces, excluding unlimited services)
     const lowStockRow = this.db.queryOne(`
       SELECT COUNT(*) as low_stock
       FROM accessories
-      WHERE current_stock <= min_stock_alert OR current_stock <= 2
+      WHERE (is_unlimited = 0 OR is_unlimited IS NULL) AND (current_stock <= min_stock_alert OR current_stock <= 2)
     `);
 
     const totalSales = Number(salesRow?.total_sales || 0);

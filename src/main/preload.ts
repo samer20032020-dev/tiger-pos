@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { 
   User, Shift, Phone, Accessory, Invoice, InvoiceItem, 
-  TradeInDevice, RepairTicket, InstallmentPlan, Customer, 
+  TradeInDevice, RepairTicket, RepairPartReportEntry, InstallmentPlan, Customer, 
   Supplier, Expense, AuditLog, DashboardStats, ImeiHistory,
   SystemSettings, DamagedItem, CustomerStatement, CustomerDebtPayment,
   UpdateCheckResult
@@ -59,6 +59,8 @@ export interface TigerAPI {
   getRepairTicketDetails: (ticketId: string) => Promise<RepairTicket | null>;
   createRepairTicket: (data: Omit<RepairTicket, 'id' | 'ticketNumber' | 'createdAt'>) => Promise<RepairTicket>;
   updateRepairStatus: (ticketId: string, newStatus: string, notes?: string, finalCost?: number) => Promise<void>;
+  markRepairTicketPaid: (ticketId: string, finalCostOverride?: number, actorName?: string) => Promise<void>;
+  getAllRepairPartsReport: () => Promise<RepairPartReportEntry[]>;
   attachPartToRepair: (ticketId: string, accessoryId: string, quantity?: number) => Promise<void>;
   deleteRepairTicket: (ticketId: string) => Promise<void>;
 
@@ -165,6 +167,8 @@ const tigerAPI: TigerAPI = {
   getRepairTicketDetails: (ticketId) => ipcRenderer.invoke('db:getRepairTicketDetails', ticketId),
   createRepairTicket: (data) => ipcRenderer.invoke('db:createRepairTicket', data),
   updateRepairStatus: (ticketId, newStatus, notes, finalCost) => ipcRenderer.invoke('db:updateRepairStatus', ticketId, newStatus, notes, finalCost),
+  markRepairTicketPaid: (ticketId, finalCostOverride, actorName) => ipcRenderer.invoke('db:markRepairTicketPaid', ticketId, finalCostOverride, actorName),
+  getAllRepairPartsReport: () => ipcRenderer.invoke('db:getAllRepairPartsReport'),
   attachPartToRepair: (ticketId, accessoryId, quantity) => ipcRenderer.invoke('db:attachPartToRepair', ticketId, accessoryId, quantity),
   deleteRepairTicket: (ticketId) => ipcRenderer.invoke('db:deleteRepairTicket', ticketId),
 

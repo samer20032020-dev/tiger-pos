@@ -39,14 +39,26 @@ export function buildRepairWhatsAppMessage(
 ): string {
   const customerName = ticket.customerName?.trim() || 'الزبون العزيز';
   const deviceModel = ticket.deviceModel || 'الهاتف';
-  const remaining = Math.max(0, (ticket.finalCost || ticket.estimatedCost || 0) - (ticket.advancePayment || 0));
+  const effectiveTotal = ticket.finalCost || ticket.estimatedCost || 0;
+  const remaining = Math.max(0, effectiveTotal - (ticket.advancePayment || 0));
+  const isFullyPaid = Boolean(ticket.isPaid || ticket.status === 'delivered' || remaining <= 0.005);
 
   if (type === 'ready') {
+    if (isFullyPaid) {
+      return (
+        `أهلاً بك زبوننا العزيز (${customerName})..\n` +
+        `جهازك (${deviceModel}) جاهز للاستلام من ${storeName} \n\n` +
+        `رقم التذكرة: #${ticket.ticketNumber}\n` +
+        (effectiveTotal > 0 ? `إجمالي الحساب: ${formatJOD(effectiveTotal)}\n` : '') +
+        `الحالة المالية: تم السداد بالكامل ✅ (لا يوجد أي مبلغ متبقي)\n\n` +
+        `نشكركم لثقتكم بنا وبمركز TIGER❤️`
+      );
+    }
     return (
       `أهلاً بك زبوننا العزيز (${customerName})..\n` +
       `جهازك (${deviceModel}) جاهز للاستلام من ${storeName} \n\n` +
       `رقم التذكرة: #${ticket.ticketNumber}\n` +
-      ` المبلغ المتبقي: ${formatJOD(remaining)}\n\n` +
+      `المبلغ المتبقي عند الاستلام: ${formatJOD(remaining)}\n\n` +
       `نشكركم لثقتكم بنا وبمركز TIGER❤️`
     );
   }
@@ -96,7 +108,7 @@ export function buildInvoiceWhatsAppMessage(
     `${itemsText}\n` +
     `الإجمالي: ${formatJOD(invoice.totalAmount)}\n`;
 
-  if (invoice.remainingAmount && invoice.remainingAmount > 0) {
+  if (invoice.remainingAmount && invoice.remainingAmount >= 0.005) {
     msg += `المتبقي عليك: ${formatJOD(invoice.remainingAmount)}\n`;
   }
 

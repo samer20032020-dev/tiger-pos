@@ -7,7 +7,7 @@ import { useCartStore } from '../../stores/useCartStore';
 import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { PaymentMethod, Customer } from '../../../shared/types';
-import { formatJOD, cleanNumberInput } from '../../../shared/constants';
+import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 
 interface SplitPaymentModalProps {
   isOpen: boolean;
@@ -33,10 +33,14 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
 
   // Payment amounts
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [cashAmount, setCashAmount] = useState<number>(netTotal);
-  const [cardAmount, setCardAmount] = useState<number>(0);
-  const [cliqAmount, setCliqAmount] = useState<number>(0);
+  const [cashInput, setCashInput] = useState<string>(String(netTotal));
+  const [cardInput, setCardInput] = useState<string>('');
+  const [cliqInput, setCliqInput] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+
+  const cashAmount = parseNumberInput(cashInput);
+  const cardAmount = parseNumberInput(cardInput);
+  const cliqAmount = parseNumberInput(cliqInput);
 
   // Customer debt handling for "يدفع جزء وجزء بعدين"
   const [existingCustomers, setExistingCustomers] = useState<Customer[]>([]);
@@ -58,9 +62,9 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setPaymentMethod('cash');
-      setCashAmount(netTotal);
-      setCardAmount(0);
-      setCliqAmount(0);
+      setCashInput(netTotal > 0 ? String(netTotal) : '');
+      setCardInput('');
+      setCliqInput('');
       setQuickName(customer && customer.name !== 'زبون نقدي' ? customer.name : customerName && customerName !== 'زبون نقدي' ? customerName : '');
       setQuickPhone(customer?.phone || customerPhone || '');
       setSelectedCustomerId(customer?.id || '');
@@ -69,7 +73,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
 
   if (!isOpen) return null;
 
-  const totalPaid = Number((Number(cashAmount || 0) + Number(cardAmount || 0) + Number(cliqAmount || 0)).toFixed(3));
+  const totalPaid = Number((cashAmount + cardAmount + cliqAmount).toFixed(3));
   const remaining = Number(Math.max(0, netTotal - totalPaid).toFixed(3));
   const changeDue = Number(Math.max(0, totalPaid - netTotal).toFixed(3));
 
@@ -77,33 +81,33 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
   const handleSelectFull = (method: PaymentMethod) => {
     setPaymentMethod(method);
     if (method === 'cash') {
-      setCashAmount(netTotal); setCardAmount(0); setCliqAmount(0);
+      setCashInput(netTotal > 0 ? String(netTotal) : ''); setCardInput(''); setCliqInput('');
     } else if (method === 'card') {
-      setCashAmount(0); setCardAmount(netTotal); setCliqAmount(0);
+      setCashInput(''); setCardInput(netTotal > 0 ? String(netTotal) : ''); setCliqInput('');
     } else if (method === 'cliq') {
-      setCashAmount(0); setCardAmount(0); setCliqAmount(netTotal);
+      setCashInput(''); setCardInput(''); setCliqInput(netTotal > 0 ? String(netTotal) : '');
     } else if (method === 'credit') {
-      setCashAmount(0); setCardAmount(0); setCliqAmount(0);
+      setCashInput(''); setCardInput(''); setCliqInput('');
     }
   };
 
   // Auto-Fill balance buttons
   const autoFillCash = () => {
     setPaymentMethod('split');
-    const bal = Number(Math.max(0, netTotal - (cardAmount || 0) - (cliqAmount || 0)).toFixed(3));
-    setCashAmount(bal);
+    const bal = Number(Math.max(0, netTotal - cardAmount - cliqAmount).toFixed(3));
+    setCashInput(bal > 0 ? String(bal) : '0');
   };
 
   const autoFillCard = () => {
     setPaymentMethod('split');
-    const bal = Number(Math.max(0, netTotal - (cashAmount || 0) - (cliqAmount || 0)).toFixed(3));
-    setCardAmount(bal);
+    const bal = Number(Math.max(0, netTotal - cashAmount - cliqAmount).toFixed(3));
+    setCardInput(bal > 0 ? String(bal) : '0');
   };
 
   const autoFillCliq = () => {
     setPaymentMethod('split');
-    const bal = Number(Math.max(0, netTotal - (cashAmount || 0) - (cardAmount || 0)).toFixed(3));
-    setCliqAmount(bal);
+    const bal = Number(Math.max(0, netTotal - cashAmount - cardAmount).toFixed(3));
+    setCliqInput(bal > 0 ? String(bal) : '0');
   };
 
   // --- Confirmation & Invoice Saving ---
@@ -348,12 +352,11 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 inputMode="decimal"
                 dir="ltr"
                 placeholder="0.000"
-                value={cashAmount === 0 ? '' : cashAmount}
+                value={cashInput}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => {
                   setPaymentMethod('split');
-                  const clean = cleanNumberInput(e.target.value);
-                  setCashAmount(clean === '' ? 0 : parseFloat(clean));
+                  setCashInput(cleanNumberInput(e.target.value));
                 }}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-left"
               />
@@ -376,12 +379,11 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 inputMode="decimal"
                 dir="ltr"
                 placeholder="0.000"
-                value={cardAmount === 0 ? '' : cardAmount}
+                value={cardInput}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => {
                   setPaymentMethod('split');
-                  const clean = cleanNumberInput(e.target.value);
-                  setCardAmount(clean === '' ? 0 : parseFloat(clean));
+                  setCardInput(cleanNumberInput(e.target.value));
                 }}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-left"
               />
@@ -404,12 +406,11 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
                 inputMode="decimal"
                 dir="ltr"
                 placeholder="0.000"
-                value={cliqAmount === 0 ? '' : cliqAmount}
+                value={cliqInput}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => {
                   setPaymentMethod('split');
-                  const clean = cleanNumberInput(e.target.value);
-                  setCliqAmount(clean === '' ? 0 : parseFloat(clean));
+                  setCliqInput(cleanNumberInput(e.target.value));
                 }}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-left"
               />

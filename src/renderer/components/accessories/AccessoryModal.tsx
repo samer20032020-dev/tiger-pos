@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Package, Check, Sparkles } from 'lucide-react';
-import { ACCESSORY_CATEGORIES, cleanNumberInput } from '../../../shared/constants';
+import { X, Package, Check, Sparkles, Infinity as InfinityIcon } from 'lucide-react';
+import { ACCESSORY_CATEGORIES, cleanNumberInput, parseNumberInput, isUnlimitedCategory } from '../../../shared/constants';
 import { Accessory } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
 
@@ -28,11 +28,14 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
   const [category, setCategory] = useState(editingAccessory?.category || categoriesList[0]);
   const [barcode, setBarcode] = useState(editingAccessory?.barcode || '');
   const [sku, setSku] = useState(editingAccessory?.sku || '');
-  const [costPrice, setCostPrice] = useState<number | ''>(editingAccessory?.costPrice ?? '');
-  const [retailPrice, setRetailPrice] = useState<number | ''>(editingAccessory?.retailPrice ?? '');
-  const [wholesalePrice, setWholesalePrice] = useState<number | ''>(editingAccessory?.wholesalePrice ?? '');
-  const [currentStock, setCurrentStock] = useState<number | ''>(editingAccessory?.currentStock ?? 10);
-  const [minStockAlert, setMinStockAlert] = useState<number | ''>(editingAccessory?.minStockAlert ?? 5);
+  const [costPrice, setCostPrice] = useState<string>(editingAccessory?.costPrice !== undefined ? String(editingAccessory.costPrice) : '');
+  const [retailPrice, setRetailPrice] = useState<string>(editingAccessory?.retailPrice !== undefined ? String(editingAccessory.retailPrice) : '');
+  const [wholesalePrice, setWholesalePrice] = useState<string>(editingAccessory?.wholesalePrice !== undefined ? String(editingAccessory.wholesalePrice) : '');
+  const [currentStock, setCurrentStock] = useState<string>(editingAccessory?.currentStock !== undefined ? String(editingAccessory.currentStock) : '10');
+  const [minStockAlert, setMinStockAlert] = useState<string>(editingAccessory?.minStockAlert !== undefined ? String(editingAccessory.minStockAlert) : '5');
+  const [isUnlimitedStock, setIsUnlimitedStock] = useState<boolean>(
+    Boolean(editingAccessory?.isUnlimitedStock || isUnlimitedCategory(editingAccessory?.category || categoriesList[0], editingAccessory?.name || ''))
+  );
   const [description, setDescription] = useState(editingAccessory?.description || '');
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,11 +45,12 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
       setCategory(editingAccessory.category || categoriesList[0]);
       setBarcode(editingAccessory.barcode || '');
       setSku(editingAccessory.sku || '');
-      setCostPrice(editingAccessory.costPrice ?? '');
-      setRetailPrice(editingAccessory.retailPrice ?? '');
-      setWholesalePrice(editingAccessory.wholesalePrice ?? '');
-      setCurrentStock(editingAccessory.currentStock ?? 10);
-      setMinStockAlert(editingAccessory.minStockAlert ?? 5);
+      setCostPrice(editingAccessory.costPrice !== undefined && editingAccessory.costPrice !== null ? String(editingAccessory.costPrice) : '');
+      setRetailPrice(editingAccessory.retailPrice !== undefined && editingAccessory.retailPrice !== null ? String(editingAccessory.retailPrice) : '');
+      setWholesalePrice(editingAccessory.wholesalePrice !== undefined && editingAccessory.wholesalePrice !== null ? String(editingAccessory.wholesalePrice) : '');
+      setCurrentStock(editingAccessory.currentStock !== undefined && editingAccessory.currentStock !== null ? String(editingAccessory.currentStock) : '10');
+      setMinStockAlert(editingAccessory.minStockAlert !== undefined && editingAccessory.minStockAlert !== null ? String(editingAccessory.minStockAlert) : '5');
+      setIsUnlimitedStock(Boolean(editingAccessory.isUnlimitedStock || isUnlimitedCategory(editingAccessory.category, editingAccessory.name)));
       setDescription(editingAccessory.description || '');
     } else {
       setName('');
@@ -56,8 +60,9 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
       setCostPrice('');
       setRetailPrice('');
       setWholesalePrice('');
-      setCurrentStock(10);
-      setMinStockAlert(5);
+      setCurrentStock('10');
+      setMinStockAlert('5');
+      setIsUnlimitedStock(isUnlimitedCategory(categoriesList[0], ''));
       setDescription('');
     }
   }, [editingAccessory, isOpen, categoriesList]);
@@ -76,38 +81,49 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !barcode || !costPrice || !retailPrice) return;
+    if (!name.trim() || !barcode.trim() || retailPrice.trim() === '') {
+      addToast('يرجى إدخال اسم الصنف والباركود وسعر البيع', 'warning');
+      return;
+    }
+
+    const parsedCost = parseNumberInput(costPrice);
+    const parsedRetail = parseNumberInput(retailPrice);
+    const parsedWholesale = wholesalePrice.trim() !== '' ? parseNumberInput(wholesalePrice) : parsedRetail;
+    const parsedStock = isUnlimitedStock ? 999999 : Math.max(0, Math.floor(parseNumberInput(currentStock)));
+    const parsedMinAlert = isUnlimitedStock ? 0 : Math.max(0, Math.floor(parseNumberInput(minStockAlert)));
 
     setSubmitting(true);
     try {
       if (editingAccessory) {
         await window.tigerAPI.updateAccessory(editingAccessory.id, {
-          name,
+          name: name.trim(),
           category,
-          barcode,
-          sku: sku || barcode,
-          costPrice: Number(costPrice),
-          retailPrice: Number(retailPrice),
-          wholesalePrice: wholesalePrice ? Number(wholesalePrice) : Number(retailPrice),
-          currentStock: Number(currentStock),
-          minStockAlert: Number(minStockAlert),
+          barcode: barcode.trim(),
+          sku: sku.trim() || barcode.trim(),
+          costPrice: parsedCost,
+          retailPrice: parsedRetail,
+          wholesalePrice: parsedWholesale,
+          currentStock: parsedStock,
+          minStockAlert: parsedMinAlert,
+          isUnlimitedStock,
           description: description || null
         });
         addToast('تم تحديث بيانات الصنف بنجاح!', 'success');
       } else {
         await window.tigerAPI.addAccessory({
-          name,
+          name: name.trim(),
           category,
-          barcode,
-          sku: sku || barcode,
-          costPrice: Number(costPrice),
-          retailPrice: Number(retailPrice),
-          wholesalePrice: wholesalePrice ? Number(wholesalePrice) : Number(retailPrice),
-          currentStock: Number(currentStock),
-          minStockAlert: Number(minStockAlert),
+          barcode: barcode.trim(),
+          sku: sku.trim() || barcode.trim(),
+          costPrice: parsedCost,
+          retailPrice: parsedRetail,
+          wholesalePrice: parsedWholesale,
+          currentStock: parsedStock,
+          minStockAlert: parsedMinAlert,
+          isUnlimitedStock,
           description: description || null
         });
-        addToast(`تمت إضافة الصنف ${name} بنجاح!`, 'success');
+        addToast(`تمت إضافة الصنف ${name.trim()} بنجاح!`, 'success');
       }
       onSuccess();
       onClose();
@@ -153,7 +169,13 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">التصنيف:</label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {
+                  const newCat = e.target.value;
+                  setCategory(newCat);
+                  if (isUnlimitedCategory(newCat, name)) {
+                    setIsUnlimitedStock(true);
+                  }
+                }}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white"
               >
                 {categoriesList.map(c => <option key={c} value={c}>{c}</option>)}
@@ -200,14 +222,10 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
                 type="text"
                 inputMode="decimal"
                 dir="ltr"
-                placeholder="0.00"
+                placeholder="0.000"
                 value={costPrice}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setCostPrice(clean === '' ? '' : Number(clean));
-                }}
-                required
+                onChange={(e) => setCostPrice(cleanNumberInput(e.target.value))}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
               />
             </div>
@@ -217,13 +235,10 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
                 type="text"
                 inputMode="decimal"
                 dir="ltr"
-                placeholder="0.00"
+                placeholder="0.000"
                 value={retailPrice}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setRetailPrice(clean === '' ? '' : Number(clean));
-                }}
+                onChange={(e) => setRetailPrice(cleanNumberInput(e.target.value))}
                 required
                 className="w-full bg-orange-50 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-700 rounded-xl p-2.5 text-xs font-black text-orange-600 dark:text-orange-400 font-mono text-left"
               />
@@ -234,49 +249,83 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
                 type="text"
                 inputMode="decimal"
                 dir="ltr"
-                placeholder="0.00"
+                placeholder="0.000"
                 value={wholesalePrice}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setWholesalePrice(clean === '' ? '' : Number(clean));
-                }}
+                onChange={(e) => setWholesalePrice(cleanNumberInput(e.target.value))}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الكمية المتوفرة بالمخزن:</label>
+          {/* Unlimited Stock Toggle for Transfers & Open Services */}
+          <label className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition ${
+            isUnlimitedStock
+              ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+              : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+          }`}>
+            <div className="flex items-center gap-2.5">
               <input
-                type="text"
-                inputMode="numeric"
-                dir="ltr"
-                placeholder="10"
-                value={currentStock}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value).replace(/[^0-9]/g, '');
-                  setCurrentStock(clean === '' ? '' : Number(clean));
-                }}
-                required
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-center font-bold"
+                type="checkbox"
+                checked={isUnlimitedStock}
+                onChange={(e) => setIsUnlimitedStock(e.target.checked)}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
               />
+              <div>
+                <div className="text-xs font-black flex items-center gap-1.5">
+                  <InfinityIcon className="w-4 h-4 text-blue-500" />
+                  <span>سعة بيع لا نهائية / كمية مفتوحة (للحوالات والخدمات)</span>
+                </div>
+                <div className="text-[10px] opacity-80">
+                  لن ينفد هذا البند أبداً على الكاشير ولن يظهر في تنبيهات النواقص مهما زادت المبيعات
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-red-600 dark:text-red-400 mb-1">حد تنبيه النواقص (Min Alert):</label>
-              <input
-                type="number"
-                min="1"
-                placeholder="5"
-                value={minStockAlert}
-                onChange={(e) => setMinStockAlert(e.target.value ? Number(e.target.value) : '')}
-                required
-                className="w-full bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-2.5 text-xs text-red-700 dark:text-red-300 font-mono text-center font-bold"
-              />
+            {isUnlimitedStock && (
+              <span className="font-mono font-black text-base px-2 py-0.5 rounded-lg bg-blue-600 text-white">
+                ∞
+              </span>
+            )}
+          </label>
+
+          {!isUnlimitedStock && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الكمية المتوفرة بالمخزن:</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  dir="ltr"
+                  placeholder="10"
+                  value={currentStock}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const clean = cleanNumberInput(e.target.value).replace(/[^0-9]/g, '');
+                    setCurrentStock(clean);
+                  }}
+                  required
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-center font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-red-600 dark:text-red-400 mb-1">حد تنبيه النواقص (Min Alert):</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  dir="ltr"
+                  placeholder="5"
+                  value={minStockAlert}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const clean = cleanNumberInput(e.target.value).replace(/[^0-9]/g, '');
+                    setMinStockAlert(clean);
+                  }}
+                  required
+                  className="w-full bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-2.5 text-xs text-red-700 dark:text-red-300 font-mono text-center font-bold"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الوصف والمواصفات:</label>

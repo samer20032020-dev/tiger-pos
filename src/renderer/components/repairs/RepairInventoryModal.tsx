@@ -4,8 +4,7 @@ import {
   Smartphone, Cable, Check, AlertTriangle, ArrowUpDown, Trash2
 } from 'lucide-react';
 import { Accessory } from '../../../shared/types';
-import { REPAIR_PART_CATEGORIES } from '../../../shared/constants';
-import { formatJOD } from '../../../shared/constants';
+import { REPAIR_PART_CATEGORIES, formatJOD, isRepairCategory, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
 
 interface RepairInventoryModalProps {
@@ -41,19 +40,7 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
     setLoading(true);
     try {
       const allAccs = await window.tigerAPI.getAllAccessories();
-      // Filter items that match repair part categories or have repair-related keywords
-      const repairItems = allAccs.filter(a => 
-        REPAIR_PART_CATEGORIES.includes(a.category) ||
-        a.category.includes('صيانة') ||
-        a.category.includes('شاشات') ||
-        a.category.includes('بطاريات') ||
-        a.category.includes('UI') ||
-        a.name.includes('شاشة') ||
-        a.name.includes('بطارية') ||
-        a.name.includes('جدلة') ||
-        a.name.includes('فلكس') ||
-        a.name.includes('باك')
-      );
+      const repairItems = allAccs.filter(a => isRepairCategory(a.category, a.name));
       setParts(repairItems);
     } catch (err) {
       console.error(err);
@@ -74,11 +61,11 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
       addToast('يرجى إدخال اسم قطعة الصيانة', 'warning');
       return;
     }
-    const cost = parseFloat(newCostPrice) || 0;
-    const retail = parseFloat(newRetailPrice) || 0;
-    const wholesale = parseFloat(newWholesalePrice) || retail;
-    const stock = parseInt(newStock, 10) || 0;
-    const minStock = parseInt(newMinStock, 10) || 2;
+    const cost = parseNumberInput(newCostPrice);
+    const retail = parseNumberInput(newRetailPrice);
+    const wholesale = newWholesalePrice.trim() ? parseNumberInput(newWholesalePrice) : retail;
+    const stock = Math.max(0, Math.floor(parseNumberInput(newStock)));
+    const minStock = Math.max(0, Math.floor(parseNumberInput(newMinStock) || 2));
 
     setSubmitting(true);
     try {
@@ -212,12 +199,13 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">سعر التكلفة (د.أ):</label>
                 <input
-                  type="number"
-                  step="any"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
                   placeholder="0.000"
                   value={newCostPrice}
-                  onChange={(e) => setNewCostPrice(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setNewCostPrice(cleanNumberInput(e.target.value))}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 text-left"
                 />
               </div>
@@ -226,12 +214,13 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">سعر البيع للزبون (د.أ):</label>
                 <input
-                  type="number"
-                  step="any"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
                   placeholder="0.000"
                   value={newRetailPrice}
-                  onChange={(e) => setNewRetailPrice(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setNewRetailPrice(cleanNumberInput(e.target.value))}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-orange-600 dark:text-orange-400 focus:outline-none focus:border-orange-500 text-left"
                 />
               </div>
@@ -240,12 +229,13 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">سعر الجملة / محلات (د.أ):</label>
                 <input
-                  type="number"
-                  step="any"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
                   placeholder="0.000"
                   value={newWholesalePrice}
-                  onChange={(e) => setNewWholesalePrice(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setNewWholesalePrice(cleanNumberInput(e.target.value))}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 text-left"
                 />
               </div>
@@ -254,10 +244,12 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">الكمية المتوفرة بالمحل:</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  dir="ltr"
                   value={newStock}
-                  onChange={(e) => setNewStock(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setNewStock(cleanNumberInput(e.target.value).replace(/[^0-9]/g, ''))}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 text-left"
                 />
               </div>
@@ -266,10 +258,12 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">تنبيه النواقص عند وصول رصيد:</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
+                  dir="ltr"
                   value={newMinStock}
-                  onChange={(e) => setNewMinStock(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setNewMinStock(cleanNumberInput(e.target.value).replace(/[^0-9]/g, ''))}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 text-left"
                 />
               </div>

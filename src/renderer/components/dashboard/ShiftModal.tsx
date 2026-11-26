@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
-import { formatJOD } from '../../../shared/constants';
+import { formatJOD, cleanNumberInput } from '../../../shared/constants';
 
 interface ShiftModalProps {
   type: 'open' | 'close';
@@ -172,12 +172,8 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
                   inputMode="decimal"
                   dir="ltr"
                   value={startingCashInput}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9.]/g, '');
-                    const parts = val.split('.');
-                    const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
-                    setStartingCashInput(sanitized);
-                  }}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setStartingCashInput(cleanNumberInput(e.target.value))}
                   placeholder="0.000"
                   required
                   className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-700 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl pl-14 pr-4 py-3 text-xl font-black font-mono text-slate-900 dark:text-white focus:outline-none transition"
@@ -288,12 +284,8 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
                   dir="ltr"
                   placeholder="0.000"
                   value={actualCashInput}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9.]/g, '');
-                    const parts = val.split('.');
-                    const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : val;
-                    setActualCashInput(sanitized);
-                  }}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setActualCashInput(cleanNumberInput(e.target.value))}
                   autoFocus
                   required
                   className={`w-full bg-slate-50 dark:bg-slate-950 border-2 rounded-2xl pl-14 pr-4 py-3 text-2xl font-black font-mono text-slate-900 dark:text-white focus:outline-none transition shadow-inner ${

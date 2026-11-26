@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Smartphone, Plus, Check } from 'lucide-react';
-import { PHONE_BRANDS, PHONE_STORAGE_OPTIONS, PHONE_RAM_OPTIONS, WARRANTY_OPTIONS, cleanNumberInput } from '../../../shared/constants';
+import { PHONE_BRANDS, PHONE_STORAGE_OPTIONS, PHONE_RAM_OPTIONS, WARRANTY_OPTIONS, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { Phone, PhoneCondition } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
 
@@ -19,12 +19,12 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
   const [ram, setRam] = useState('8GB');
   const [color, setColor] = useState('');
   const [condition, setCondition] = useState<PhoneCondition>('new');
-  const [batteryHealth, setBatteryHealth] = useState<number | ''>(100);
+  const [batteryHealth, setBatteryHealth] = useState<string>('100');
   const [imei1, setImei1] = useState('');
   const [imei2, setImei2] = useState('');
-  const [costPrice, setCostPrice] = useState<number | ''>('');
-  const [sellingPrice, setSellingPrice] = useState<number | ''>('');
-  const [wholesalePrice, setWholesalePrice] = useState<number | ''>('');
+  const [costPrice, setCostPrice] = useState<string>('');
+  const [sellingPrice, setSellingPrice] = useState<string>('');
+  const [wholesalePrice, setWholesalePrice] = useState<string>('');
   const [warrantyPeriod, setWarrantyPeriod] = useState<string>('ضمان سنة وكيل رسمي');
   const [supplierName, setSupplierName] = useState('شركة النخبة للأجهزة الذكية');
   const [notes, setNotes] = useState('');
@@ -34,7 +34,11 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!model || !imei1 || !costPrice || !sellingPrice) return;
+    if (!model.trim() || !imei1.trim() || sellingPrice.trim() === '') return;
+
+    const parsedCost = parseNumberInput(costPrice);
+    const parsedSell = parseNumberInput(sellingPrice);
+    const parsedWholesale = wholesalePrice.trim() !== '' ? parseNumberInput(wholesalePrice) : parsedSell;
 
     setSubmitting(true);
     try {
@@ -45,12 +49,12 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
         ram,
         color: color || 'افتراضي',
         condition,
-        batteryHealth: batteryHealth ? Number(batteryHealth) : null,
+        batteryHealth: batteryHealth.trim() !== '' ? Math.round(parseNumberInput(batteryHealth)) : null,
         imei1,
         imei2: imei2 || null,
-        costPrice: Number(costPrice),
-        sellingPrice: Number(sellingPrice),
-        wholesalePrice: wholesalePrice ? Number(wholesalePrice) : Number(sellingPrice),
+        costPrice: parsedCost,
+        sellingPrice: parsedSell,
+        wholesalePrice: parsedWholesale,
         warrantyPeriod: warrantyPeriod || null,
         status: 'in_stock',
         supplierId: null,
@@ -161,13 +165,14 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">صحة البطارية (%):</label>
               <input
-                type="number"
-                min="50"
-                max="100"
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
                 value={batteryHealth}
-                onChange={(e) => setBatteryHealth(e.target.value === '' ? '' : Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setBatteryHealth(cleanNumberInput(e.target.value).replace(/[^0-9]/g, ''))}
                 placeholder="100"
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left"
               />
             </div>
           </div>
@@ -227,11 +232,7 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
                 placeholder="مثال: 450.000"
                 value={costPrice}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setCostPrice(clean === '' ? '' : Number(clean));
-                }}
-                required
+                onChange={(e) => setCostPrice(cleanNumberInput(e.target.value))}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-left"
               />
             </div>
@@ -244,10 +245,7 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
                 placeholder="مثال: 520.000"
                 value={sellingPrice}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setSellingPrice(clean === '' ? '' : Number(clean));
-                }}
+                onChange={(e) => setSellingPrice(cleanNumberInput(e.target.value))}
                 required
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-orange-600 text-left"
               />
@@ -261,10 +259,7 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
                 placeholder="مثال: 490.000"
                 value={wholesalePrice}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setWholesalePrice(clean === '' ? '' : Number(clean));
-                }}
+                onChange={(e) => setWholesalePrice(cleanNumberInput(e.target.value))}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-amber-600 text-left"
               />
             </div>

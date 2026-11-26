@@ -75,6 +75,7 @@ export interface Accessory {
   wholesalePrice: number;
   currentStock: number;
   minStockAlert: number;
+  isUnlimitedStock?: boolean;
   description?: string | null;
   createdAt: string;
 }
@@ -171,6 +172,7 @@ export interface RepairTicket {
   advancePayment: number;
   finalCost: number;
   status: RepairStatus;
+  isPaid?: boolean;
   technicianNotes?: string | null;
   createdAt: string;
   isPosted?: boolean;
@@ -191,6 +193,22 @@ export interface RepairPart {
   totalCost: number;
   totalPrice: number;
   addedAt: string;
+}
+
+export interface RepairPartReportEntry {
+  id: string;
+  source: 'repair_ticket' | 'pos_sale';
+  referenceNumber: string;
+  partName: string;
+  quantity: number;
+  unitCost: number;
+  unitPrice: number;
+  totalCost: number;
+  totalPrice: number;
+  profit: number;
+  customerName?: string | null;
+  statusLabel?: string;
+  createdAt: string;
 }
 
 export interface InstallmentPlan {
@@ -313,7 +331,7 @@ export interface Expense {
 
 export interface AuditLog {
   id: string;
-  actionType: 'invoice_deleted' | 'invoices_posted' | 'price_override' | 'stock_adjusted' | 'phone_status_changed' | 'shift_closed' | 'user_created' | 'backup_restored' | 'repair_updated' | 'repair_deleted' | 'damaged_stock' | 'debt_payment' | 'customer_deleted' | 'accessory_deleted';
+  actionType: 'invoice_deleted' | 'invoices_posted' | 'price_override' | 'stock_adjusted' | 'phone_status_changed' | 'shift_closed' | 'user_created' | 'backup_restored' | 'repair_updated' | 'repair_deleted' | 'repair_paid' | 'damaged_stock' | 'debt_payment' | 'customer_deleted' | 'accessory_deleted';
   actorId: string;
   actorName: string;
   details: string;

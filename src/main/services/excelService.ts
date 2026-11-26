@@ -681,6 +681,64 @@ export class ExcelService {
       });
     });
 
+    // ==========================================
+    // 7. SHEET: قطع الصيانة المباشرة (Repair Parts Report)
+    // ==========================================
+    const repairPartsSheet = workbook.addWorksheet('قطع الصيانة المباشرة', {
+      views: [{ rightToLeft: true }]
+    });
+
+    repairPartsSheet.columns = [
+      { header: 'اسم قطعة الصيانة', key: 'part_name', width: 28 },
+      { header: 'المصدر', key: 'source', width: 18 },
+      { header: 'رقم التذكرة / الفاتورة', key: 'reference', width: 18 },
+      { header: 'العميل / الجهاز', key: 'customer', width: 24 },
+      { header: 'الكمية', key: 'quantity', width: 10 },
+      { header: 'التكلفة الإجمالية', key: 'total_cost', width: 16 },
+      { header: 'قيمة البيع / التركيب', key: 'total_price', width: 18 },
+      { header: 'صافي الربح', key: 'profit', width: 16 },
+      { header: 'التاريخ والوقت', key: 'added_at', width: 20 }
+    ];
+
+    repairPartsSheet.getRow(1).eachCell(cell => {
+      cell.fill = tigerOrangeFill;
+      cell.font = headerFont;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    const directRepairParts = this.db.query(`
+      SELECT 
+        rp.part_name, rp.quantity, rp.total_cost, rp.total_price, rp.added_at,
+        rt.ticket_number, rt.customer_name, rt.device_model
+      FROM repair_parts rp
+      LEFT JOIN repair_tickets rt ON rp.ticket_id = rt.id
+      WHERE date(rp.added_at) >= ? AND date(rp.added_at) <= ?
+      ORDER BY rp.added_at DESC
+    `, [startDate, endDate]);
+
+    directRepairParts.forEach(rp => {
+      const tCost = Number(rp.total_cost || 0);
+      const tPrice = Number(rp.total_price || 0);
+      const addedRow = repairPartsSheet.addRow({
+        part_name: rp.part_name,
+        source: 'صيانة جهاز',
+        reference: rp.ticket_number || '-',
+        customer: rp.customer_name ? `${rp.customer_name} (${rp.device_model || ''})` : '-',
+        quantity: rp.quantity,
+        total_cost: tCost,
+        total_price: tPrice,
+        profit: tPrice - tCost,
+        added_at: (rp.added_at || '').replace('T', ' ').substring(0, 19)
+      });
+      [6, 7, 8].forEach(col => {
+        addedRow.getCell(col).numFmt = currencyNumFmt;
+      });
+      addedRow.eachCell(cell => {
+        cell.border = borderStyle;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+    });
+
     // Resolve target path
     let savePath = targetFilePath;
     if (!savePath) {

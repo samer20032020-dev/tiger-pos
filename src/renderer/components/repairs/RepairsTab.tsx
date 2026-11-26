@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   Wrench, Plus, Search, Filter, Printer, 
   Package, Clock, CheckCircle2, ChevronDown, Lock, Smartphone, Tag, X,
-  AlertTriangle, MessageSquare, Send
+  AlertTriangle, MessageSquare, Send, DollarSign, Check
 } from 'lucide-react';
 import { RepairTicket, RepairStatus, Accessory } from '../../../shared/types';
-import { REPAIR_STATUS_LABELS, formatJOD } from '../../../shared/constants';
+import { REPAIR_STATUS_LABELS, formatJOD, isRepairCategory, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { RepairTicketModal } from './RepairTicketModal';
 import { RepairPartsModal } from './RepairPartsModal';
 import { RepairDeviceStickerModal } from './RepairDeviceStickerModal';
@@ -16,7 +16,7 @@ import { sendWhatsAppMessage, buildRepairWhatsAppMessage } from '../../utils/wha
 import { useAppStore } from '../../stores/useAppStore';
 
 export const RepairsTab: React.FC = () => {
-  const { addToast, setActiveTab, setCriticalShortageFilter } = useAppStore();
+  const { addToast, setActiveTab, setCriticalShortageFilter, currentUser } = useAppStore();
   const [tickets, setTickets] = useState<RepairTicket[]>([]);
   const [criticalParts, setCriticalParts] = useState<Accessory[]>([]);
   const [search, setSearch] = useState('');
@@ -30,6 +30,11 @@ export const RepairsTab: React.FC = () => {
   const [patternTicket, setPatternTicket] = useState<RepairTicket | null>(null);
   const [stickerTicket, setStickerTicket] = useState<RepairTicket | null>(null);
 
+  // Payment / Settle Modal
+  const [settleTicket, setSettleTicket] = useState<RepairTicket | null>(null);
+  const [settleFinalCost, setSettleFinalCost] = useState<string>('');
+  const [settling, setSettling] = useState(false);
+
   const loadTickets = async () => {
     setLoading(true);
     try {
@@ -39,16 +44,8 @@ export const RepairsTab: React.FC = () => {
       ]);
       setTickets(ticketsData);
       
-      // Filter critical spare parts (<= 2 items)
-      const partsShortages = accData.filter(a => a.currentStock <= 2 && (
-        a.category.includes('قطع غيار') || 
-        a.category.includes('شاشات') || 
-        a.category.includes('بطاريات') ||
-        a.category.includes('كوابل') ||
-        a.name.includes('شاشة') ||
-        a.name.includes('بطارية') ||
-        a.name.includes('كابل')
-      ));
+      // Filter critical spare parts only (<= 2 items, excluding consumer accessories & unlimited services)
+      const partsShortages = accData.filter(a => !a.isUnlimitedStock && isRepairCategory(a.category, a.name) && a.currentStock <= 2);
       setCriticalParts(partsShortages);
     } catch (err) {
       console.error(err);
@@ -61,13 +58,36 @@ export const RepairsTab: React.FC = () => {
     loadTickets();
   }, []);
 
-  const handleStatusChange = async (ticketId: string, newStatus: string) => {
+  const handleStatusChange = async (ticket: RepairTicket, newStatus: string) => {
     try {
-      await window.tigerAPI.updateRepairStatus(ticketId, newStatus);
+      await window.tigerAPI.updateRepairStatus(ticket.id, newStatus);
       addToast(`تم تحديث حالة الجهاز إلى (${REPAIR_STATUS_LABELS[newStatus]?.label || newStatus})`, 'success');
+
+      const remaining = Math.max(0, (ticket.finalCost || ticket.estimatedCost || 0) - (ticket.advancePayment || 0));
+      if (newStatus === 'delivered' && !ticket.isPaid && remaining > 0.005) {
+        setSettleTicket(ticket);
+        setSettleFinalCost(String(ticket.finalCost || ticket.estimatedCost || 0));
+      }
       loadTickets();
     } catch (err: any) {
       addToast(err.message || 'فشل تحديث الحالة', 'error');
+    }
+  };
+
+  const handleConfirmSettlePaid = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!settleTicket) return;
+    setSettling(true);
+    try {
+      const finalVal = parseNumberInput(settleFinalCost);
+      await window.tigerAPI.markRepairTicketPaid(settleTicket.id, finalVal, currentUser?.fullName || 'الكاشير');
+      addToast(`تم تثبيت سداد تذكرة الصيانة (${settleTicket.ticketNumber}) بالكامل بنجاح ✅`, 'success');
+      setSettleTicket(null);
+      loadTickets();
+    } catch (err: any) {
+      addToast(err.message || 'فشل تسديد التذكرة', 'error');
+    } finally {
+      setSettling(false);
     }
   };
 
@@ -146,9 +166,9 @@ export const RepairsTab: React.FC = () => {
           <div>${t.reportedIssue}</div>
         </div>
         <div class="border-b">
-          <div class="row"><span>التكلفة التقديرية:</span><span class="bold">${t.estimatedCost.toFixed(2)} د.أ</span></div>
-          <div class="row"><span>العربون المستلم:</span><span class="bold">${t.advancePayment.toFixed(2)} د.أ</span></div>
-          <div class="row"><span>المتبقي عند الاستلام:</span><span class="bold">${(t.finalCost - t.advancePayment).toFixed(2)} د.أ</span></div>
+          <div class="row"><span>التكلفة التقديرية:</span><span class="bold">${t.estimatedCost.toFixed(3)} د.أ</span></div>
+          <div class="row"><span>العربون / المدفوع:</span><span class="bold">${t.advancePayment.toFixed(3)} د.أ</span></div>
+          <div class="row"><span>الحساب المتبقي:</span><span class="bold">${(t.isPaid || t.status === 'delivered' || Math.max(0, (t.finalCost || t.estimatedCost) - t.advancePayment) <= 0.005) ? 'مدفوع بالكامل (0.000 د.أ)' : `${Math.max(0, (t.finalCost || t.estimatedCost) - t.advancePayment).toFixed(3)} د.أ`}</span></div>
           <div class="row"><span>الموعد المتوقع:</span><span>${t.expectedDeliveryDate || '-'}</span></div>
         </div>
         <div class="center" style="font-size: 9px; margin-top: 8px; line-height: 1.4;">
@@ -378,25 +398,52 @@ export const RepairsTab: React.FC = () => {
 
                 {/* Financials & Action Buttons */}
                 <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-500">
-                      الحساب: <b className="text-slate-900 dark:text-white">{formatJOD(t.finalCost)}</b>
-                    </span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                      عربون: {formatJOD(t.advancePayment)}
-                    </span>
-                  </div>
+                  {(() => {
+                    const effCost = t.finalCost || t.estimatedCost || 0;
+                    const rem = Math.max(0, effCost - (t.advancePayment || 0));
+                    const isFullyPaid = Boolean(t.isPaid || t.status === 'delivered' || rem <= 0.005);
+                    return (
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-slate-500">
+                          الحساب: <b className="text-slate-900 dark:text-white">{formatJOD(effCost)}</b>
+                        </span>
+                        {isFullyPaid ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-black flex items-center gap-1 text-[11px] bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>مدفوع بالكامل</span>
+                          </span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400 font-bold">
+                            متبقي: {formatJOD(rem)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
 
-                  {/* WhatsApp Direct Notification Buttons */}
+                  {/* WhatsApp Direct Notification Buttons + Settle Paid */}
                   <div className="flex items-center gap-1.5 pt-0.5">
                     <button
                       onClick={() => handleSendWhatsApp(t, 'ready')}
-                      title="إرسال إشعار عبر واتساب بنقرة واحدة: جهازك جاهز للاستلام (المبلغ المتبقي)"
+                      title="إرسال إشعار عبر واتساب بنقرة واحدة"
                       className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-600/30 transition active:scale-[0.98]"
                     >
                       <WhatsAppIcon className="w-3.5 h-3.5 fill-white" />
                       <span>إرسال للواتساب (جاهز)</span>
                     </button>
+                    {!(t.isPaid || t.status === 'delivered' || Math.max(0, (t.finalCost || t.estimatedCost || 0) - (t.advancePayment || 0)) <= 0.005) && (
+                      <button
+                        onClick={() => {
+                          setSettleTicket(t);
+                          setSettleFinalCost(String(t.finalCost || t.estimatedCost || 0));
+                        }}
+                        title="تأكيد استلام كامل المبلغ وتصفير المتبقي"
+                        className="px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black flex items-center gap-1 shadow-sm transition"
+                      >
+                        <DollarSign className="w-3 h-3" />
+                        <span>تم الدفع</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleSendWhatsApp(t, 'received')}
                       title="إرسال إشعار عبر واتساب: تم استلام جهازك للفحص والصيانة"
@@ -410,7 +457,7 @@ export const RepairsTab: React.FC = () => {
                     {/* Status Changer */}
                     <select
                       value={t.status}
-                      onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                      onChange={(e) => handleStatusChange(t, e.target.value)}
                       className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 flex-1"
                     >
                       {Object.entries(REPAIR_STATUS_LABELS).map(([k, v]) => (
@@ -516,6 +563,77 @@ export const RepairsTab: React.FC = () => {
         onClose={() => setRepairInventoryOpen(false)}
         onSuccess={loadTickets}
       />
+
+      {/* Mark Repair Ticket Paid Modal */}
+      {settleTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-500" />
+                <div>
+                  <h3 className="font-black text-sm text-slate-900 dark:text-white">تسديد كامل حساب الصيانة</h3>
+                  <p className="text-[11px] text-slate-500">{settleTicket.ticketNumber} | {settleTicket.customerName}</p>
+                </div>
+              </div>
+              <button onClick={() => setSettleTicket(null)} className="text-slate-400 hover:text-slate-200">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSettlePaid} className="space-y-4 pt-4">
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">الجهاز:</span>
+                  <span className="font-bold text-slate-800 dark:text-white">{settleTicket.deviceModel}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">العربون المدفوع مسبقاً:</span>
+                  <span className="font-mono font-bold text-emerald-600">{formatJOD(settleTicket.advancePayment)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  التكلفة النهائية الإجمالية (د.أ):
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
+                  value={settleFinalCost}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setSettleFinalCost(cleanNumberInput(e.target.value))}
+                  placeholder="0.000"
+                  required
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-sm font-mono font-black text-emerald-600 text-left"
+                />
+                <span className="text-[10px] text-slate-400 block mt-1">
+                  سيتم تسجيل التذكرة كمدفوعة بالكامل وتصفير المبلغ المتبقي في الواتساب والإيصال تلقائياً.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSettleTicket(null)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={settling}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-emerald-600/30 flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{settling ? 'جاري التثبيت...' : 'تأكيد استلام المبلغ بالكامل'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

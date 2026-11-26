@@ -45,8 +45,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShiftModal, onCloseShiftMo
     try {
       if (window.tigerAPI && window.tigerAPI.getAllAccessories) {
         const all = await window.tigerAPI.getAllAccessories();
-        // Flag any item where currentStock <= 2 (critical shortage)
-        const critical = all.filter(a => a.currentStock <= 2);
+        // Flag any finite item where currentStock <= 2 (exclude unlimited services/transfers)
+        const critical = all.filter(a => !a.isUnlimitedStock && a.currentStock <= 2);
         setCriticalItems(critical);
       }
     } catch (e) {

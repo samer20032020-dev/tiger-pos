@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Wrench, Check, Lock, Calendar, DollarSign, Smartphone, ShieldAlert, KeyRound, Grid3X3 } from 'lucide-react';
 import { ConditionChecklist, RepairTicket } from '../../../shared/types';
-import { cleanNumberInput } from '../../../shared/constants';
+import { cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { PatternLockInput } from '../common/PatternLockInput';
 import { useAppStore } from '../../stores/useAppStore';
 
@@ -26,8 +26,8 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
   const [lockPattern, setLockPattern] = useState('');
   const [lockType, setLockType] = useState<'passcode' | 'pattern' | 'none'>('passcode');
   const [reportedIssue, setReportedIssue] = useState('');
-  const [estimatedCost, setEstimatedCost] = useState<number | ''>('');
-  const [advancePayment, setAdvancePayment] = useState<number | ''>(0);
+  const [estimatedCost, setEstimatedCost] = useState<string>('');
+  const [advancePayment, setAdvancePayment] = useState<string>('0');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -64,9 +64,9 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
         lockPattern: lockType === 'pattern' ? (lockPattern.trim() || null) : null,
         reportedIssue,
         conditionChecklist: checklist,
-        estimatedCost: Number(estimatedCost) || 0,
-        advancePayment: Number(advancePayment) || 0,
-        finalCost: Number(estimatedCost) || 0,
+        estimatedCost: parseNumberInput(estimatedCost),
+        advancePayment: parseNumberInput(advancePayment),
+        finalCost: parseNumberInput(estimatedCost),
         status: 'received',
         technicianNotes: null,
         expectedDeliveryDate: expectedDeliveryDate || null,
@@ -352,10 +352,7 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
                 placeholder="0.000"
                 value={estimatedCost}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setEstimatedCost(clean === '' ? '' : Number(clean));
-                }}
+                onChange={(e) => setEstimatedCost(cleanNumberInput(e.target.value))}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
               />
             </div>
@@ -369,10 +366,7 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
                 placeholder="0.000"
                 value={advancePayment}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setAdvancePayment(clean === '' ? '' : Number(clean));
-                }}
+                onChange={(e) => setAdvancePayment(cleanNumberInput(e.target.value))}
                 className="w-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl p-2.5 text-xs text-emerald-700 dark:text-emerald-300 font-mono text-left font-bold"
               />
             </div>

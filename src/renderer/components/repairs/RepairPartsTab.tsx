@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Cpu, Plus, Search, Printer, Edit2, 
   AlertTriangle, PlusCircle, MinusCircle, Trash2,
-  FileSpreadsheet, Wrench, Layers, Battery, Smartphone, Cable
+  FileSpreadsheet, Wrench, Layers, Battery, Smartphone, Cable, ArrowLeftRight
 } from 'lucide-react';
 import { Accessory } from '../../../shared/types';
 import { REPAIR_PART_CATEGORIES, formatJOD, isRepairCategory } from '../../../shared/constants';
@@ -217,6 +217,24 @@ export const RepairPartsTab: React.FC = () => {
     }
   };
 
+  const handleMoveToAccessories = async (part: Accessory) => {
+    const confirmed = window.confirm(`هل تريد نقل "${part.name}" إلى قسم الإكسسوارات؟`);
+    if (!confirmed) return;
+
+    try {
+      const n = (part.name || '').toLowerCase();
+      const targetCategory =
+        n.includes('عدس') || n.includes('حماية') || n.includes('سكرين')
+          ? 'شاشات حماية (سكرينات)'
+          : 'أخرى';
+      await window.tigerAPI.updateAccessory(part.id, { category: targetCategory });
+      addToast(`تم نقل "${part.name}" إلى قسم الإكسسوارات بنجاح`, 'success');
+      loadData();
+    } catch (err: any) {
+      addToast(err.message || 'فشل نقل القطعة', 'error');
+    }
+  };
+
   const filtered = parts.filter(p => {
     const matchSearch = search === '' ||
       p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -247,6 +265,22 @@ export const RepairPartsTab: React.FC = () => {
 
   const criticalStockCount = parts.filter(p => p.currentStock <= 2).length;
   const lowStockCount = parts.filter(p => p.currentStock <= p.minStockAlert).length;
+
+  const repairTotals = filtered.reduce(
+    (accTotals, item) => {
+      const qty = Math.max(0, Number(item.currentStock || 0));
+      const cost = Number(item.costPrice || 0);
+      const retail = Number(item.retailPrice || 0);
+      const wholesale = Number(item.wholesalePrice || item.retailPrice || 0);
+      accTotals.totalQty += qty;
+      accTotals.totalCostValue += cost * qty;
+      accTotals.totalRetailValue += retail * qty;
+      accTotals.totalWholesaleValue += wholesale * qty;
+      return accTotals;
+    },
+    { totalQty: 0, totalCostValue: 0, totalRetailValue: 0, totalWholesaleValue: 0 }
+  );
+  const expectedRepairProfit = repairTotals.totalRetailValue - repairTotals.totalCostValue;
 
   return (
     <div className="p-6 space-y-4 pb-28">
@@ -538,6 +572,13 @@ export const RepairPartsTab: React.FC = () => {
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
+                              <button
+                                onClick={() => handleMoveToAccessories(part)}
+                                title="نقل إلى قسم الإكسسوارات"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-purple-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                              >
+                                <ArrowLeftRight className="w-4 h-4" />
+                              </button>
                               {part.currentStock > 0 && (
                                 <button
                                   onClick={() => setDamagedPart(part)}
@@ -563,6 +604,35 @@ export const RepairPartsTab: React.FC = () => {
                 })
               )}
             </tbody>
+            {filtered.length > 0 && (
+              <tfoot className="bg-slate-900 text-white border-t-2 border-orange-500 font-bold select-text">
+                <tr>
+                  <td colSpan={3} className="p-4 text-xs font-black text-orange-400">
+                    📊 إجمالي مخزون قطع الصيانة ({filtered.length} صنف):
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-slate-400 font-sans">إجمالي التكلفة:</div>
+                    <div className="text-sm font-black text-slate-100">{formatJOD(repairTotals.totalCostValue)}</div>
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-orange-300 font-sans">إجمالي المبيع (مفرق):</div>
+                    <div className="text-sm font-black text-orange-400">{formatJOD(repairTotals.totalRetailValue)}</div>
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-amber-300 font-sans">إجمالي الجملة:</div>
+                    <div className="text-sm font-black text-amber-400">{formatJOD(repairTotals.totalWholesaleValue)}</div>
+                  </td>
+                  <td className="p-4 text-center font-mono">
+                    <div className="text-[10px] text-slate-400 font-sans">إجمالي القطع:</div>
+                    <div className="text-sm font-black text-white">{repairTotals.totalQty} قطعة</div>
+                  </td>
+                  <td colSpan={2} className="p-4 text-center font-mono">
+                    <div className="text-[10px] text-emerald-300 font-sans">صافي الربح المتوقع:</div>
+                    <div className="text-sm font-black text-emerald-400">+{formatJOD(expectedRepairProfit)}</div>
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

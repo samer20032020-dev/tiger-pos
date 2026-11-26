@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, RefreshCw, Smartphone, Battery, Tag, Check, AlertCircle } from 'lucide-react';
-import { PHONE_BRANDS, PHONE_STORAGE_OPTIONS, cleanNumberInput } from '../../../shared/constants';
+import { PHONE_BRANDS, PHONE_STORAGE_OPTIONS, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { TradeInDevice } from '../../../shared/types';
 import { useCartStore } from '../../stores/useCartStore';
 
@@ -19,13 +19,13 @@ export const TradeInModal: React.FC<TradeInModalProps> = ({ isOpen, onClose }) =
   const [batteryHealth, setBatteryHealth] = useState<number | ''>(tradeIn?.batteryHealth || 85);
   const [imei, setImei] = useState(tradeIn?.imei || '');
   const [conditionNotes, setConditionNotes] = useState(tradeIn?.conditionNotes || '');
-  const [purchasePrice, setPurchasePrice] = useState<number | ''>(tradeIn?.purchasePrice || '');
+  const [purchasePrice, setPurchasePrice] = useState<string>(tradeIn?.purchasePrice !== undefined ? String(tradeIn.purchasePrice) : '');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!model || !imei || !purchasePrice) return;
+    if (!model.trim() || !imei.trim() || purchasePrice.trim() === '') return;
 
     const device: Omit<TradeInDevice, 'id' | 'invoiceId' | 'createdAt'> = {
       brand,
@@ -35,7 +35,7 @@ export const TradeInModal: React.FC<TradeInModalProps> = ({ isOpen, onClose }) =
       batteryHealth: batteryHealth ? Number(batteryHealth) : null,
       imei,
       conditionNotes: conditionNotes || 'مستعمل بحالة جيدة',
-      purchasePrice: Number(purchasePrice)
+      purchasePrice: parseNumberInput(purchasePrice)
     };
 
     setTradeIn(device as any);
@@ -144,10 +144,7 @@ export const TradeInModal: React.FC<TradeInModalProps> = ({ isOpen, onClose }) =
                 placeholder="0.000"
                 value={purchasePrice}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const clean = cleanNumberInput(e.target.value);
-                  setPurchasePrice(clean === '' ? '' : Number(clean));
-                }}
+                onChange={(e) => setPurchasePrice(cleanNumberInput(e.target.value))}
                 required
                 className="w-full bg-orange-50 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-700 rounded-xl p-2.5 text-sm font-black text-orange-600 dark:text-orange-400 font-mono text-left"
               />

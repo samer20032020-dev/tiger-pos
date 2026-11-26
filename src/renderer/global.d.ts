@@ -1,7 +1,7 @@
 // Global window augmentation for Electron preload bridge
 import type { 
   User, Shift, Phone, Accessory, Invoice, InvoiceItem,
-  TradeInDevice, RepairTicket, InstallmentPlan, Customer,
+  TradeInDevice, RepairTicket, RepairPartReportEntry, InstallmentPlan, Customer,
   Supplier, Expense, AuditLog, DashboardStats, ImeiHistory,
   SystemSettings, DamagedItem, CustomerStatement, CustomerDebtPayment,
   UpdateCheckResult
@@ -42,6 +42,8 @@ export interface TigerAPI {
   getRepairTicketDetails: (ticketId: string) => Promise<RepairTicket | null>;
   createRepairTicket: (data: Omit<RepairTicket, 'id' | 'ticketNumber' | 'createdAt'>) => Promise<RepairTicket>;
   updateRepairStatus: (ticketId: string, newStatus: string, notes?: string, finalCost?: number) => Promise<void>;
+  markRepairTicketPaid: (ticketId: string, finalCostOverride?: number, actorName?: string) => Promise<void>;
+  getAllRepairPartsReport: () => Promise<RepairPartReportEntry[]>;
   attachPartToRepair: (ticketId: string, accessoryId: string, quantity?: number) => Promise<void>;
   deleteRepairTicket: (ticketId: string) => Promise<void>;
   getAllInstallmentPlans: () => Promise<InstallmentPlan[]>;

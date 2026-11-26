@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Trash2, Plus, Minus, Smartphone, Package, 
   User, Tag, RefreshCw, CreditCard, ShoppingBag, 
   Percent, DollarSign, ShieldCheck, Briefcase 
 } from 'lucide-react';
 import { useCartStore } from '../../stores/useCartStore';
-import { formatJOD, cleanNumberInput } from '../../../shared/constants';
+import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 
 interface PosCartProps {
   onOpenTradeIn: () => void;
@@ -25,6 +25,14 @@ export const PosCart: React.FC<PosCartProps> = ({
     tradeIn, getSubtotal, getNetTotal, getTradeInValue,
     getDiscountAmount, getTaxAmount
   } = useCartStore();
+
+  const [discountInput, setDiscountInput] = useState<string>(discount ? String(discount) : '');
+
+  useEffect(() => {
+    if (discount === 0 && parseNumberInput(discountInput) !== 0) {
+      setDiscountInput('');
+    }
+  }, [discount]);
 
   const subtotal = getSubtotal();
   const tradeInVal = getTradeInValue();
@@ -234,14 +242,15 @@ export const PosCart: React.FC<PosCartProps> = ({
               type="text"
               inputMode="decimal"
               dir="ltr"
-              value={discount || ''}
+              value={discountInput}
               onFocus={(e) => e.target.select()}
               onChange={(e) => {
                 const clean = cleanNumberInput(e.target.value);
+                setDiscountInput(clean);
                 setDiscountType('fixed');
-                setDiscount(clean === '' ? 0 : parseFloat(clean));
+                setDiscount(parseNumberInput(clean));
               }}
-              placeholder="0.00"
+              placeholder="0.000"
               className="w-24 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 text-xs text-left font-mono font-bold text-red-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
             <span className="text-[11px] font-bold text-slate-500">د.أ</span>

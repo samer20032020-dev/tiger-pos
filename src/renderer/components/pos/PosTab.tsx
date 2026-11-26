@@ -4,7 +4,7 @@ import {
   RotateCcw, Briefcase, ShieldCheck, Tag 
 } from 'lucide-react';
 import { Phone, Accessory, Invoice } from '../../../shared/types';
-import { ACCESSORY_CATEGORIES, formatJOD } from '../../../shared/constants';
+import { ACCESSORY_CATEGORIES, formatJOD, isUnlimitedCategory } from '../../../shared/constants';
 import { useCartStore } from '../../stores/useCartStore';
 import { useAppStore } from '../../stores/useAppStore';
 import { PosCart } from './PosCart';
@@ -283,6 +283,7 @@ export const PosTab: React.FC = () => {
               {/* 2. Accessories Cards */}
               {filteredAccessories.map((acc) => {
                 const effectivePrice = wholesaleMode && acc.wholesalePrice ? acc.wholesalePrice : acc.retailPrice;
+                const isUnlimited = Boolean(acc.isUnlimitedStock || isUnlimitedCategory(acc.category, acc.name));
                 return (
                   <div
                     key={acc.id}
@@ -295,7 +296,7 @@ export const PosTab: React.FC = () => {
                       }
                     }}
                     className={`bg-white dark:bg-slate-900 border rounded-2xl p-3.5 shadow-sm hover:shadow-md cursor-pointer transition flex flex-col justify-between group ${
-                      acc.currentStock <= 0 
+                      !isUnlimited && acc.currentStock <= 0 
                         ? 'opacity-40 border-slate-200 pointer-events-none'
                         : 'border-slate-200 dark:border-slate-800 hover:border-orange-500'
                     }`}
@@ -305,11 +306,13 @@ export const PosTab: React.FC = () => {
                         {acc.category}
                       </span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        acc.currentStock <= acc.minStockAlert
+                        isUnlimited
+                          ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
+                          : acc.currentStock <= acc.minStockAlert
                           ? 'bg-red-100 dark:bg-red-950/60 text-red-600'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                       }`}>
-                        المخزون: {acc.currentStock}
+                        {isUnlimited ? '∞ مفتوح' : `المخزون: ${acc.currentStock}`}
                       </span>
                     </div>
 

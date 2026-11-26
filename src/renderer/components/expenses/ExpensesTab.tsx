@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt, Plus, Search, DollarSign, Check } from 'lucide-react';
 import { Expense } from '../../../shared/types';
-import { EXPENSE_CATEGORIES, formatJOD, cleanNumberInput } from '../../../shared/constants';
+import { EXPENSE_CATEGORIES, formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 
@@ -15,7 +15,7 @@ export const ExpensesTab: React.FC = () => {
   const [isOpen, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<Expense['category']>('other');
-  const [amount, setAmount] = useState<number | ''>('');
+  const [amount, setAmount] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [deductFromShift, setDeductFromShift] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -38,12 +38,13 @@ export const ExpensesTab: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !amount) return;
+    const parsedAmount = parseNumberInput(amount);
+    if (!title.trim() || parsedAmount <= 0) return;
     setSubmitting(true);
     try {
       await window.tigerAPI.addExpense({
         category,
-        amount: Number(amount),
+        amount: parsedAmount,
         title,
         notes: notes || null,
         paidBy: currentUser?.fullName || 'الكاشير',
@@ -168,10 +169,7 @@ export const ExpensesTab: React.FC = () => {
                     placeholder="0.000"
                     value={amount}
                     onFocus={(e) => e.target.select()}
-                    onChange={(e) => {
-                      const clean = cleanNumberInput(e.target.value);
-                      setAmount(clean === '' ? '' : Number(clean));
-                    }}
+                    onChange={(e) => setAmount(cleanNumberInput(e.target.value))}
                     required
                     className="w-full bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-2.5 text-xs font-black text-red-600 font-mono text-left"
                   />

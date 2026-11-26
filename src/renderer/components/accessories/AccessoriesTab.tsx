@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Package, Plus, Search, Printer, Edit2, 
   AlertTriangle, Filter, PlusCircle, MinusCircle, Trash2,
-  FileSpreadsheet
+  FileSpreadsheet, ArrowLeftRight
 } from 'lucide-react';
 import { Accessory } from '../../../shared/types';
-import { ACCESSORY_CATEGORIES, formatJOD, isRepairCategory } from '../../../shared/constants';
+import { ACCESSORY_CATEGORIES, formatJOD, isRepairCategory, isUnlimitedCategory } from '../../../shared/constants';
 import { AccessoryModal } from './AccessoryModal';
 import { BarcodeStickerModal } from '../common/BarcodeStickerModal';
 import { DamagedItemModal } from '../common/DamagedItemModal';
@@ -231,23 +231,59 @@ export const AccessoriesTab: React.FC = () => {
     }
   };
 
+  const handleMoveToRepairParts = async (acc: Accessory) => {
+    const confirmed = window.confirm(`هل تريد نقل الصنف "${acc.name}" إلى قسم مخزون وقطع الصيانة؟`);
+    if (!confirmed) return;
+
+    try {
+      await window.tigerAPI.updateAccessory(acc.id, {
+        category: 'قطع غيار ومواد صيانة',
+        isUnlimitedStock: false
+      });
+      addToast(`تم نقل "${acc.name}" إلى قسم مخزون وقطع الصيانة بنجاح`, 'success');
+      loadData();
+    } catch (err: any) {
+      addToast(err.message || 'فشل نقل الصنف', 'error');
+    }
+  };
+
   const consumerAccessories = accessories.filter(a => !isRepairCategory(a.category, a.name));
 
   const filtered = consumerAccessories.filter(a => {
+    const isUnlimited = Boolean(a.isUnlimitedStock || isUnlimitedCategory(a.category, a.name));
     const matchSearch = search === '' ||
       a.name.toLowerCase().includes(search.toLowerCase()) ||
       a.barcode.includes(search) ||
       a.sku.toLowerCase().includes(search.toLowerCase());
 
     const matchCategory = selectedCategory === 'all' || a.category === selectedCategory;
-    const matchCritical = !criticalOnly || a.currentStock <= 2;
-    const matchLowStock = !lowStockOnly || a.currentStock <= a.minStockAlert;
+    const matchCritical = !criticalOnly || (!isUnlimited && a.currentStock <= 2);
+    const matchLowStock = !lowStockOnly || (!isUnlimited && a.currentStock <= a.minStockAlert);
 
     return matchSearch && matchCategory && matchCritical && matchLowStock;
   });
 
-  const criticalStockCount = consumerAccessories.filter(a => a.currentStock <= 2).length;
-  const lowStockCount = consumerAccessories.filter(a => a.currentStock <= a.minStockAlert).length;
+  const criticalStockCount = consumerAccessories.filter(a => !a.isUnlimitedStock && !isUnlimitedCategory(a.category, a.name) && a.currentStock <= 2).length;
+  const lowStockCount = consumerAccessories.filter(a => !a.isUnlimitedStock && !isUnlimitedCategory(a.category, a.name) && a.currentStock <= a.minStockAlert).length;
+
+  // Inventory valuation totals ("الأفريج والإجمالي أسفل الجدول") for finite items
+  const inventoryTotals = filtered.reduce(
+    (accTotals, item) => {
+      const isUnlimited = Boolean(item.isUnlimitedStock || isUnlimitedCategory(item.category, item.name));
+      if (isUnlimited) return accTotals;
+      const qty = Math.max(0, Number(item.currentStock || 0));
+      const cost = Number(item.costPrice || 0);
+      const retail = Number(item.retailPrice || 0);
+      const wholesale = Number(item.wholesalePrice || item.retailPrice || 0);
+      accTotals.totalQty += qty;
+      accTotals.totalCostValue += cost * qty;
+      accTotals.totalRetailValue += retail * qty;
+      accTotals.totalWholesaleValue += wholesale * qty;
+      return accTotals;
+    },
+    { totalQty: 0, totalCostValue: 0, totalRetailValue: 0, totalWholesaleValue: 0 }
+  );
+  const expectedNetProfit = inventoryTotals.totalRetailValue - inventoryTotals.totalCostValue;
 
   return (
     <div className="p-6 space-y-4 pb-28">
@@ -402,8 +438,9 @@ export const AccessoriesTab: React.FC = () => {
                 </tr>
               ) : (
                 filtered.map((acc) => {
-                  const isCritical = acc.currentStock <= 2;
-                  const isLow = acc.currentStock <= acc.minStockAlert;
+                  const isUnlimited = Boolean(acc.isUnlimitedStock || isUnlimitedCategory(acc.category, acc.name));
+                  const isCritical = !isUnlimited && acc.currentStock <= 2;
+                  const isLow = !isUnlimited && acc.currentStock <= acc.minStockAlert;
                   return (
                     <tr 
                       key={acc.id} 
@@ -455,18 +492,26 @@ export const AccessoriesTab: React.FC = () => {
                         {formatJOD(acc.wholesalePrice || acc.retailPrice)}
                       </td>
                       <td className="p-3.5 text-center">
-                        <span className={`inline-block font-mono font-bold px-2 py-0.5 rounded-full text-xs ${
-                          acc.currentStock <= 0
-                            ? 'bg-red-600 text-white'
-                            : isLow
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
-                        }`}>
-                          {acc.currentStock} قطعة
-                        </span>
+                        {isUnlimited ? (
+                          <span className="inline-block font-mono font-black px-2.5 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            ∞ لا نهائي
+                          </span>
+                        ) : (
+                          <span className={`inline-block font-mono font-bold px-2 py-0.5 rounded-full text-xs ${
+                            acc.currentStock <= 0
+                              ? 'bg-red-600 text-white'
+                              : isLow
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
+                          }`}>
+                            {acc.currentStock} قطعة
+                          </span>
+                        )}
                       </td>
                       <td className="p-3.5 text-center">
-                        {isAdmin ? (
+                        {isUnlimited ? (
+                          <span className="text-blue-500 font-bold text-[10px] select-none">خدمة مفتوحة</span>
+                        ) : isAdmin ? (
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => handleAdjustStock(acc, 1)}
@@ -509,7 +554,14 @@ export const AccessoriesTab: React.FC = () => {
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              {acc.currentStock > 0 && (
+                              <button
+                                onClick={() => handleMoveToRepairParts(acc)}
+                                title="نقل الصنف إلى مخزون وقطع الصيانة"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-purple-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                              >
+                                <ArrowLeftRight className="w-4 h-4" />
+                              </button>
+                              {!isUnlimited && acc.currentStock > 0 && (
                                 <button
                                   onClick={() => setDamagedAcc(acc)}
                                   title="تسجيل صنف تالف / شطب أو مرتجع للمورد"
@@ -534,6 +586,35 @@ export const AccessoriesTab: React.FC = () => {
                 })
               )}
             </tbody>
+            {filtered.length > 0 && (
+              <tfoot className="bg-slate-900 text-white border-t-2 border-orange-500 font-bold select-text">
+                <tr>
+                  <td colSpan={3} className="p-4 text-xs font-black text-orange-400">
+                    📊 المجموع الكلي وجرد المخزون ({filtered.length} صنف):
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-slate-400 font-sans">إجمالي التكلفة عليك:</div>
+                    <div className="text-sm font-black text-slate-100">{formatJOD(inventoryTotals.totalCostValue)}</div>
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-orange-300 font-sans">إجمالي المبيع (مفرق):</div>
+                    <div className="text-sm font-black text-orange-400">{formatJOD(inventoryTotals.totalRetailValue)}</div>
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-amber-300 font-sans">إجمالي الجملة كاملة:</div>
+                    <div className="text-sm font-black text-amber-400">{formatJOD(inventoryTotals.totalWholesaleValue)}</div>
+                  </td>
+                  <td className="p-4 text-center font-mono">
+                    <div className="text-[10px] text-slate-400 font-sans">إجمالي القطع:</div>
+                    <div className="text-sm font-black text-white">{inventoryTotals.totalQty} قطعة</div>
+                  </td>
+                  <td colSpan={2} className="p-4 text-center font-mono">
+                    <div className="text-[10px] text-emerald-300 font-sans">صافي الربح المتوقع:</div>
+                    <div className="text-sm font-black text-emerald-400">+{formatJOD(expectedNetProfit)}</div>
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

@@ -5,7 +5,7 @@ import {
   AlertCircle, Smartphone, Wrench, CalendarClock, Trash2, CheckCircle2
 } from 'lucide-react';
 import { Customer, CustomerStatement, PaymentMethod } from '../../../shared/types';
-import { formatJOD, cleanNumberInput } from '../../../shared/constants';
+import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
 
 export const CustomersTab: React.FC = () => {
@@ -23,7 +23,7 @@ export const CustomersTab: React.FC = () => {
 
   // Debt Payment Modal state
   const [debtPayCustomer, setDebtPayCustomer] = useState<Customer | null>(null);
-  const [payAmount, setPayAmount] = useState<number | ''>('');
+  const [payAmount, setPayAmount] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [voucherNumber, setVoucherNumber] = useState('');
   const [payNotes, setPayNotes] = useState('');
@@ -100,12 +100,12 @@ export const CustomersTab: React.FC = () => {
 
   const handlePayDebt = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!debtPayCustomer || !payAmount || Number(payAmount) <= 0) return;
+    const amt = parseNumberInput(payAmount);
+    if (!debtPayCustomer || amt <= 0) return;
 
     setSubmittingPayment(true);
     try {
       const vNumber = voucherNumber || `VCH-${Date.now().toString().slice(-6)}`;
-      const amt = Number(payAmount);
       const isFullSettlement = (debtPayCustomer.balance - amt) <= 0.001;
 
       await window.tigerAPI.payCustomerDebt({
@@ -407,7 +407,7 @@ export const CustomersTab: React.FC = () => {
                           <button
                             onClick={() => {
                               setDebtPayCustomer(cust);
-                              setPayAmount(cust.balance > 0 ? cust.balance : '');
+                              setPayAmount(cust.balance > 0 ? String(cust.balance) : '');
                               setVoucherNumber(`RCP-${Date.now().toString().slice(-5)}`);
                               setAutoDeleteOnZero(false);
                             }}
@@ -550,10 +550,7 @@ export const CustomersTab: React.FC = () => {
                   dir="ltr"
                   value={payAmount}
                   onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const clean = cleanNumberInput(e.target.value);
-                    setPayAmount(clean === '' ? '' : Number(clean));
-                  }}
+                  onChange={(e) => setPayAmount(cleanNumberInput(e.target.value))}
                   required
                   placeholder="0.000"
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-sm font-mono font-bold text-emerald-600 text-left"
