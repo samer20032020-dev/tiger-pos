@@ -295,6 +295,12 @@ export const PosTab: React.FC = () => {
                       try {
                         addAccessoryItem(acc);
                         addToast(`تمت إضافة: ${acc.name}`, 'success');
+                        if (effectivePrice <= 0) {
+                          window.setTimeout(() => {
+                            const priceInput = document.querySelector<HTMLInputElement>(`input[data-cart-accessory-id="${acc.id}"]`);
+                            priceInput?.focus();
+                          }, 60);
+                        }
                       } catch (e: any) {
                         addToast(e.message, 'warning');
                       }

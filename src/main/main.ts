@@ -367,6 +367,10 @@ function registerIpcHandlers() {
       title: 'اختر مجلد حفظ النسخ الاحتياطية',
       properties: ['openDirectory', 'createDirectory']
     });
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.focus();
+      mainWindow.webContents.focus();
+    }
     return res.canceled ? null : res.filePaths[0];
   });
 
@@ -377,6 +381,10 @@ function registerIpcHandlers() {
       filters: [{ name: 'SQLite Database', extensions: ['sqlite', 'db'] }],
       properties: ['openFile']
     });
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.focus();
+      mainWindow.webContents.focus();
+    }
     return res.canceled ? null : res.filePaths[0];
   });
 
@@ -391,7 +399,12 @@ function registerIpcHandlers() {
 
   // ==================== PRINTING & CASH DRAWER ====================
   ipcMain.handle('print:silentHtml', async (_, htmlContent: string, isBarcode?: boolean, silent = true) => {
-    return PrintService.printSilentHtml(htmlContent, isBarcode, silent);
+    const result = await PrintService.printSilentHtml(htmlContent, isBarcode, silent);
+    if (!silent && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.focus();
+      mainWindow.webContents.focus();
+    }
+    return result;
   });
 
   ipcMain.handle('printer:openCashDrawer', async () => {
@@ -445,9 +458,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.9.2';
-      let releaseNotes = '✨ إصدار v0.9.2: تحويل عمود الإجراءات بالجداول إلى قائمة منسدلة أنيقة بسهم لكل صف لتقليص عرض الجدول وترتيبه.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.2';
+      let latestVersion = '0.9.3';
+      let releaseNotes = '✨ إصدار v0.9.3: إصلاح مشكلة كتابة الأسعار والأرقام داخل سلة البيع ونوافذ التأكيد لمنع تعليق تركيز لوحة المفاتيح على ويندوز.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.3';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -495,7 +508,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.9.2',
+        latestVersion: '0.9.3',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

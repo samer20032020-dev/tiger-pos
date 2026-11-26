@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Trash2, Plus, Minus, Smartphone, Package, 
   User, Tag, RefreshCw, CreditCard, ShoppingBag, 
@@ -12,6 +12,91 @@ interface PosCartProps {
   onOpenTradeIn: () => void;
   onOpenCheckout: () => void;
 }
+
+interface CartItemPriceInputProps {
+  itemId: string;
+  itemRefId: string;
+  unitPrice: number;
+  onPriceChange: (id: string, price: number) => void;
+}
+
+const CartItemPriceInput: React.FC<CartItemPriceInputProps> = ({
+  itemId,
+  itemRefId,
+  unitPrice,
+  onPriceChange,
+}) => {
+  const [rawText, setRawText] = useState<string>(() => (unitPrice > 0 ? String(unitPrice) : ''));
+  const isFocusedRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      setRawText(unitPrice > 0 ? String(unitPrice) : '');
+    }
+  }, [unitPrice]);
+
+  useEffect(() => {
+    if (unitPrice <= 0) {
+      const timer = window.setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      return () => window.clearTimeout(timer);
+    }
+  }, []);
+
+  const isZero = unitPrice <= 0;
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      dir="ltr"
+      data-cart-price-input={itemId}
+      data-cart-accessory-id={itemRefId}
+      placeholder="0.000"
+      value={rawText}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.currentTarget.focus();
+      }}
+      onFocus={(e) => {
+        isFocusedRef.current = true;
+        const el = e.currentTarget;
+        if (el.value) {
+          requestAnimationFrame(() => el.select());
+        }
+      }}
+      onBlur={() => {
+        isFocusedRef.current = false;
+        const parsed = parseNumberInput(rawText);
+        setRawText(parsed > 0 ? String(parsed) : '');
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.currentTarget.blur();
+          return;
+        }
+        if (!e.key.startsWith('F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.stopPropagation();
+        }
+      }}
+      onChange={(e) => {
+        const clean = cleanNumberInput(e.target.value);
+        setRawText(clean);
+        onPriceChange(itemId, parseNumberInput(clean));
+      }}
+      className={`w-24 select-text cursor-text rounded-lg px-2 py-1 text-xs font-mono font-black text-left border-2 focus:outline-none focus:ring-2 transition-colors ${
+        isZero
+          ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-500 text-orange-700 dark:text-orange-200 focus:ring-orange-500/40 placeholder:text-orange-400'
+          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:border-orange-500 focus:ring-orange-500/30'
+      }`}
+    />
+  );
+};
 
 export const PosCart: React.FC<PosCartProps> = ({
   onOpenTradeIn,
@@ -29,27 +114,12 @@ export const PosCart: React.FC<PosCartProps> = ({
   } = useCartStore();
 
   const [discountInput, setDiscountInput] = useState<string>(discount ? String(discount) : '');
-  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (discount === 0 && parseNumberInput(discountInput) !== 0) {
       setDiscountInput('');
     }
   }, [discount]);
-
-  useEffect(() => {
-    setPriceInputs(prev => {
-      const next: Record<string, string> = {};
-      for (const it of items) {
-        if (prev[it.id] !== undefined && parseNumberInput(prev[it.id]) === it.unitPrice) {
-          next[it.id] = prev[it.id];
-        } else {
-          next[it.id] = it.unitPrice > 0 ? String(it.unitPrice) : '';
-        }
-      }
-      return next;
-    });
-  }, [items]);
 
   const subtotal = getSubtotal();
   const tradeInVal = getTradeInValue();
@@ -168,24 +238,20 @@ export const PosCart: React.FC<PosCartProps> = ({
               <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200 dark:border-slate-700/60">
                 <div className="flex items-center gap-1.5">
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-slate-400">سعر القطعة:</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      placeholder="أدخل السعر"
-                      value={priceInputs[it.id] ?? (it.unitPrice > 0 ? String(it.unitPrice) : '')}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const clean = cleanNumberInput(e.target.value);
-                        setPriceInputs(prev => ({ ...prev, [it.id]: clean }));
-                        updateItemPrice(it.id, parseNumberInput(clean));
-                      }}
-                      className={`w-20 rounded-lg px-1.5 py-0.5 text-xs font-mono font-black text-left focus:outline-none focus:ring-1 ${
-                        it.unitPrice <= 0
-                          ? 'bg-orange-50 dark:bg-orange-950/50 border-2 border-orange-500 text-orange-600 dark:text-orange-300 animate-pulse focus:ring-orange-500'
-                          : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:ring-orange-500'
-                      }`}
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <span className="text-[9px] font-bold text-slate-400">سعر القطعة:</span>
+                      {it.unitPrice <= 0 && (
+                        <span className="inline-flex items-center gap-0.5 text-[8px] font-black text-orange-600 dark:text-orange-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                          أدخل السعر
+                        </span>
+                      )}
+                    </div>
+                    <CartItemPriceInput
+                      itemId={it.id}
+                      itemRefId={it.itemId}
+                      unitPrice={it.unitPrice}
+                      onPriceChange={updateItemPrice}
                     />
                   </div>
                   <div className="text-xs font-black font-mono text-orange-600 dark:text-orange-400 pt-3">
@@ -278,7 +344,27 @@ export const PosCart: React.FC<PosCartProps> = ({
               inputMode="decimal"
               dir="ltr"
               value={discountInput}
-              onFocus={(e) => e.target.select()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.currentTarget.focus();
+              }}
+              onFocus={(e) => {
+                if (e.currentTarget.value) {
+                  const el = e.currentTarget;
+                  requestAnimationFrame(() => el.select());
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                  return;
+                }
+                if (!e.key.startsWith('F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                  e.stopPropagation();
+                }
+              }}
               onChange={(e) => {
                 const clean = cleanNumberInput(e.target.value);
                 setDiscountInput(clean);
@@ -286,7 +372,7 @@ export const PosCart: React.FC<PosCartProps> = ({
                 setDiscount(parseNumberInput(clean));
               }}
               placeholder="0.000"
-              className="w-24 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 text-xs text-left font-mono font-bold text-red-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              className="w-24 select-text cursor-text bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 text-xs text-left font-mono font-bold text-red-600 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
             <span className="text-[11px] font-bold text-slate-500">د.أ</span>
           </div>

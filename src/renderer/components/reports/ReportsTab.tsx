@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { tigerConfirm } from '../../stores/useConfirmStore';
 import {
   FileSpreadsheet, Download, Calendar, DollarSign,
   CheckCircle2, TrendingUp, Receipt, Wrench,
@@ -245,7 +246,8 @@ export const ReportsTab: React.FC = () => {
       return;
     }
 
-    if (!confirm(`هل أنت متأكد من ترحيل وإغلاق (${targetIds.length}) عملية في الخزينة ونقلها للأرشيف؟`)) {
+    const confirmedPost = await tigerConfirm(`هل أنت متأكد من ترحيل وإغلاق (${targetIds.length}) عملية في الخزينة ونقلها للأرشيف؟`, { title: 'تأكيد ترحيل العمليات', tone: 'warning', confirmText: 'ترحيل وإغلاق' });
+    if (!confirmedPost) {
       return;
     }
 
@@ -263,7 +265,8 @@ export const ReportsTab: React.FC = () => {
   };
 
   const handleSettleAndResetDrawer = async () => {
-    if (!confirm('هل أنت متأكد من ترحيل وإغلاق الصندوق وتصفير اليومية بالكامل؟\nسيتم نقل كافة العمليات وتذاكر الصيانة للأرشيف وتصفير الصندوق والمؤشرات بالكامل لبدء يوم جديد.')) {
+    const confirmedReset = await tigerConfirm('هل أنت متأكد من ترحيل وإغلاق الصندوق وتصفير اليومية بالكامل؟\nسيتم نقل كافة العمليات وتذاكر الصيانة للأرشيف وتصفير الصندوق والمؤشرات بالكامل لبدء يوم جديد.', { title: 'تأكيد إغلاق وتصفير اليومية', tone: 'danger', confirmText: 'تصفير وترحيل اليومية' });
+    if (!confirmedReset) {
       return;
     }
 
@@ -985,7 +988,8 @@ export const ReportsTab: React.FC = () => {
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();
-                                    if (window.confirm(`هل أنت متأكد من حذف الفاتورة ${inv.invoiceNumber} نهائياً من السجل والأرشيف؟`)) {
+                                    const okDeleteInv = await tigerConfirm(`هل أنت متأكد من حذف الفاتورة ${inv.invoiceNumber} نهائياً من السجل والأرشيف؟`, { title: 'تأكيد حذف الفاتورة', tone: 'danger', confirmText: 'نعم، احذف الفاتورة' });
+                                    if (okDeleteInv) {
                                       try {
                                         await window.tigerAPI.deleteInvoice(inv.id, currentUser?.fullName || 'المدير');
                                         addToast(`تم حذف الفاتورة ${inv.invoiceNumber} نهائياً`, 'success');

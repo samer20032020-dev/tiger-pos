@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { tigerConfirm } from '../../stores/useConfirmStore';
 import {
   Settings, Database, HardDrive,
   Download, Upload, CheckCircle2,
@@ -303,8 +304,9 @@ export const SettingsTab: React.FC = () => {
       const file = await window.tigerAPI.selectBackupFile();
       if (!file) return;
 
-      const confirmRestore = window.confirm(
-        'تحذير: استرجاع النسخة الاحتياطية سيستبدل البيانات الحالية تماماً بالبيانات الموجودة في الملف المحدد. هل أنت متأكد من الاستمرار؟'
+      const confirmRestore = await tigerConfirm(
+        'تحذير: استرجاع النسخة الاحتياطية سيستبدل البيانات الحالية تماماً بالبيانات الموجودة في الملف المحدد. هل أنت متأكد من الاستمرار؟',
+        { title: 'استرجاع النسخة الاحتياطية', tone: 'danger', confirmText: 'استرجاع الآن' }
       );
       if (!confirmRestore) return;
 
@@ -373,7 +375,8 @@ export const SettingsTab: React.FC = () => {
   };
 
   const handleDeleteUser = async (u: User) => {
-    if (!confirm(`هل أنت متأكد من حذف حساب (${u.fullName}) نهائياً من النظام؟`)) return;
+    const okDeleteUser = await tigerConfirm(`هل أنت متأكد من حذف حساب (${u.fullName}) نهائياً من النظام؟`, { title: 'تأكيد حذف المستخدم', tone: 'danger', confirmText: 'نعم، احذف الحساب' });
+    if (!okDeleteUser) return;
     try {
       await window.tigerAPI.deleteUser(u.id);
       addToast(`تم حذف حساب (${u.fullName})`, 'info');

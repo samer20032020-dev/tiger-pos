@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from './stores/useAppStore';
+import { ConfirmDialogModal } from './components/common/ConfirmDialogModal';
 import { useShiftStore } from './stores/useShiftStore';
 import { AuthScreen } from './components/auth/AuthScreens';
 import { Sidebar } from './components/layout/Sidebar';
@@ -214,6 +215,7 @@ export const App: React.FC = () => {
       <PhoneModal isOpen={isGlobalPhoneOpen} onClose={() => setGlobalPhoneOpen(false)} onSuccess={fetchBadgeCounts} />
       <ShiftModal type="open" isOpen={isOpenShiftModalOpen} onClose={() => setOpenShiftModalOpen(false)} onSuccess={fetchBadgeCounts} />
       <ShiftModal type="close" isOpen={isCloseShiftModalOpen} onClose={() => setCloseShiftModalOpen(false)} onSuccess={fetchBadgeCounts} />
+      <ConfirmDialogModal />
 
       {/* Bottom Center Toasts (تظهر في أسفل الشاشة وتختفي خلال ثانيتين لعدم حجب أشرطة البحث والبيع) */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] flex flex-col-reverse items-center space-y-reverse space-y-2 pointer-events-none w-auto max-w-lg px-4">

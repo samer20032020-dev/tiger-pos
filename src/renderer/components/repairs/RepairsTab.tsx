@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { tigerConfirm } from '../../stores/useConfirmStore';
 import { 
   Wrench, Plus, Search, Filter, Printer, 
   Package, Clock, CheckCircle2, ChevronDown, Lock, Smartphone, Tag, X,
@@ -107,7 +108,8 @@ export const RepairsTab: React.FC = () => {
   };
 
   const handleDeleteTicket = async (t: RepairTicket) => {
-    if (!confirm(`هل أنت متأكد من حذف تذكرة الصيانة (${t.ticketNumber} - ${t.customerName}) نهائياً؟`)) {
+    const confirmed = await tigerConfirm(`هل أنت متأكد من حذف تذكرة الصيانة (${t.ticketNumber} - ${t.customerName}) نهائياً؟`, { title: 'تأكيد حذف التذكرة', tone: 'danger', confirmText: 'نعم، احذف' });
+    if (!confirmed) {
       return;
     }
     try {

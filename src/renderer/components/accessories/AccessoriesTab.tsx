@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { tigerConfirm } from '../../stores/useConfirmStore';
 import { 
   Package, Plus, Search, Printer, Edit2, 
   AlertTriangle, Filter, PlusCircle, MinusCircle, Trash2,
@@ -220,7 +221,7 @@ export const AccessoriesTab: React.FC = () => {
   };
 
   const handleDeleteAcc = async (acc: Accessory) => {
-    const confirmed = window.confirm(`هل أنت متأكد من حذف الصنف "${acc.name}" نهائياً من النظام؟`);
+    const confirmed = await tigerConfirm(`هل أنت متأكد من حذف الصنف "${acc.name}" نهائياً من النظام؟`, { title: 'تأكيد حذف الصنف', tone: 'danger', confirmText: 'نعم، احذف نهائياً' });
     if (!confirmed) return;
 
     try {
@@ -233,7 +234,7 @@ export const AccessoriesTab: React.FC = () => {
   };
 
   const handleMoveToRepairParts = async (acc: Accessory) => {
-    const confirmed = window.confirm(`هل تريد نقل الصنف "${acc.name}" إلى قسم مخزون وقطع الصيانة؟`);
+    const confirmed = await tigerConfirm(`هل تريد نقل الصنف "${acc.name}" إلى قسم مخزون وقطع الصيانة؟`, { title: 'نقل إلى مخزون الصيانة', tone: 'info', confirmText: 'نقل الصنف' });
     if (!confirmed) return;
 
     try {
