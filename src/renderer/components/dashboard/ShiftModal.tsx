@@ -7,6 +7,7 @@ import {
 import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { formatJOD, cleanNumberInput } from '../../../shared/constants';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface ShiftModalProps {
   type: 'open' | 'close';
@@ -21,6 +22,7 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  useEscapeClose(isOpen, onClose);
   const { currentUser, addToast } = useAppStore();
   const { activeShift, refreshActiveShift } = useShiftStore();
 

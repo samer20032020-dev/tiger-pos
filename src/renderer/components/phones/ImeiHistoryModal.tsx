@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, History, Clock, ArrowRight, ShieldCheck, Tag } from 'lucide-react';
 import { ImeiHistory } from '../../../shared/types';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface ImeiHistoryModalProps {
   imei: string;
@@ -15,6 +16,7 @@ export const ImeiHistoryModal: React.FC<ImeiHistoryModalProps> = ({
   isOpen,
   onClose
 }) => {
+  useEscapeClose(isOpen, onClose);
   const [history, setHistory] = useState<ImeiHistory[]>([]);
   const [loading, setLoading] = useState(true);
 

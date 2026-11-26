@@ -3,6 +3,7 @@ import { X, Smartphone, Plus, Check } from 'lucide-react';
 import { PHONE_BRANDS, PHONE_STORAGE_OPTIONS, PHONE_RAM_OPTIONS, WARRANTY_OPTIONS, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { Phone, PhoneCondition } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface PhoneModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface PhoneModalProps {
 }
 
 export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  useEscapeClose(isOpen, onClose);
   const { addToast, currentUser } = useAppStore();
   const isAdmin = currentUser?.role === 'admin';
 

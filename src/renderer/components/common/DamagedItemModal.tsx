@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, AlertTriangle, Trash2, ArrowLeftRight, Check } from 'lucide-react';
 import { DamagedItem } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface DamagedItemModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export const DamagedItemModal: React.FC<DamagedItemModalProps> = ({
   costPrice,
   availableQuantity = 1
 }) => {
+  useEscapeClose(isOpen, onClose);
   const { addToast, currentUser } = useAppStore();
   const [quantity, setQuantity] = useState<number>(1);
   const [reason, setReason] = useState('كسر شاشة أثناء المعاينة');

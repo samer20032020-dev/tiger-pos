@@ -5,6 +5,7 @@ import { formatJOD } from '../../../shared/constants';
 import { WhatsAppIcon } from './WhatsAppIcon';
 import { sendWhatsAppMessage, buildInvoiceWhatsAppMessage } from '../../utils/whatsapp';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 import JsBarcode from 'jsbarcode';
 
 interface ThermalReceiptModalProps {
@@ -22,6 +23,8 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   const [paperSize, setPaperSize] = useState<'80mm' | '58mm'>('80mm');
   const [printing, setPrinting] = useState(false);
   const [phonePromptOpen, setPhonePromptOpen] = useState(false);
+  useEscapeClose(isOpen, onClose);
+  useEscapeClose(Boolean(isOpen && phonePromptOpen), () => setPhonePromptOpen(false));
   const [manualPhone, setManualPhone] = useState('');
   const [storeInfo, setStoreInfo] = useState<{ name: string; phone: string; address: string }>({
     name: 'TIGER',

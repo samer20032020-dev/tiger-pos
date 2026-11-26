@@ -4,6 +4,7 @@ import { ConditionChecklist, RepairTicket } from '../../../shared/types';
 import { cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { PatternLockInput } from '../common/PatternLockInput';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface RepairTicketModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const RepairTicketModal: React.FC<RepairTicketModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  useEscapeClose(isOpen, onClose);
   const { addToast } = useAppStore();
 
   const [customerName, setCustomerName] = useState('');

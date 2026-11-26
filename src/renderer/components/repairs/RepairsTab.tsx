@@ -15,6 +15,7 @@ import { PatternLockInput } from '../common/PatternLockInput';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { sendWhatsAppMessage, buildRepairWhatsAppMessage } from '../../utils/whatsapp';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 export const RepairsTab: React.FC = () => {
   const { addToast, setActiveTab, setCriticalShortageFilter, currentUser } = useAppStore();
@@ -33,6 +34,8 @@ export const RepairsTab: React.FC = () => {
 
   // Payment / Settle Modal
   const [settleTicket, setSettleTicket] = useState<RepairTicket | null>(null);
+  useEscapeClose(Boolean(patternTicket), () => setPatternTicket(null));
+  useEscapeClose(Boolean(settleTicket), () => setSettleTicket(null));
   const [settleFinalCost, setSettleFinalCost] = useState<string>('');
   const [settling, setSettling] = useState(false);
 

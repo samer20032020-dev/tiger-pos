@@ -13,20 +13,10 @@ export const ConfirmDialogModal: React.FC = () => {
       confirmBtnRef.current?.focus();
     }, 20);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        closeConfirm(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown, true);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [current, closeConfirm]);
+  }, [current]);
 
   if (!current) return null;
 
@@ -110,3 +100,4 @@ export const ConfirmDialogModal: React.FC = () => {
     </div>
   );
 };
+

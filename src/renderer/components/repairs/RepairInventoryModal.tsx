@@ -6,6 +6,7 @@ import {
 import { Accessory } from '../../../shared/types';
 import { REPAIR_PART_CATEGORIES, formatJOD, isRepairCategory, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface RepairInventoryModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  useEscapeClose(isOpen, onClose);
   const { addToast, currentUser } = useAppStore();
   const isAdmin = currentUser?.role === 'admin';
   const [parts, setParts] = useState<Accessory[]>([]);

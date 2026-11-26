@@ -3,6 +3,7 @@ import { Tag, Printer, X, Plus, Minus, Smartphone } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import { RepairTicket } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface RepairDeviceStickerModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const RepairDeviceStickerModal: React.FC<RepairDeviceStickerModalProps> =
   onClose,
   ticket
 }) => {
+  useEscapeClose(Boolean(isOpen && ticket), onClose);
   const { addToast } = useAppStore();
   const [printing, setPrinting] = useState(false);
   const [quantity, setQuantity] = useState<number>(1);

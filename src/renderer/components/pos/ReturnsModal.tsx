@@ -3,6 +3,7 @@ import { X, RotateCcw, Search, AlertTriangle, CheckCircle2, Receipt, Clock, User
 import { Invoice } from '../../../shared/types';
 import { formatJOD } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface ReturnsModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface ReturnsModalProps {
 }
 
 export const ReturnsModal: React.FC<ReturnsModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  useEscapeClose(isOpen, onClose);
   const { addToast, currentUser } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);

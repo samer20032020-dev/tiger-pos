@@ -57,3 +57,58 @@
   body { background: white !important; color: black !important; }
   .no-print { display: none !important; }
 }
+
+/* Standby Glowing Logo Screen Animations */
+@keyframes tigerStandbyAura {
+  0%, 100% {
+    transform: scale(0.94);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes tigerStandbyLogo {
+  0%, 100% {
+    transform: scale(1) translateY(0px);
+    filter: drop-shadow(0 0 18px rgba(249, 115, 22, 0.45)) brightness(1);
+  }
+  50% {
+    transform: scale(1.035) translateY(-4px);
+    filter: drop-shadow(0 0 38px rgba(251, 191, 36, 0.85)) brightness(1.14);
+  }
+}
+
+@keyframes tigerStandbyRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes tigerStandbyText {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.35));
+    opacity: 0.88;
+  }
+  50% {
+    filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.7));
+    opacity: 1;
+  }
+}
+
+.tiger-standby-aura {
+  animation: tigerStandbyAura 4.2s ease-in-out infinite;
+}
+
+.tiger-standby-logo {
+  animation: tigerStandbyLogo 4.2s ease-in-out infinite;
+}
+
+.tiger-standby-ring {
+  animation: tigerStandbyRing 9s linear infinite;
+}
+
+.tiger-standby-text {
+  animation: tigerStandbyText 4.2s ease-in-out infinite;
+}

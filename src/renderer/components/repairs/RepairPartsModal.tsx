@@ -3,6 +3,7 @@ import { X, Wrench, Package, Plus, Trash2, CheckCircle2, DollarSign } from 'luci
 import { Accessory, RepairTicket } from '../../../shared/types';
 import { cleanNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface RepairPartsModalProps {
   ticket: RepairTicket;
@@ -17,6 +18,7 @@ export const RepairPartsModal: React.FC<RepairPartsModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  useEscapeClose(isOpen, onClose);
   const { addToast, currentUser } = useAppStore();
   const isAdmin = currentUser?.role === 'admin';
   const [ticketDetails, setTicketDetails] = useState<RepairTicket | null>(null);

@@ -55,3 +55,4 @@ export const useConfirmStore = create<ConfirmState>((set, get) => ({
 export function tigerConfirm(message: string, options?: ConfirmOptions): Promise<boolean> {
   return useConfirmStore.getState().openConfirm(message, options);
 }
+

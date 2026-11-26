@@ -4,6 +4,7 @@ import { Expense } from '../../../shared/types';
 import { EXPENSE_CATEGORIES, formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 export const ExpensesTab: React.FC = () => {
   const { addToast, currentUser } = useAppStore();
@@ -13,6 +14,7 @@ export const ExpensesTab: React.FC = () => {
 
   // Add Expense Modal
   const [isOpen, setOpen] = useState(false);
+  useEscapeClose(isOpen, () => setOpen(false));
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<Expense['category']>('other');
   const [amount, setAmount] = useState<string>('');

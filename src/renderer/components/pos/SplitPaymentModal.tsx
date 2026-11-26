@@ -8,6 +8,7 @@ import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { PaymentMethod, Customer } from '../../../shared/types';
 import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface SplitPaymentModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({
   onClose,
   onConfirmSuccess
 }) => {
+  useEscapeClose(isOpen, onClose);
   const { 
     items, customer, customerName, customerPhone, 
     discountType, getDiscountAmount, taxEnabled, taxRate, getTaxAmount,

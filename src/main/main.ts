@@ -458,9 +458,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.9.3';
-      let releaseNotes = '✨ إصدار v0.9.3: إصلاح مشكلة كتابة الأسعار والأرقام داخل سلة البيع ونوافذ التأكيد لمنع تعليق تركيز لوحة المفاتيح على ويندوز.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.3';
+      let latestVersion = '0.9.4';
+      let releaseNotes = '✨ إصدار v0.9.4: التراجع التدريجي بزر ESC خطوة بخطوة حتى فتح شاشة التوقف السوداء المضيئة بشعار المحل.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.4';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -508,7 +508,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.9.3',
+        latestVersion: '0.9.4',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

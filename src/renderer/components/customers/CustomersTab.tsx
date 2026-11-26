@@ -7,6 +7,7 @@ import {
 import { Customer, CustomerStatement, PaymentMethod } from '../../../shared/types';
 import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 export const CustomersTab: React.FC = () => {
   const { addToast, currentUser } = useAppStore();
@@ -32,6 +33,10 @@ export const CustomersTab: React.FC = () => {
 
   // Delete Customer Modal state
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  useEscapeClose(isAddOpen, () => setAddOpen(false));
+  useEscapeClose(Boolean(statementCustomer), () => setStatementCustomer(null));
+  useEscapeClose(Boolean(debtPayCustomer), () => setDebtPayCustomer(null));
+  useEscapeClose(Boolean(customerToDelete), () => setCustomerToDelete(null));
   const [deletingCustomer, setDeletingCustomer] = useState(false);
 
   // New Customer Form state

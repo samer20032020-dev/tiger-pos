@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { tigerConfirm } from '../../stores/useConfirmStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 import {
   Settings, Database, HardDrive,
   Download, Upload, CheckCircle2,
@@ -134,12 +135,19 @@ export const SettingsTab: React.FC = () => {
     }
   }, [activeSection]);
 
+  // Cancel cash drawer shortcut recording cleanly on ESC
+  useEscapeClose(isRecordingKey, () => setIsRecordingKey(false));
+
   // Keyboard shortcut recorder listener
   useEffect(() => {
     if (!isRecordingKey) return;
     const onKey = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      if (e.key === 'Escape') {
+        setIsRecordingKey(false);
+        return;
+      }
 
       let keyName = e.key;
       if (keyName === ' ') keyName = 'Space';

@@ -3,6 +3,7 @@ import { X, Package, Check, Sparkles, Infinity as InfinityIcon } from 'lucide-re
 import { ACCESSORY_CATEGORIES, cleanNumberInput, parseNumberInput, isUnlimitedCategory } from '../../../shared/constants';
 import { Accessory } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface AccessoryModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
   allowedCategories,
   modalTitle
 }) => {
+  useEscapeClose(isOpen, onClose);
   const { addToast, currentUser } = useAppStore();
   const isAdmin = currentUser?.role === 'admin';
   const categoriesList = allowedCategories && allowedCategories.length > 0 ? allowedCategories : ACCESSORY_CATEGORIES;

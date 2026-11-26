@@ -3,6 +3,7 @@ import { X, RefreshCw, Smartphone, Battery, Tag, Check, AlertCircle } from 'luci
 import { PHONE_BRANDS, PHONE_STORAGE_OPTIONS, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { TradeInDevice } from '../../../shared/types';
 import { useCartStore } from '../../stores/useCartStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface TradeInModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface TradeInModalProps {
 }
 
 export const TradeInModal: React.FC<TradeInModalProps> = ({ isOpen, onClose }) => {
+  useEscapeClose(isOpen, onClose);
   const { setTradeIn, tradeIn } = useCartStore();
 
   const [brand, setBrand] = useState(tradeIn?.brand || 'Apple iPhone');

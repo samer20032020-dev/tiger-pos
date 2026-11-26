@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 export interface RowActionItem {
   label: string;
@@ -15,6 +16,7 @@ interface RowActionsMenuProps {
 
 export const RowActionsMenu: React.FC<RowActionsMenuProps> = ({ actions }) => {
   const [open, setOpen] = useState(false);
+  useEscapeClose(open, () => setOpen(false));
   const [coords, setCoords] = useState<{ top: number; left: number; openUp: boolean }>({
     top: 0,
     left: 0,
@@ -55,20 +57,14 @@ export const RowActionsMenu: React.FC<RowActionsMenuProps> = ({ actions }) => {
       setOpen(false);
     };
 
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-
     const handleScroll = () => setOpen(false);
 
     document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('keydown', handleKey);
     window.addEventListener('scroll', handleScroll, true);
     window.addEventListener('resize', handleScroll);
 
     return () => {
       document.removeEventListener('mousedown', handleOutside);
-      document.removeEventListener('keydown', handleKey);
       window.removeEventListener('scroll', handleScroll, true);
       window.removeEventListener('resize', handleScroll);
     };

@@ -3,6 +3,7 @@ import { Tag, Printer, X, Plus, Minus, Check } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import { formatJOD } from '../../../shared/constants';
 import { useAppStore } from '../../stores/useAppStore';
+import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface BarcodeStickerModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const BarcodeStickerModal: React.FC<BarcodeStickerModalProps> = ({
   extraInfo,
   availableStock
 }) => {
+  useEscapeClose(isOpen, onClose);
   const { addToast } = useAppStore();
   const [printing, setPrinting] = useState(false);
   const [quantity, setQuantity] = useState<number>(1);

@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from './stores/useAppStore';
 import { ConfirmDialogModal } from './components/common/ConfirmDialogModal';
+import { StandbyLogoScreen } from './components/common/StandbyLogoScreen';
+import { useConfirmStore } from './stores/useConfirmStore';
+import { popAndRunTopEscapeHandler } from './utils/useEscapeStack';
 import { useShiftStore } from './stores/useShiftStore';
 import { AuthScreen } from './components/auth/AuthScreens';
 import { Sidebar } from './components/layout/Sidebar';
@@ -40,6 +43,57 @@ export const App: React.FC = () => {
   const [activeRepairsCount, setActiveRepairsCount] = useState(0);
   const [isGlobalRepairOpen, setGlobalRepairOpen] = useState(false);
   const [isGlobalPhoneOpen, setGlobalPhoneOpen] = useState(false);
+  const [isStandbyOpen, setStandbyOpen] = useState(false);
+
+  // Global ESC step-by-step cascade ("حبه حبه") -> Standby glowing logo screen
+  useEffect(() => {
+    const handleEscapeStepBack = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (e.repeat) {
+        e.preventDefault();
+        return;
+      }
+
+      if (isStandbyOpen) {
+        return;
+      }
+
+      if (useConfirmStore.getState().current) {
+        e.preventDefault();
+        e.stopPropagation();
+        useConfirmStore.getState().closeConfirm(false);
+        return;
+      }
+
+      if (popAndRunTopEscapeHandler()) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+        document.activeElement.blur();
+      }
+
+      if (currentUser && screen === 'app') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (activeTab !== 'dashboard') {
+          setActiveTab('dashboard');
+        } else {
+          setStandbyOpen(true);
+        }
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      setStandbyOpen(true);
+    };
+
+    window.addEventListener('keydown', handleEscapeStepBack, true);
+    return () => window.removeEventListener('keydown', handleEscapeStepBack, true);
+  }, [isStandbyOpen, currentUser, screen, activeTab, setActiveTab]);
 
   // Check first run
   useEffect(() => {
@@ -168,7 +222,13 @@ export const App: React.FC = () => {
 
   // If not logged in, show clean unified Auth screen (with options: مدير / موظف)
   if (!currentUser) {
-    return <AuthScreen />;
+    return (
+      <>
+        <AuthScreen />
+        <ConfirmDialogModal />
+        <StandbyLogoScreen isOpen={isStandbyOpen} onClose={() => setStandbyOpen(false)} />
+      </>
+    );
   }
 
   // Main App
@@ -216,6 +276,7 @@ export const App: React.FC = () => {
       <ShiftModal type="open" isOpen={isOpenShiftModalOpen} onClose={() => setOpenShiftModalOpen(false)} onSuccess={fetchBadgeCounts} />
       <ShiftModal type="close" isOpen={isCloseShiftModalOpen} onClose={() => setCloseShiftModalOpen(false)} onSuccess={fetchBadgeCounts} />
       <ConfirmDialogModal />
+      <StandbyLogoScreen isOpen={isStandbyOpen} onClose={() => setStandbyOpen(false)} />
 
       {/* Bottom Center Toasts (تظهر في أسفل الشاشة وتختفي خلال ثانيتين لعدم حجب أشرطة البحث والبيع) */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] flex flex-col-reverse items-center space-y-reverse space-y-2 pointer-events-none w-auto max-w-lg px-4">
