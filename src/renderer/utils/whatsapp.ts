@@ -54,42 +54,41 @@ export function buildRepairWhatsAppMessage(
   if (type === 'ready' || type === 'ready_for_pickup') {
     if (isFullyPaid) {
       return (
-        `أهلاً بك زبوننا العزيز (${customerName})..\n` +
-        `جهازك (${deviceModel}) جاهز للاستلام من ${storeName} ✨\n\n` +
-        `رقم التذكرة: #${ticket.ticketNumber}\n` +
-        (effectiveTotal > 0 ? `إجمالي الحساب: ${formatJOD(effectiveTotal)}\n` : '') +
-        `الحالة المالية: تم السداد بالكامل ✅ (لا يوجد أي مبلغ متبقي)\n\n` +
-        `نشكركم لثقتكم بنا وبمركز TIGER ❤️`
+        `أهلاً ${customerName}،\n` +
+        `جهازك (${deviceModel}) جاهز للاستلام من تايجر موبايل.\n` +
+        `رقم التذكرة: #${ticket.ticketNumber}` +
+        (effectiveTotal > 0 ? `\nالحساب: ${formatJOD(effectiveTotal)} (مدفوع بالكامل)` : `\nالحالة: مدفوع بالكامل`) +
+        `\nبانتظار تشريفك.`
       );
     }
     return (
-      `أهلاً بك زبوننا العزيز (${customerName})..\n` +
-      `جهازك (${deviceModel}) جاهز للاستلام من ${storeName} ✨\n\n` +
+      `أهلاً ${customerName}،\n` +
+      `جهازك (${deviceModel}) جاهز للاستلام من تايجر موبايل.\n` +
       `رقم التذكرة: #${ticket.ticketNumber}\n` +
-      `المبلغ المتبقي عند الاستلام: ${formatJOD(remaining)}\n\n` +
-      `بانتظار تشريفكم، ونشكركم لثقتكم بمركز TIGER ❤️`
+      `المتبقي عند الاستلام: ${formatJOD(remaining)}\n` +
+      `بانتظار تشريفك.`
     );
   }
 
   if (type === 'delivered') {
     return (
-      `أهلاً بك زبوننا العزيز (${customerName})..\n` +
-      `نشكركم لزيارتكم ${storeName}، ونتمنى لكم تجربة ممتازة مع جهازكم (${deviceModel}) بعد إتمام الصيانة والتسليم ✅\n\n` +
-      `رقم التذكرة: #${ticket.ticketNumber}\n` +
-      (effectiveTotal > 0 ? `إجمالي الحساب: ${formatJOD(effectiveTotal)} (تم التسليم والسداد ✅)\n\n` : '\n') +
-      `خدمتكم تسعدنا دائماً، لا تترددوا بالتواصل معنا في أي وقت — مركز TIGER ❤️`
+      `أهلاً ${customerName}،\n` +
+      `تم تسليم جهازك (${deviceModel}) بنجاح، نتمنى لك استخداماً ممتعاً.\n` +
+      `تذكرة: #${ticket.ticketNumber}` +
+      (effectiveTotal > 0 ? ` — ${formatJOD(effectiveTotal)}` : '') +
+      `\nنورتنا في تايجر موبايل، ونسعد بخدمتك دائماً.`
     );
   }
 
   if (type === 'cancelled') {
     return (
-      `أهلاً بك زبوننا العزيز (${customerName})..\n` +
-      `نعتذر منكم، بعد فحص جهازكم (${deviceModel}) في ${storeName} تبين أن الجهاز غير قابل للإصلاح أو تم إلغاء طلب الصيانة 🙏\n\n` +
-      `رقم التذكرة: #${ticket.ticketNumber}\n` +
+      `أهلاً ${customerName}،\n` +
+      `نعتذر منك، تعذر إصلاح جهازك (${deviceModel}) لدينا.\n` +
+      `تذكرة: #${ticket.ticketNumber}\n` +
       ((ticket.advancePayment || 0) > 0
-        ? `العربون المدفوع: ${formatJOD(ticket.advancePayment)} (يرجى المراجعة لاسترداده)\n\n`
-        : '\n') +
-      `بإمكانكم مراجعة المركز لاستلام جهازكم في أقرب وقت يناسبكم. نشكركم لتفهمكم — مركز TIGER`
+        ? `يرجى مراجعتنا لاستلام الجهاز واسترداد العربون (${formatJOD(ticket.advancePayment)}).`
+        : `يرجى مراجعتنا لاستلام جهازك في أي وقت يناسبك.`) +
+      `\nنقدّر تفهمك — تايجر موبايل.`
     );
   }
 

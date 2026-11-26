@@ -437,9 +437,9 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.7';
+      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.8';
     } catch {
-      return '0.9.7';
+      return '0.9.8';
     }
   });
 
@@ -469,15 +469,15 @@ function registerIpcHandlers() {
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.7';
-      let releaseNotes = '✨ إصدار v0.9.7: نظام التحديث السريع التلقائي في الخلفية (~1 MB بدل 103 MB) وإعادة التشغيل بضغطة واحدة بدون معالج تثبيت.';
+      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.8';
+      let releaseNotes = '✨ إصدار v0.9.8: تبسيط وتنعيم رسائل واتساب الصيانة (جاهز للاستلام، تم التسليم، تعذر الإصلاح) وإزالة الرموز التي لا تظهر بوضوح.';
       const repo = (repoOverride && repoOverride.trim()) || (settings?.githubRepo && settings.githubRepo.trim()) || 'samer20032020-dev/tiger-pos';
 
       return await checkLatestGitHubRelease(repo, currentVersion, releaseNotes);
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.7';
+      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.8';
       return {
         hasUpdate: false,
         currentVersion: curVer,
