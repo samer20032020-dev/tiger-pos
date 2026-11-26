@@ -195,20 +195,22 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
                 </select>
               </div>
 
-              {/* Cost Price */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">سعر التكلفة (د.أ):</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  dir="ltr"
-                  placeholder="0.000"
-                  value={newCostPrice}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => setNewCostPrice(cleanNumberInput(e.target.value))}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 text-left"
-                />
-              </div>
+              {/* Cost Price (Admin Only) */}
+              {isAdmin && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">سعر التكلفة (د.أ):</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
+                    placeholder="0.000"
+                    value={newCostPrice}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setNewCostPrice(cleanNumberInput(e.target.value))}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-orange-500 text-left"
+                  />
+                </div>
+              )}
 
               {/* Retail Price */}
               <div className="space-y-1">
@@ -357,7 +359,7 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
                 <tr>
                   <th className="p-3">اسم القطعة</th>
                   <th className="p-3">التصنيف</th>
-                  <th className="p-3 text-center">سعر التكلفة</th>
+                  {isAdmin && <th className="p-3 text-center">سعر التكلفة</th>}
                   <th className="p-3 text-center">سعر البيع (مفرق)</th>
                   <th className="p-3 text-center">سعر الجملة</th>
                   <th className="p-3 text-center">الرصيد المتوفر</th>
@@ -378,9 +380,11 @@ export const RepairInventoryModal: React.FC<RepairInventoryModalProps> = ({
                           {p.category}
                         </span>
                       </td>
-                      <td className="p-3 text-center font-mono font-bold text-slate-500 dark:text-slate-400">
-                        {formatJOD(p.costPrice)}
-                      </td>
+                      {isAdmin && (
+                        <td className="p-3 text-center font-mono font-bold text-slate-500 dark:text-slate-400">
+                          {formatJOD(p.costPrice)}
+                        </td>
+                      )}
                       <td className="p-3 text-center font-mono font-black text-orange-600 dark:text-orange-400">
                         {formatJOD(p.retailPrice)}
                       </td>

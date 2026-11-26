@@ -5,6 +5,7 @@ import {
   Percent, DollarSign, ShieldCheck, Briefcase 
 } from 'lucide-react';
 import { useCartStore } from '../../stores/useCartStore';
+import { useAppStore } from '../../stores/useAppStore';
 import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 
 interface PosCartProps {
@@ -16,8 +17,9 @@ export const PosCart: React.FC<PosCartProps> = ({
   onOpenTradeIn,
   onOpenCheckout
 }) => {
+  const { addToast } = useAppStore();
   const { 
-    items, updateQuantity, removeItem, clearCart, 
+    items, updateQuantity, updateItemPrice, removeItem, clearCart, 
     customerName, customerPhone, setCustomerInfo,
     discount, setDiscount, discountType, setDiscountType,
     taxEnabled, setTaxEnabled, taxRate, setTaxRate,
@@ -27,12 +29,27 @@ export const PosCart: React.FC<PosCartProps> = ({
   } = useCartStore();
 
   const [discountInput, setDiscountInput] = useState<string>(discount ? String(discount) : '');
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (discount === 0 && parseNumberInput(discountInput) !== 0) {
       setDiscountInput('');
     }
   }, [discount]);
+
+  useEffect(() => {
+    setPriceInputs(prev => {
+      const next: Record<string, string> = {};
+      for (const it of items) {
+        if (prev[it.id] !== undefined && parseNumberInput(prev[it.id]) === it.unitPrice) {
+          next[it.id] = prev[it.id];
+        } else {
+          next[it.id] = it.unitPrice > 0 ? String(it.unitPrice) : '';
+        }
+      }
+      return next;
+    });
+  }, [items]);
 
   const subtotal = getSubtotal();
   const tradeInVal = getTradeInValue();
@@ -148,14 +165,32 @@ export const PosCart: React.FC<PosCartProps> = ({
               </div>
 
               {/* Price and Quantity row */}
-              <div className="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-700/60">
-                <div className="text-xs font-bold font-mono text-orange-600 dark:text-orange-400">
-                  {formatJOD(it.unitPrice * it.quantity)}
-                  {it.quantity > 1 && (
-                    <span className="text-[10px] text-slate-400 font-normal mr-1">
-                      ({formatJOD(it.unitPrice)} × {it.quantity})
-                    </span>
-                  )}
+              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200 dark:border-slate-700/60">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-slate-400">سعر القطعة:</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
+                      placeholder="أدخل السعر"
+                      value={priceInputs[it.id] ?? (it.unitPrice > 0 ? String(it.unitPrice) : '')}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const clean = cleanNumberInput(e.target.value);
+                        setPriceInputs(prev => ({ ...prev, [it.id]: clean }));
+                        updateItemPrice(it.id, parseNumberInput(clean));
+                      }}
+                      className={`w-20 rounded-lg px-1.5 py-0.5 text-xs font-mono font-black text-left focus:outline-none focus:ring-1 ${
+                        it.unitPrice <= 0
+                          ? 'bg-orange-50 dark:bg-orange-950/50 border-2 border-orange-500 text-orange-600 dark:text-orange-300 animate-pulse focus:ring-orange-500'
+                          : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:ring-orange-500'
+                      }`}
+                    />
+                  </div>
+                  <div className="text-xs font-black font-mono text-orange-600 dark:text-orange-400 pt-3">
+                    = {formatJOD(it.unitPrice * it.quantity)}
+                  </div>
                 </div>
 
                 {it.itemType === 'accessory' ? (
@@ -272,7 +307,13 @@ export const PosCart: React.FC<PosCartProps> = ({
         </div>
 
         <button
-          onClick={onOpenCheckout}
+          onClick={() => {
+            if (items.some(it => it.unitPrice <= 0)) {
+              addToast('يرجى إدخال سعر البيع للبنود ذات السعر المفتوح (مثل الحوالات أو صافي الصيانة) أولاً!', 'warning');
+              return;
+            }
+            onOpenCheckout();
+          }}
           disabled={items.length === 0}
           className="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30 transition disabled:opacity-40 disabled:cursor-not-allowed text-xs"
         >

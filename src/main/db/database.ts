@@ -116,12 +116,21 @@ export class LocalDatabase {
       console.warn('[Database] Customer reconciliation warning:', e);
     }
 
-    // Cleanup placeholder/sample repair parts if any exist
+    // Cleanup old non-service placeholder 'acc-1795435646203-78' and ensure open services exist
     try {
-      this.run("DELETE FROM accessories WHERE id = 'acc-1795435646203-78' OR name LIKE '%صافي الصيانه%'");
+      this.run("DELETE FROM accessories WHERE id = 'acc-1795435646203-78' OR (name LIKE '%صافي الصيانه%' AND is_unlimited = 0)");
+      const nowIso = new Date().toISOString();
+      this.run(`
+        INSERT OR IGNORE INTO accessories (id, barcode, sku, name, category, cost_price, retail_price, wholesale_price, current_stock, min_stock_alert, is_unlimited, description, created_at)
+        VALUES ('srv-transfers', 'SRV-001', 'SRV-TRF', 'الحوالات', 'حوالات وخدمات مفتوحة', 0, 0, 0, 999999, 0, 1, 'خدمة حوالات مالية - التكلفة 0 والكمية لا نهائية مع سعر حر', ?)
+      `, [nowIso]);
+      this.run(`
+        INSERT OR IGNORE INTO accessories (id, barcode, sku, name, category, cost_price, retail_price, wholesale_price, current_stock, min_stock_alert, is_unlimited, description, created_at)
+        VALUES ('srv-net-repair', 'SRV-002', 'SRV-REP', 'صافي الصيانة', 'حوالات وخدمات مفتوحة', 0, 0, 0, 999999, 0, 1, 'صافي الصيانة - التكلفة 0 والكمية لا نهائية مع سعر حر', ?)
+      `, [nowIso]);
       this.isDirty = true;
     } catch {
-      // Ignore if not present
+      // Ignore if already seeded
     }
 
     this.saveToDiskSync();

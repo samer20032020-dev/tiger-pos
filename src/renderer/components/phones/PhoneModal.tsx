@@ -12,6 +12,7 @@ interface PhoneModalProps {
 
 export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { addToast, currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'admin';
 
   const [brand, setBrand] = useState('Apple iPhone');
   const [model, setModel] = useState('');
@@ -36,7 +37,7 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
     e.preventDefault();
     if (!model.trim() || !imei1.trim() || sellingPrice.trim() === '') return;
 
-    const parsedCost = parseNumberInput(costPrice);
+    const parsedCost = isAdmin ? parseNumberInput(costPrice) : 0;
     const parsedSell = parseNumberInput(sellingPrice);
     const parsedWholesale = wholesalePrice.trim() !== '' ? parseNumberInput(wholesalePrice) : parsedSell;
 
@@ -222,20 +223,22 @@ export const PhoneModal: React.FC<PhoneModalProps> = ({ isOpen, onClose, onSucce
           </div>
 
           {/* Pricing: Cost, Selling Price, Wholesale Price (3 decimals) */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر التكلفة (د.أ):</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                dir="ltr"
-                placeholder="مثال: 450.000"
-                value={costPrice}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setCostPrice(cleanNumberInput(e.target.value))}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-left"
-              />
-            </div>
+          <div className={`grid ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+            {isAdmin && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر التكلفة (د.أ):</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
+                  placeholder="مثال: 450.000"
+                  value={costPrice}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setCostPrice(cleanNumberInput(e.target.value))}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-left"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر البيع بالمفرق (د.أ):</label>
               <input

@@ -17,7 +17,8 @@ export const RepairPartsModal: React.FC<RepairPartsModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { addToast } = useAppStore();
+  const { addToast, currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'admin';
   const [ticketDetails, setTicketDetails] = useState<RepairTicket | null>(null);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [selectedAccId, setSelectedAccId] = useState('');
@@ -92,28 +93,32 @@ export const RepairPartsModal: React.FC<RepairPartsModalProps> = ({
           </button>
         </div>
 
-        {/* Real-time Repair Profit Calculator Card */}
-        <div className="my-4 grid grid-cols-3 gap-3">
+        {/* Real-time Repair Profit Calculator Card (Cost & Profit hidden from employees) */}
+        <div className={`my-4 grid ${isAdmin ? 'grid-cols-3' : 'grid-cols-1'} gap-3`}>
           <div className="bg-slate-100 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
             <div className="text-[10px] text-slate-500">إجمالي حساب الزبون</div>
             <div className="text-base font-black font-mono text-slate-800 dark:text-slate-200">
-              {totalCharge.toFixed(2)} د.أ
+              {totalCharge.toFixed(3)} د.أ
             </div>
           </div>
 
-          <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-xl border border-red-200 dark:border-red-800 text-center">
-            <div className="text-[10px] text-red-600 dark:text-red-400 font-bold">تكلفة قطع الغيار</div>
-            <div className="text-base font-black font-mono text-red-600 dark:text-red-400">
-              {totalPartsCost.toFixed(2)} د.أ
-            </div>
-          </div>
+          {isAdmin && (
+            <>
+              <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-xl border border-red-200 dark:border-red-800 text-center">
+                <div className="text-[10px] text-red-600 dark:text-red-400 font-bold">تكلفة قطع الغيار</div>
+                <div className="text-base font-black font-mono text-red-600 dark:text-red-400">
+                  {totalPartsCost.toFixed(3)} د.أ
+                </div>
+              </div>
 
-          <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-300 dark:border-emerald-800 text-center">
-            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">صافي أرباح الصيانة</div>
-            <div className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
-              {netRepairProfit.toFixed(2)} د.أ
-            </div>
-          </div>
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-300 dark:border-emerald-800 text-center">
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">صافي أرباح الصيانة</div>
+                <div className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
+                  {netRepairProfit.toFixed(3)} د.أ
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Attach Part Form */}
@@ -129,8 +134,8 @@ export const RepairPartsModal: React.FC<RepairPartsModalProps> = ({
                 className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white"
               >
                 {accessories.map((a) => (
-                  <option key={a.id} value={a.id} disabled={a.currentStock <= 0}>
-                    {a.name} (متوفر: {a.currentStock}) - تكلفة: {a.costPrice} د.أ
+                  <option key={a.id} value={a.id} disabled={!a.isUnlimitedStock && a.currentStock <= 0}>
+                    {a.name} ({a.isUnlimitedStock ? 'مفتوح ∞' : `متوفر: ${a.currentStock}`}) {isAdmin ? `- تكلفة: ${a.costPrice} د.أ` : `- بيع: ${a.retailPrice} د.أ`}
                   </option>
                 ))}
               </select>
@@ -181,8 +186,10 @@ export const RepairPartsModal: React.FC<RepairPartsModalProps> = ({
                     <div className="text-[10px] text-slate-400">الكمية: {p.quantity}</div>
                   </div>
                   <div className="text-left font-mono">
-                    <div className="text-red-500 font-bold">تكلفة: {p.totalCost.toFixed(2)} د.أ</div>
-                    <div className="text-[10px] text-slate-400">سعر البيع: {p.totalPrice.toFixed(2)} د.أ</div>
+                    {isAdmin && (
+                      <div className="text-red-500 font-bold">تكلفة: {p.totalCost.toFixed(3)} د.أ</div>
+                    )}
+                    <div className="text-xs font-bold text-slate-600 dark:text-slate-300">سعر البيع: {p.totalPrice.toFixed(3)} د.أ</div>
                   </div>
                 </div>
               ))}

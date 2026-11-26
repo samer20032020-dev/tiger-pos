@@ -14,7 +14,7 @@ import { ReturnsModal } from './ReturnsModal';
 import { ThermalReceiptModal } from '../common/ThermalReceiptModal';
 
 export const PosTab: React.FC = () => {
-  const { addAccessoryItem, addPhoneItem, wholesaleMode, toggleWholesaleMode } = useCartStore();
+  const { items, addAccessoryItem, addPhoneItem, wholesaleMode, toggleWholesaleMode } = useCartStore();
   const { addToast } = useAppStore();
 
   const [accessories, setAccessories] = useState<Accessory[]>([]);
@@ -95,6 +95,10 @@ export const PosTab: React.FC = () => {
     }
     if (e.key === 'F12') {
       e.preventDefault();
+      if (items.some(it => it.unitPrice <= 0)) {
+        addToast('يرجى إدخال سعر البيع للبنود ذات السعر المفتوح أولاً!', 'warning');
+        return;
+      }
       setCheckoutOpen(true);
     }
     if (e.key === 'F4') {
@@ -328,9 +332,9 @@ export const PosTab: React.FC = () => {
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                       <div>
                         <div className="text-sm font-black font-mono text-orange-600 dark:text-orange-400">
-                          {formatJOD(effectivePrice)}
+                          {isUnlimited && effectivePrice === 0 ? 'سعر حر (يدوي)' : formatJOD(effectivePrice)}
                         </div>
-                        {wholesaleMode && acc.wholesalePrice && (
+                        {wholesaleMode && acc.wholesalePrice > 0 && (
                           <span className="text-[9px] text-amber-600 font-bold">سعر الجملة</span>
                         )}
                       </div>

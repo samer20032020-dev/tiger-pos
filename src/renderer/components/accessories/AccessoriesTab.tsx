@@ -415,7 +415,7 @@ export const AccessoriesTab: React.FC = () => {
                 <th className="p-3.5">اسم الصنف</th>
                 <th className="p-3.5">التصنيف</th>
                 <th className="p-3.5">الباركود الدولي / SKU</th>
-                <th className="p-3.5">سعر التكلفة</th>
+                {isAdmin && <th className="p-3.5">سعر التكلفة</th>}
                 <th className="p-3.5">سعر المفرق</th>
                 <th className="p-3.5">سعر الجملة</th>
                 <th className="p-3.5 text-center">المخزون الحالي</th>
@@ -426,13 +426,13 @@ export const AccessoriesTab: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-10 text-slate-400">
+                  <td colSpan={isAdmin ? 9 : 8} className="text-center py-10 text-slate-400">
                     جاري تحميل الأصناف...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-10 text-slate-400">
+                  <td colSpan={isAdmin ? 9 : 8} className="text-center py-10 text-slate-400">
                     لا توجد أصناف مطابقة للبحث
                   </td>
                 </tr>
@@ -482,9 +482,11 @@ export const AccessoriesTab: React.FC = () => {
                         <div>{acc.barcode}</div>
                         <div className="text-[10px] text-slate-400">{acc.sku}</div>
                       </td>
-                      <td className="p-3.5 font-mono text-slate-500">
-                        {formatJOD(acc.costPrice)}
-                      </td>
+                      {isAdmin && (
+                        <td className="p-3.5 font-mono text-slate-500">
+                          {formatJOD(acc.costPrice)}
+                        </td>
+                      )}
                       <td className="p-3.5 font-mono font-black text-orange-600 dark:text-orange-400 text-sm">
                         {formatJOD(acc.retailPrice)}
                       </td>
@@ -586,7 +588,7 @@ export const AccessoriesTab: React.FC = () => {
                 })
               )}
             </tbody>
-            {filtered.length > 0 && (
+            {isAdmin && filtered.length > 0 && (
               <tfoot className="bg-slate-900 text-white border-t-2 border-orange-500 font-bold select-text">
                 <tr>
                   <td colSpan={3} className="p-4 text-xs font-black text-orange-400">

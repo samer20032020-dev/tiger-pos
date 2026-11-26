@@ -12,7 +12,8 @@ import { useAppStore } from '../../stores/useAppStore';
 import { formatJOD } from '../../../shared/constants';
 
 export const DashboardTab: React.FC = () => {
-  const { setActiveTab } = useAppStore();
+  const { setActiveTab, currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'admin';
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,8 +78,8 @@ export const DashboardTab: React.FC = () => {
         </button>
       </div>
 
-      {/* 5 Key Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* 5 Key Metric Cards (4 for Employees without Net Profit) */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
         {/* 1. Today Sales */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
@@ -97,23 +98,25 @@ export const DashboardTab: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. Today Net Profit (Highlighted) */}
-        <div className="bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-2xl p-4 shadow-lg shadow-emerald-600/20 flex flex-col justify-between">
-          <div className="flex items-center justify-between opacity-90">
-            <span className="text-xs font-bold">صافي الربح الحقيقي اليوم</span>
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-bold">
-              <TrendingUp className="w-4 h-4" />
+        {/* 2. Today Net Profit (Highlighted - Admin Only) */}
+        {isAdmin && (
+          <div className="bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-2xl p-4 shadow-lg shadow-emerald-600/20 flex flex-col justify-between">
+            <div className="flex items-center justify-between opacity-90">
+              <span className="text-xs font-bold">صافي الربح الحقيقي اليوم</span>
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-bold">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="my-2">
+              <div className="text-2xl font-black font-mono">
+                {formatJOD(stats?.todayNetProfit || 0)}
+              </div>
+              <div className="text-[10px] opacity-80 mt-0.5">
+                بعد خصم تكلفة البضاعة والمصاريف
+              </div>
             </div>
           </div>
-          <div className="my-2">
-            <div className="text-2xl font-black font-mono">
-              {formatJOD(stats?.todayNetProfit || 0)}
-            </div>
-            <div className="text-[10px] opacity-80 mt-0.5">
-              بعد خصم تكلفة البضاعة والمصاريف
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* 3. Active Repairs */}
         <div 
@@ -186,19 +189,23 @@ export const DashboardTab: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-bold text-sm text-slate-900 dark:text-white">
-                حركة المبيعات وصافي الأرباح (آخر 7 أيام)
+                {isAdmin ? 'حركة المبيعات وصافي الأرباح (آخر 7 أيام)' : 'حركة المبيعات اليومية (آخر 7 أيام)'}
               </h2>
-              <p className="text-[11px] text-slate-400">مقارنة يومية بين إجمالي المبيعات وصافي الربح المحقق</p>
+              <p className="text-[11px] text-slate-400">
+                {isAdmin ? 'مقارنة يومية بين إجمالي المبيعات وصافي الربح المحقق' : 'متابعة يومية لإجمالي المبيعات'}
+              </p>
             </div>
             <div className="flex items-center gap-3 text-xs">
               <span className="flex items-center gap-1.5 text-orange-500 font-bold">
                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
                 المبيعات
               </span>
-              <span className="flex items-center gap-1.5 text-emerald-500 font-bold">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                صافي الربح
-              </span>
+              {isAdmin && (
+                <span className="flex items-center gap-1.5 text-emerald-500 font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  صافي الربح
+                </span>
+              )}
             </div>
           </div>
 
@@ -213,7 +220,7 @@ export const DashboardTab: React.FC = () => {
                   contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
                 />
                 <Bar dataKey="sales" name="المبيعات" fill="#f97316" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="profit" name="صافي الربح" fill="#10b981" radius={[6, 6, 0, 0]} />
+                {isAdmin && <Bar dataKey="profit" name="صافي الربح" fill="#10b981" radius={[6, 6, 0, 0]} />}
               </BarChart>
             </ResponsiveContainer>
           </div>

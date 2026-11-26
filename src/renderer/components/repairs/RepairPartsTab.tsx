@@ -430,7 +430,7 @@ export const RepairPartsTab: React.FC = () => {
                 <th className="p-3.5">اسم قطعة الصيانة</th>
                 <th className="p-3.5">التصنيف</th>
                 <th className="p-3.5">الباركود / SKU</th>
-                <th className="p-3.5">سعر التكلفة</th>
+                {isAdmin && <th className="p-3.5">سعر التكلفة</th>}
                 <th className="p-3.5">سعر المفرق</th>
                 <th className="p-3.5">سعر الجملة</th>
                 <th className="p-3.5 text-center">المخزون الحالي</th>
@@ -441,13 +441,13 @@ export const RepairPartsTab: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-10 text-slate-400">
+                  <td colSpan={isAdmin ? 9 : 8} className="text-center py-10 text-slate-400">
                     جاري تحميل قطع الصيانة...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-400 space-y-2">
+                  <td colSpan={isAdmin ? 9 : 8} className="text-center py-12 text-slate-400 space-y-2">
                     <Cpu className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto" />
                     <div className="font-bold">لا توجد قطع صيانة مسجلة مطابقة للبحث</div>
                     <button
@@ -508,9 +508,11 @@ export const RepairPartsTab: React.FC = () => {
                         <div>{part.barcode}</div>
                         <div className="text-[10px] text-slate-400">{part.sku}</div>
                       </td>
-                      <td className="p-3.5 font-mono text-slate-500 font-bold">
-                        {formatJOD(part.costPrice)}
-                      </td>
+                      {isAdmin && (
+                        <td className="p-3.5 font-mono text-slate-500 font-bold">
+                          {formatJOD(part.costPrice)}
+                        </td>
+                      )}
                       <td className="p-3.5 font-mono font-black text-orange-600 dark:text-orange-400 text-sm">
                         {formatJOD(part.retailPrice)}
                       </td>
@@ -604,7 +606,7 @@ export const RepairPartsTab: React.FC = () => {
                 })
               )}
             </tbody>
-            {filtered.length > 0 && (
+            {isAdmin && filtered.length > 0 && (
               <tfoot className="bg-slate-900 text-white border-t-2 border-orange-500 font-bold select-text">
                 <tr>
                   <td colSpan={3} className="p-4 text-xs font-black text-orange-400">

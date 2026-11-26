@@ -58,6 +58,17 @@ export const PhonesTab: React.FC = () => {
     return matchSearch && matchStatus && matchBrand && matchCondition;
   });
 
+  const phoneTotals = filtered.reduce(
+    (acc, p) => {
+      acc.totalCost += Number(p.costPrice || 0);
+      acc.totalSelling += Number(p.sellingPrice || 0);
+      acc.totalWholesale += Number(p.wholesalePrice || p.sellingPrice || 0);
+      return acc;
+    },
+    { totalCost: 0, totalSelling: 0, totalWholesale: 0 }
+  );
+  const expectedPhonesProfit = phoneTotals.totalSelling - phoneTotals.totalCost;
+
   const getStatusBadge = (status: PhoneStatus) => {
     switch (status) {
       case 'in_stock':
@@ -153,7 +164,7 @@ export const PhonesTab: React.FC = () => {
                 <th className="p-3.5">الحالة</th>
                 <th className="p-3.5">البطارية</th>
                 <th className="p-3.5">IMEI 1</th>
-                <th className="p-3.5">التكلفة</th>
+                {isAdmin && <th className="p-3.5">التكلفة</th>}
                 <th className="p-3.5">سعر المفرق</th>
                 <th className="p-3.5">سعر الجملة</th>
                 <th className="p-3.5">حالة المخزون</th>
@@ -163,13 +174,13 @@ export const PhonesTab: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-10 text-slate-400">
+                  <td colSpan={isAdmin ? 10 : 9} className="text-center py-10 text-slate-400">
                     جاري تحميل الهواتف...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-10 text-slate-400">
+                  <td colSpan={isAdmin ? 10 : 9} className="text-center py-10 text-slate-400">
                     لا توجد أجهزة مطابقة للبحث أو الفلتر
                   </td>
                 </tr>
@@ -210,9 +221,11 @@ export const PhonesTab: React.FC = () => {
                       {phone.imei1}
                       {phone.imei2 && <div className="text-[10px] text-slate-400 font-normal">2: {phone.imei2}</div>}
                     </td>
-                    <td className="p-3.5 font-mono text-slate-500">
-                      {formatJOD(phone.costPrice)}
-                    </td>
+                    {isAdmin && (
+                      <td className="p-3.5 font-mono text-slate-500">
+                        {formatJOD(phone.costPrice)}
+                      </td>
+                    )}
                     <td className="p-3.5 font-mono font-black text-orange-600 dark:text-orange-400">
                       {formatJOD(phone.sellingPrice)}
                     </td>
@@ -253,6 +266,31 @@ export const PhonesTab: React.FC = () => {
                 ))
               )}
             </tbody>
+            {isAdmin && filtered.length > 0 && (
+              <tfoot className="bg-slate-900 text-white border-t-2 border-orange-500 font-bold select-text">
+                <tr>
+                  <td colSpan={5} className="p-4 text-xs font-black text-orange-400">
+                    📱 إجمالي مخزون الهواتف ({filtered.length} جهاز):
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-slate-400 font-sans">إجمالي التكلفة:</div>
+                    <div className="text-sm font-black text-slate-100">{formatJOD(phoneTotals.totalCost)}</div>
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-orange-300 font-sans">إجمالي البيع (مفرق):</div>
+                    <div className="text-sm font-black text-orange-400">{formatJOD(phoneTotals.totalSelling)}</div>
+                  </td>
+                  <td className="p-4 font-mono">
+                    <div className="text-[10px] text-amber-300 font-sans">إجمالي الجملة:</div>
+                    <div className="text-sm font-black text-amber-400">{formatJOD(phoneTotals.totalWholesale)}</div>
+                  </td>
+                  <td colSpan={2} className="p-4 text-center font-mono">
+                    <div className="text-[10px] text-emerald-300 font-sans">صافي الربح المتوقع:</div>
+                    <div className="text-sm font-black text-emerald-400">+{formatJOD(expectedPhonesProfit)}</div>
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

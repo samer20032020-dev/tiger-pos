@@ -21,7 +21,8 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
   allowedCategories,
   modalTitle
 }) => {
-  const { addToast } = useAppStore();
+  const { addToast, currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'admin';
   const categoriesList = allowedCategories && allowedCategories.length > 0 ? allowedCategories : ACCESSORY_CATEGORIES;
 
   const [name, setName] = useState(editingAccessory?.name || '');
@@ -86,7 +87,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
       return;
     }
 
-    const parsedCost = parseNumberInput(costPrice);
+    const parsedCost = isAdmin ? parseNumberInput(costPrice) : (editingAccessory?.costPrice ?? 0);
     const parsedRetail = parseNumberInput(retailPrice);
     const parsedWholesale = wholesalePrice.trim() !== '' ? parseNumberInput(wholesalePrice) : parsedRetail;
     const parsedStock = isUnlimitedStock ? 999999 : Math.max(0, Math.floor(parseNumberInput(currentStock)));
@@ -215,20 +216,22 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر التكلفة (د.أ):</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                dir="ltr"
-                placeholder="0.000"
-                value={costPrice}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setCostPrice(cleanNumberInput(e.target.value))}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
-              />
-            </div>
+          <div className={`grid ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+            {isAdmin && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">سعر التكلفة (د.أ):</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
+                  placeholder="0.000"
+                  value={costPrice}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setCostPrice(cleanNumberInput(e.target.value))}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white font-mono text-left font-bold"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-xs font-bold text-orange-600 dark:text-orange-400 mb-1">سعر المفرق (البيع):</label>
               <input

@@ -45,6 +45,7 @@ interface CartState {
   addAccessoryItem: (acc: Accessory) => void;
   addPhoneItem: (phone: Phone) => void;
   updateQuantity: (cartItemId: string, qty: number) => void;
+  updateItemPrice: (cartItemId: string, newPrice: number) => void;
   setItemDiscount: (cartItemId: string, discount: number) => void;
   setItemWarranty: (cartItemId: string, warranty: string) => void;
   removeItem: (cartItemId: string) => void;
@@ -185,6 +186,17 @@ export const useCartStore = create<CartState>((set, get) => ({
           throw new Error(`الكمية المطلوبة تتجاوز المخزون المتوفر (${it.maxStock})`);
         }
         return { ...it, quantity: qty };
+      }
+      return it;
+    });
+    set({ items });
+  },
+
+  updateItemPrice: (cartItemId, newPrice) => {
+    const safePrice = Math.max(0, Number(newPrice) || 0);
+    const items = get().items.map(it => {
+      if (it.id === cartItemId) {
+        return { ...it, unitPrice: safePrice };
       }
       return it;
     });
