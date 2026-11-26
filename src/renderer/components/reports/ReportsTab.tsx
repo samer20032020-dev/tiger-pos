@@ -9,8 +9,9 @@ import {
   RotateCcw, Trash2
 } from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
+import { useDailyCalculatorStore } from '../../stores/useDailyCalculatorStore';
 import { Invoice, RepairTicket, Expense, RepairPartReportEntry } from '../../../shared/types';
-import { formatJOD, cleanNumberInput } from '../../../shared/constants';
+import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { sendWhatsAppMessage, buildInvoiceWhatsAppMessage } from '../../utils/whatsapp';
 
@@ -38,15 +39,23 @@ export const ReportsTab: React.FC = () => {
   // Settlement tab states
   const [postingFilter, setPostingFilter] = useState<PostingFilter>('unposted');
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
-  const [startingCashInput, setStartingCashInput] = useState<string>('0.000');
-  const [receiptsOverrideInput, setReceiptsOverrideInput] = useState<string>('');
-  const [expectedOverrideInput, setExpectedOverrideInput] = useState<string>('');
-  const [actualCashInput, setActualCashInput] = useState<string>('0.000');
-  const [isManualReceipts, setIsManualReceipts] = useState<boolean>(false);
-  const [isManualExpected, setIsManualExpected] = useState<boolean>(false);
+  const {
+    startingCashInput,
+    startingCashLocked,
+    receiptsOverrideInput,
+    expectedOverrideInput,
+    actualCashInput,
+    isManualReceipts,
+    isManualExpected,
+    setStartingCashInput,
+    setReceiptsOverride,
+    setExpectedOverride,
+    setActualCashInput,
+    resetAllToZero,
+  } = useDailyCalculatorStore();
 
-  const startingCash = parseFloat(startingCashInput) || 0;
-  const actualCash = parseFloat(actualCashInput) || 0;
+  const startingCash = parseNumberInput(startingCashInput);
+  const actualCash = parseNumberInput(actualCashInput);
   const hasActualCashEntered = actualCashInput.trim() !== '';
   const [postingLoading, setPostingLoading] = useState<boolean>(false);
 
@@ -104,8 +113,8 @@ export const ReportsTab: React.FC = () => {
       setRepairs(repList);
       setExpenses(expList);
       setRepairPartsReport(partsRepList);
-      if (activeShift && activeShift.startingCash !== undefined && activeShift.startingCash !== null) {
-        setStartingCashInput(String(activeShift.startingCash));
+      if (!startingCashLocked && activeShift && activeShift.startingCash !== undefined && activeShift.startingCash !== null) {
+        setStartingCashInput(String(activeShift.startingCash), false);
       }
     } catch (err) {
       console.error('Failed to load reports data:', err);
@@ -274,12 +283,7 @@ export const ReportsTab: React.FC = () => {
     try {
       const res = await window.tigerAPI.settleAndResetDailyDrawer();
       addToast(`تم ترحيل الصندوق بنجاح (${res.invoiceCount} فواتير، ${res.repairCount} صيانة)! تم تصفير كافة المؤشرات والأرقام بالكامل لبدء يوم جديد.`, 'success');
-      setStartingCashInput('0.000');
-      setIsManualReceipts(true);
-      setReceiptsOverrideInput('0.000');
-      setIsManualExpected(true);
-      setExpectedOverrideInput('0.000');
-      setActualCashInput('0.000');
+      resetAllToZero();
       setSelectedInvoiceIds([]);
       await loadReportData();
     } catch (err: any) {
@@ -532,7 +536,7 @@ export const ReportsTab: React.FC = () => {
                   <label className="text-xs font-bold text-slate-300 block">الرصيد الافتتاحي (الصبح):</label>
                   <button
                     type="button"
-                    onClick={() => setStartingCashInput('0.000')}
+                    onClick={() => setStartingCashInput('0.000', true)}
                     className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
                   >
                     تصفير (0)
@@ -545,7 +549,13 @@ export const ReportsTab: React.FC = () => {
                     dir="ltr"
                     placeholder="0.000"
                     value={startingCashInput}
-                    onChange={(e) => setStartingCashInput(cleanNumberInput(e.target.value))}
+                    onFocus={(e) => {
+                      if (e.currentTarget.value) {
+                        const el = e.currentTarget;
+                        requestAnimationFrame(() => el.select());
+                      }
+                    }}
+                    onChange={(e) => setStartingCashInput(cleanNumberInput(e.target.value), true)}
                     className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-black text-white focus:outline-none focus:border-orange-500 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
@@ -560,10 +570,7 @@ export const ReportsTab: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsManualReceipts(true);
-                        setReceiptsOverrideInput('0.000');
-                      }}
+                      onClick={() => setReceiptsOverride('0.000', true)}
                       className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
                     >
                       تصفير (0)
@@ -571,10 +578,7 @@ export const ReportsTab: React.FC = () => {
                     {isManualReceipts && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsManualReceipts(false);
-                          setReceiptsOverrideInput('');
-                        }}
+                        onClick={() => setReceiptsOverride('', false)}
                         className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
                         title="استعادة الحساب التلقائي"
                       >
@@ -590,10 +594,13 @@ export const ReportsTab: React.FC = () => {
                     dir="ltr"
                     placeholder="0.000"
                     value={isManualReceipts ? receiptsOverrideInput : (autoReceipts > 0 ? autoReceipts.toFixed(3) : '0.000')}
-                    onChange={(e) => {
-                      setIsManualReceipts(true);
-                      setReceiptsOverrideInput(cleanNumberInput(e.target.value));
+                    onFocus={(e) => {
+                      if (e.currentTarget.value) {
+                        const el = e.currentTarget;
+                        requestAnimationFrame(() => el.select());
+                      }
                     }}
+                    onChange={(e) => setReceiptsOverride(cleanNumberInput(e.target.value), true)}
                     className="w-full bg-slate-900 border border-emerald-500/50 rounded-xl px-3 py-2 text-sm font-mono font-black text-emerald-400 focus:outline-none focus:border-emerald-400 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
@@ -608,10 +615,7 @@ export const ReportsTab: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsManualExpected(true);
-                        setExpectedOverrideInput('0.000');
-                      }}
+                      onClick={() => setExpectedOverride('0.000', true)}
                       className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
                     >
                       تصفير (0)
@@ -619,10 +623,7 @@ export const ReportsTab: React.FC = () => {
                     {isManualExpected && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsManualExpected(false);
-                          setExpectedOverrideInput('');
-                        }}
+                        onClick={() => setExpectedOverride('', false)}
                         className="text-[10px] text-orange-400 hover:text-orange-300 font-bold underline"
                         title="استعادة الحساب التلقائي"
                       >
@@ -638,10 +639,13 @@ export const ReportsTab: React.FC = () => {
                     dir="ltr"
                     placeholder="0.000"
                     value={isManualExpected ? expectedOverrideInput : (autoExpectedDrawerCash > 0 ? autoExpectedDrawerCash.toFixed(3) : '0.000')}
-                    onChange={(e) => {
-                      setIsManualExpected(true);
-                      setExpectedOverrideInput(cleanNumberInput(e.target.value));
+                    onFocus={(e) => {
+                      if (e.currentTarget.value) {
+                        const el = e.currentTarget;
+                        requestAnimationFrame(() => el.select());
+                      }
                     }}
+                    onChange={(e) => setExpectedOverride(cleanNumberInput(e.target.value), true)}
                     className="w-full bg-slate-900 border border-orange-500/60 rounded-xl px-3 py-2 text-base font-mono font-black text-orange-400 focus:outline-none focus:border-orange-400 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
@@ -683,6 +687,12 @@ export const ReportsTab: React.FC = () => {
                     dir="ltr"
                     placeholder="0.000"
                     value={actualCashInput}
+                    onFocus={(e) => {
+                      if (e.currentTarget.value) {
+                        const el = e.currentTarget;
+                        requestAnimationFrame(() => el.select());
+                      }
+                    }}
                     onChange={(e) => setActualCashInput(cleanNumberInput(e.target.value))}
                     className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-bold text-white focus:outline-none focus:border-orange-500 select-text text-left"
                   />
