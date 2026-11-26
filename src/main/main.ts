@@ -7,6 +7,18 @@ import { TigerRepository } from './db/repository';
 import { ExcelService } from './services/excelService';
 import { BackupService } from './services/backupService';
 import { PrintService } from './services/printService';
+import {
+  checkLatestGitHubRelease,
+  compareVersions,
+  downloadFileWithProgress,
+  extractAndVerifyTpkg,
+  getLiveStagingDir,
+  promoteStagingToLive
+} from './services/bundleUpdater';
+
+export function getEffectiveAppVersion(): string {
+  return (process.env.TIGER_LIVE_VERSION && process.env.TIGER_LIVE_VERSION.trim()) || app.getVersion();
+}
 
 // Ultra-lightweight & smooth mode for low-end PCs (4GB RAM, old CPUs, integrated Intel HD Graphics)
 // Prevents GPU driver crashes, black screens, and freezes on machines without dedicated GPU
@@ -23,7 +35,8 @@ let excelService: ExcelService | null = null;
 let backupService: BackupService | null = null;
 
 async function createWindow() {
-  const iconPath = path.join(__dirname, '../../build/icon.png');
+  const localIcon = path.join(__dirname, '../../build/icon.png');
+  const iconPath = fs.existsSync(localIcon) ? localIcon : path.join(app.getAppPath(), 'build', 'icon.png');
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -424,9 +437,9 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.9';
+      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.7';
     } catch {
-      return '0.7.9';
+      return '0.9.7';
     }
   });
 
@@ -456,59 +469,19 @@ function registerIpcHandlers() {
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
-      
-      let latestVersion = '0.9.6';
-      let releaseNotes = '✨ إصدار v0.9.6: إصلاح منع تكرار أرقام الفواتير وتذاكر الصيانة بعد الحذف، وتخصيص رسائل واتساب الصيانة لآخر 3 حالات فقط.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.6';
-      let publishedAt = new Date().toISOString();
+      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.7';
+      let releaseNotes = '✨ إصدار v0.9.7: نظام التحديث السريع التلقائي في الخلفية (~1 MB بدل 103 MB) وإعادة التشغيل بضغطة واحدة بدون معالج تثبيت.';
+      const repo = (repoOverride && repoOverride.trim()) || (settings?.githubRepo && settings.githubRepo.trim()) || 'samer20032020-dev/tiger-pos';
 
-      try {
-        const repo = (repoOverride && repoOverride.trim()) || (settings?.githubRepo && settings.githubRepo.trim()) || 'samer20032020-dev/tiger-pos';
-        const rawUrl = `https://raw.githubusercontent.com/${repo}/main/package.json`;
-        const res = await fetch(rawUrl, { cache: 'no-store' });
-        if (res.ok) {
-          const pkg = await res.json();
-          if (pkg.version) {
-            latestVersion = pkg.version;
-            releaseName = `إصدار الترقية السحابي TIGER v${latestVersion}`;
-          }
-        }
-      } catch (netErr) {
-        console.warn('[CheckUpdate] Online check fallback', netErr);
-      }
-
-      const cmp = (a: string, b: string) => {
-        const pa = a.split('.').map(n => parseInt(n, 10) || 0);
-        const pb = b.split('.').map(n => parseInt(n, 10) || 0);
-        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-          const na = pa[i] || 0;
-          const nb = pb[i] || 0;
-          if (na > nb) return 1;
-          if (na < nb) return -1;
-        }
-        return 0;
-      };
-      const hasUpdate = cmp(latestVersion, currentVersion) > 0;
-
-      return {
-        hasUpdate,
-        currentVersion,
-        latestVersion,
-        releaseName,
-        releaseNotes,
-        downloadUrl: `https://github.com/samer20032020-dev/tiger-pos/releases/download/v${latestVersion}/TIGER-Setup.exe`,
-        htmlUrl: 'https://github.com/samer20032020-dev/tiger-pos/releases',
-        publishedAt
-      };
+      return await checkLatestGitHubRelease(repo, currentVersion, releaseNotes);
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
+      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.7';
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.9.6',
+        latestVersion: curVer,
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }
@@ -516,28 +489,66 @@ function registerIpcHandlers() {
 
   ipcMain.handle('system:downloadUpdate', async (_, url: string, newVersion?: string) => {
     try {
-      const tempDir = app.getPath('temp');
-      const targetPath = path.join(tempDir, 'TIGER-Update-Setup.exe');
+      const userDataDir = app.getPath('userData');
+      const stagingDir = getLiveStagingDir(userDataDir);
+      const sendProgress = (evt: { stage: 'downloading' | 'verifying' | 'extracting' | 'ready'; percent: number; downloadedBytes: number; totalBytes: number; isBundle: boolean }) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('system:updateProgress', evt);
+        }
+      };
 
-      let downloadSuccess = false;
+      const isBundleUrl = Boolean(url && url.toLowerCase().includes('.tpkg'));
 
-      // 1. Attempt online download if valid URL provided
-      if (url && url.startsWith('http')) {
-        try {
-          const res = await fetch(url);
-          if (res.ok) {
-            const arrayBuf = await res.arrayBuffer();
-            if (arrayBuf.byteLength > 20 * 1024 * 1024) { // Valid setup binary > 20MB
-              fs.writeFileSync(targetPath, Buffer.from(arrayBuf));
-              downloadSuccess = true;
+      // Skip re-download if verified matching staged bundle already exists
+      if (isBundleUrl && newVersion) {
+        const stagingManifestPath = path.join(stagingDir, 'manifest.json');
+        if (fs.existsSync(stagingManifestPath)) {
+          try {
+            const staged = JSON.parse(fs.readFileSync(stagingManifestPath, 'utf8'));
+            if (
+              staged?.version &&
+              compareVersions(staged.version, newVersion) === 0 &&
+              fs.existsSync(path.join(stagingDir, 'dist-electron', 'main', 'main.js'))
+            ) {
+              sendProgress({ stage: 'ready', percent: 100, downloadedBytes: 1, totalBytes: 1, isBundle: true });
+              return { success: true, filePath: 'bundle:staged', isBundle: true };
             }
-          }
-        } catch (fetchErr) {
-          console.warn('[DownloadUpdate] Online fetch error, checking local fallbacks', fetchErr);
+          } catch {}
         }
       }
 
-      // 2. If online download didn't produce the installer, fallback to local installer files
+      if (url && url.startsWith('http') && isBundleUrl) {
+        const tpkgTemp = path.join(app.getPath('temp'), 'tiger-update.tpkg');
+        const dl = await downloadFileWithProgress(url, tpkgTemp, (downloadedBytes, totalBytes) => {
+          const percent = totalBytes > 0 ? Math.min(95, Math.round((downloadedBytes / totalBytes) * 95)) : 50;
+          sendProgress({ stage: 'downloading', percent, downloadedBytes, totalBytes, isBundle: true });
+        });
+        sendProgress({ stage: 'verifying', percent: 97, downloadedBytes: dl.size, totalBytes: dl.size, isBundle: true });
+        extractAndVerifyTpkg(tpkgTemp, stagingDir, newVersion);
+        try { fs.unlinkSync(tpkgTemp); } catch {}
+        sendProgress({ stage: 'ready', percent: 100, downloadedBytes: dl.size, totalBytes: dl.size, isBundle: true });
+        return { success: true, filePath: 'bundle:staged', isBundle: true };
+      }
+
+      const tempDir = app.getPath('temp');
+      const targetPath = path.join(tempDir, 'TIGER-Update-Setup.exe');
+      let downloadSuccess = false;
+
+      if (url && url.startsWith('http')) {
+        try {
+          const dl = await downloadFileWithProgress(url, targetPath, (downloadedBytes, totalBytes) => {
+            const percent = totalBytes > 0 ? Math.min(99, Math.round((downloadedBytes / totalBytes) * 100)) : 50;
+            sendProgress({ stage: 'downloading', percent, downloadedBytes, totalBytes, isBundle: false });
+          });
+          if (dl.size > 20 * 1024 * 1024) {
+            downloadSuccess = true;
+            sendProgress({ stage: 'ready', percent: 100, downloadedBytes: dl.size, totalBytes: dl.size, isBundle: false });
+          }
+        } catch (fetchErr) {
+          console.warn('[DownloadUpdate] Online EXE stream error, checking local fallbacks', fetchErr);
+        }
+      }
+
       if (!downloadSuccess) {
         const localCandidates = [
           path.join(app.getPath('desktop'), 'TIGER-Setup.exe'),
@@ -560,10 +571,10 @@ function registerIpcHandlers() {
       }
 
       if (!downloadSuccess) {
-        throw new Error('لم يتم العثور على ملف التثبيت التحديثي (TIGER-Setup.exe). يرجى التأكد من توفر الملف على سطح المكتب.');
+        throw new Error('تعذر تنزيل التحديث عبر الإنترنت، يرجى التحقق من الاتصال بالإنترنت والمحاولة مرة أخرى.');
       }
 
-      return { success: true, filePath: targetPath };
+      return { success: true, filePath: targetPath, isBundle: false };
     } catch (err: any) {
       console.error('[Download Update Error]:', err);
       return { success: false, error: err.message };
@@ -578,9 +589,26 @@ function registerIpcHandlers() {
         } catch { }
       }
 
+      const userDataDir = app.getPath('userData');
+      const stagingDir = getLiveStagingDir(userDataDir);
+      const hasStagedBundle =
+        (filePath === 'bundle:staged' || !filePath) &&
+        fs.existsSync(path.join(stagingDir, 'manifest.json'));
+
+      if (hasStagedBundle) {
+        const applied = promoteStagingToLive(userDataDir);
+        if (applied) {
+          app.relaunch();
+          setTimeout(() => {
+            app.exit(0);
+          }, 150);
+          return { success: true, isBundle: true };
+        }
+      }
+
       const tempDir = app.getPath('temp');
       const candidatePaths = [
-        filePath,
+        filePath && filePath !== 'bundle:staged' ? filePath : '',
         path.join(tempDir, 'TIGER-Update-Setup.exe'),
         path.join(app.getPath('desktop'), 'TIGER-Setup.exe'),
         path.join(process.cwd(), 'release', 'TIGER-Setup.exe'),
@@ -601,11 +629,8 @@ function registerIpcHandlers() {
       }
 
       if (!installerPath) {
-        throw new Error('ملف التحديث غير موجود، يرجى إعادة تنزيل التحديث أولاً.');
+        throw new Error('ملف التحديث غير موجود، يرجى إعادة فحص وتنزيل التحديث.');
       }
-
-      // Launch installer directly via shell and exit app so files can be replaced
-      shell.openPath(installerPath).catch(() => {});
 
       const { spawn } = require('child_process');
       const batPath = path.join(tempDir, 'tiger_launch_installer.bat');
@@ -614,23 +639,22 @@ chcp 65001 >nul
 timeout /t 1 /nobreak >nul
 taskkill /F /IM TIGER.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
-start "" "${installerPath}"
+start /wait "" "${installerPath}" /S
+start "" "${process.execPath}"
 exit /b
 `;
-      try {
-        fs.writeFileSync(batPath, batContent, 'utf8');
-        const child = spawn('cmd.exe', ['/c', batPath], {
-          detached: true,
-          stdio: 'ignore'
-        });
-        child.unref();
-      } catch { }
+      fs.writeFileSync(batPath, batContent, 'utf8');
+      const child = spawn('cmd.exe', ['/c', batPath], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
 
       setTimeout(() => {
         app.exit(0);
-      }, 600);
+      }, 400);
 
-      return { success: true };
+      return { success: true, isBundle: false };
     } catch (err: any) {
       console.error('[Install Update Error]:', err);
       return { success: false, error: err.message };
@@ -648,9 +672,9 @@ app.whenReady().then(async () => {
     excelService = new ExcelService(db);
     backupService = new BackupService(db);
 
-    // Sync installedVersion with app.getVersion()
+    // Sync installedVersion with effective running version (live bundle or base exe)
     try {
-      const realVer = app.getVersion();
+      const realVer = getEffectiveAppVersion();
       if (realVer && repository) {
         repository.updateSettings({ installedVersion: realVer });
         db.saveToDiskSync();

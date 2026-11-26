@@ -4,7 +4,7 @@ import type {
   TradeInDevice, RepairTicket, RepairPartReportEntry, InstallmentPlan, Customer,
   Supplier, Expense, AuditLog, DashboardStats, ImeiHistory,
   SystemSettings, DamagedItem, CustomerStatement, CustomerDebtPayment,
-  UpdateCheckResult
+  UpdateCheckResult, UpdateProgressEvent
 } from '../shared/types';
 
 export interface TigerAPI {
@@ -72,8 +72,9 @@ export interface TigerAPI {
   // System & Auto-Update
   getAppVersion: () => Promise<string>;
   checkGithubUpdate: (repoOverride?: string) => Promise<UpdateCheckResult>;
-  downloadUpdate: (url: string, newVersion?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
-  installUpdateAndRestart: (filePath?: string, newVersion?: string) => Promise<{ success: boolean; error?: string } | void>;
+  downloadUpdate: (url: string, newVersion?: string) => Promise<{ success: boolean; filePath?: string; isBundle?: boolean; error?: string }>;
+  installUpdateAndRestart: (filePath?: string, newVersion?: string) => Promise<{ success: boolean; isBundle?: boolean; error?: string } | void>;
+  onUpdateProgress?: (callback: (evt: UpdateProgressEvent) => void) => () => void;
   openExternal: (url: string) => Promise<void>;
 
   // Zoom & Viewport

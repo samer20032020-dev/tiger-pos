@@ -369,9 +369,20 @@ export interface UpdateCheckResult {
   releaseName?: string;
   releaseNotes?: string;
   downloadUrl?: string;
+  bundleDownloadUrl?: string;
+  bundleSize?: number;
+  installerSize?: number;
   htmlUrl?: string;
   publishedAt?: string;
   error?: string;
+}
+
+export interface UpdateProgressEvent {
+  stage: 'downloading' | 'verifying' | 'extracting' | 'ready';
+  percent: number;
+  downloadedBytes: number;
+  totalBytes: number;
+  isBundle: boolean;
 }
 
 // Setup state for first-run wizard

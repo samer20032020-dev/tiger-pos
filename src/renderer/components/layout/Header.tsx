@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sun, Moon, Clock, DoorOpen, DoorClosed, 
-  Bell, AlertTriangle, ExternalLink, Copy, Check, X, ShieldAlert 
+  Bell, AlertTriangle, ExternalLink, Copy, Check, X, ShieldAlert,
+  Sparkles, Download
 } from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
 import { useShiftStore } from '../../stores/useShiftStore';
+import { useUpdateStore } from '../../stores/useUpdateStore';
 import { Accessory } from '../../../shared/types';
 
 interface HeaderProps {
@@ -22,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShiftModal, onCloseShiftMo
     addToast 
   } = useAppStore();
   const { activeShift } = useShiftStore();
+  const { status: updateStatus, updateInfo, progress: updateProgress, applyAndRestart } = useUpdateStore();
   const [time, setTime] = useState('');
 
   // Stock Alert Beacon State
@@ -225,6 +228,24 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShiftModal, onCloseShiftMo
             </div>
           )}
         </div>
+
+        {/* Auto-Update Status Pill */}
+        {updateStatus === 'downloading' && (
+          <div className="flex items-center gap-1.5 text-[11px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-lg">
+            <Download className="w-3.5 h-3.5 animate-bounce" />
+            <span>تحديث {updateProgress?.percent ?? 0}%</span>
+          </div>
+        )}
+        {updateStatus === 'ready' && updateInfo && (
+          <button
+            onClick={applyAndRestart}
+            title="اضغط لإعادة التشغيل وتطبيق التحديث فوراً"
+            className="flex items-center gap-1.5 text-[11px] font-black bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg shadow-sm shadow-emerald-600/30 transition cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>تحديث v{updateInfo.latestVersion} جاهز — تطبيق</span>
+          </button>
+        )}
 
         {/* Clock */}
         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg">

@@ -1,8 +1,8 @@
 {
   "name": "tiger-pos-system",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "description": "TIGER - نظام إدارة المحل المكتبي الذكي",
-  "main": "dist-electron/main/main.js",
+  "main": "dist-electron/main/bootstrap.js",
   "scripts": {
     "dev:vite": "vite",
     "build:vite": "vite build",

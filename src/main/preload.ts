@@ -4,7 +4,7 @@ import {
   TradeInDevice, RepairTicket, RepairPartReportEntry, InstallmentPlan, Customer, 
   Supplier, Expense, AuditLog, DashboardStats, ImeiHistory,
   SystemSettings, DamagedItem, CustomerStatement, CustomerDebtPayment,
-  UpdateCheckResult
+  UpdateCheckResult, UpdateProgressEvent
 } from '../shared/types';
 
 export interface TigerAPI {
@@ -108,8 +108,9 @@ export interface TigerAPI {
   // System & GitHub Auto-Update
   getAppVersion: () => Promise<string>;
   checkGithubUpdate: (repoOverride?: string) => Promise<UpdateCheckResult>;
-  downloadUpdate: (url: string, newVersion?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+  downloadUpdate: (url: string, newVersion?: string) => Promise<{ success: boolean; filePath?: string; isBundle?: boolean; error?: string }>;
   installUpdateAndRestart: (filePath?: string, newVersion?: string) => Promise<{ success: boolean; error?: string } | void>;
+  onUpdateProgress?: (callback: (evt: UpdateProgressEvent) => void) => () => void;
   openExternal: (url: string) => Promise<void>;
 
   // Zoom & Viewport
@@ -218,6 +219,11 @@ const tigerAPI: TigerAPI = {
   checkGithubUpdate: (repoOverride) => ipcRenderer.invoke('system:checkGithubUpdate', repoOverride),
   downloadUpdate: (url, newVersion) => ipcRenderer.invoke('system:downloadUpdate', url, newVersion),
   installUpdateAndRestart: (filePath, newVersion) => ipcRenderer.invoke('system:installUpdateAndRestart', filePath, newVersion),
+  onUpdateProgress: (callback) => {
+    const handler = (_: any, evt: UpdateProgressEvent) => callback(evt);
+    ipcRenderer.on('system:updateProgress', handler);
+    return () => ipcRenderer.removeListener('system:updateProgress', handler);
+  },
   openExternal: (url) => ipcRenderer.invoke('system:openExternal', url),
 
   // Zoom & Viewport

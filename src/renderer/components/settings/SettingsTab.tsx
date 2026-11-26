@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { tigerConfirm } from '../../stores/useConfirmStore';
 import { useEscapeClose } from '../../utils/useEscapeStack';
+import { useUpdateStore } from '../../stores/useUpdateStore';
 import {
   Settings, Database, HardDrive,
   Download, Upload, CheckCircle2,
@@ -10,7 +11,7 @@ import {
   ExternalLink, FileText, Award, Sparkles,
   AlertTriangle, ArrowUpCircle, Key, Keyboard, Unlock
 } from 'lucide-react';
-import { User, SystemSettings, UpdateCheckResult } from '../../../shared/types';
+import { User, SystemSettings } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
 import { playCashDrawerSound } from '../../utils/soundUtils';
 import { cleanNumberInput, parseNumberInput } from '../../../shared/constants';
@@ -32,15 +33,23 @@ export const SettingsTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [creatingBackup, setCreatingBackup] = useState(false);
 
-  // GitHub Auto-Update State
+  // GitHub Auto-Update State (shared background store)
   const [githubRepo, setGithubRepo] = useState('samer20032020-dev/tiger-pos');
-  const [appVersion, setAppVersion] = useState('0.6.5');
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
-  const [downloadingUpdate, setDownloadingUpdate] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [updateReadyToRestart, setUpdateReadyToRestart] = useState(false);
-  const [downloadedFilePath, setDownloadedFilePath] = useState<string | undefined>(undefined);
+  const [appVersion, setAppVersion] = useState('0.9.7');
+  const {
+    status: updateStatus,
+    updateInfo,
+    progress: updateProgress,
+    errorMessage: updateErrorMessage,
+    isBundleUpdate,
+    checkAndAutoDownload,
+    downloadManually,
+    applyAndRestart
+  } = useUpdateStore();
+  const checkingUpdate = updateStatus === 'checking';
+  const downloadingUpdate = updateStatus === 'downloading';
+  const downloadProgress = updateProgress?.percent ?? 0;
+  const updateReadyToRestart = updateStatus === 'ready';
 
   // Store & Financial Settings State
   const [currencySymbol, setCurrencySymbol] = useState('د.أ');
@@ -217,68 +226,9 @@ export const SettingsTab: React.FC = () => {
     }
   };
 
-  const handleCheckUpdate = async () => {
-    setCheckingUpdate(true);
-    setUpdateInfo(null);
-    setUpdateReadyToRestart(false);
-
-    try {
-      const res = await window.tigerAPI.checkGithubUpdate();
-      setCheckingUpdate(false);
-      setUpdateInfo(res);
-
-      if (res.hasUpdate) {
-        addToast(`🎉 يتوفر إصدار جديد جاهز للتحميل: v${res.latestVersion}`, 'info');
-      } else {
-        addToast(`أنت تستخدم أحدث إصدار من TIGER (v${res.currentVersion}) بنجاح!`, 'success');
-      }
-    } catch (err: any) {
-      setCheckingUpdate(false);
-      addToast(err.message || 'فشل فحص التحديثات السحابية', 'error');
-    }
-  };
-
-  const handleDownloadUpdate = async () => {
-    if (!updateInfo) return;
-    setDownloadingUpdate(true);
-    setDownloadProgress(20);
-    addToast('⏳ جاري تجهيز وتنزيل التحديث...', 'info');
-
-    try {
-      const t1 = setTimeout(() => setDownloadProgress(55), 300);
-      const t2 = setTimeout(() => setDownloadProgress(85), 600);
-
-      const targetVer = updateInfo.latestVersion || '0.8.2';
-      const res = await window.tigerAPI.downloadUpdate(updateInfo.downloadUrl || '', targetVer);
-      
-      clearTimeout(t1);
-      clearTimeout(t2);
-      setDownloadProgress(100);
-
-      setTimeout(() => {
-        setDownloadingUpdate(false);
-        if (res.success) {
-          setUpdateReadyToRestart(true);
-          setDownloadedFilePath(res.filePath);
-          addToast('✅ تم تجهيز ملف التحديث بنجاح! اضغط على "إعادة التشغيل وتطبيق التحديث" للبدء بالإصدار الجديد', 'success');
-        } else {
-          addToast(res.error || 'فشل تنزيل ملف التحديث', 'error');
-        }
-      }, 500);
-    } catch (err: any) {
-      setDownloadingUpdate(false);
-      addToast(err.message || 'فشل تنزيل التحديث', 'error');
-    }
-  };
-
-  const handleRestartNow = async () => {
-    addToast('🔄 جاري تشغيل مثبت التحديث وإغلاق البرنامج وتطبيق الإصدار الجديد...', 'info');
-    const targetVer = updateInfo?.latestVersion || '0.8.2';
-    const res = await window.tigerAPI.installUpdateAndRestart(downloadedFilePath, targetVer);
-    if (res && (res as any).success === false) {
-      addToast((res as any).error || 'تعذر بدء التحديث', 'error');
-    }
-  };
+  const handleCheckUpdate = () => checkAndAutoDownload(false);
+  const handleDownloadUpdate = () => downloadManually();
+  const handleRestartNow = () => applyAndRestart();
 
   const handleCreateBackup = async () => {
     setCreatingBackup(true);
@@ -1095,7 +1045,12 @@ export const SettingsTab: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
                         <Sparkles className="w-5 h-5 text-emerald-600" />
-                        <span>🎉 يتوفر إصدار جديد جاهز للتحميل: {updateInfo.latestVersion}</span>
+                        <span>🎉 يتوفر إصدار جديد جاهز للتحديث: v{updateInfo.latestVersion}</span>
+                        {updateInfo.bundleDownloadUrl && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                            تحديث سريع {updateInfo.bundleSize ? `(${(updateInfo.bundleSize / 1024).toFixed(0)} KB)` : '(~1 MB)'}
+                          </span>
+                        )}
                       </div>
                       <span className="text-xs font-mono text-emerald-600">
                         {updateInfo.publishedAt?.substring(0, 10)}
@@ -1114,40 +1069,66 @@ export const SettingsTab: React.FC = () => {
                           <div className="flex items-center gap-2.5">
                             <CheckCircle2 className="w-5 h-5 text-white shrink-0" />
                             <div>
-                              <div className="font-black text-sm">تم تنزيل وتثبيت التحديث بنجاح!</div>
-                              <div className="text-[11px] text-emerald-100">يرجى إعادة تشغيل البرنامج للبدء بالإصدار الجديد فوراً</div>
+                              <div className="font-black text-sm">
+                                {isBundleUpdate
+                                  ? 'تم تجهيز الحزمة السريعة بالخلفية بنجاح!'
+                                  : 'تم تجهيز التحديث بنجاح!'}
+                              </div>
+                              <div className="text-[11px] text-emerald-100">
+                                {isBundleUpdate
+                                  ? 'بضغطة واحدة سيعيد البرنامج التشغيل فوراً بالإصدار الجديد بدون أي نوافذ تثبيت'
+                                  : 'سيتم تثبيت التحديث بصمت وإعادة فتح البرنامج تلقائياً'}
+                              </div>
                             </div>
                           </div>
                           <button
                             type="button"
                             onClick={handleRestartNow}
-                            className="w-full sm:w-auto bg-white hover:bg-emerald-50 text-emerald-900 px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 shadow-md shrink-0"
+                            className="w-full sm:w-auto bg-white hover:bg-emerald-50 text-emerald-900 px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 shadow-md shrink-0 cursor-pointer"
                           >
                             <RefreshCw className="w-4 h-4 text-emerald-700" />
-                            <span>إعادة تشغيل البرنامج الآن (Restart)</span>
+                            <span>تطبيق التحديث وإعادة التشغيل الآن</span>
                           </button>
                         </div>
                       ) : downloadingUpdate ? (
                         <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-2">
                           <div className="flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                            <span>جاري تنزيل التحديث في الخلفية...</span>
-                            <span className="font-mono">{downloadProgress}%</span>
+                            <span>
+                              {updateProgress?.stage === 'verifying'
+                                ? 'جاري التحقق من سلامة الملفات وتجهيزها...'
+                                : 'جاري تنزيل التحديث تلقائياً في الخلفية...'}
+                            </span>
+                            <span className="font-mono" dir="ltr">
+                              {downloadProgress}%
+                              {updateProgress && updateProgress.totalBytes > 0 && (
+                                <span className="text-[10px] text-slate-400 mr-1.5">
+                                  ({(updateProgress.downloadedBytes / 1024).toFixed(0)} / {(updateProgress.totalBytes / 1024).toFixed(0)} KB)
+                                </span>
+                              )}
+                            </span>
                           </div>
                           <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-200"
                               style={{ width: `${downloadProgress}%` }}
                             />
                           </div>
                         </div>
                       ) : (
-                        <button
-                          onClick={handleDownloadUpdate}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-md shadow-emerald-600/20"
-                        >
-                          <ArrowUpCircle className="w-4 h-4" />
-                          <span>تنزيل وتثبيت التحديث الآن</span>
-                        </button>
+                        <div className="space-y-2">
+                          {updateErrorMessage && (
+                            <div className="text-[11px] font-bold text-red-600 dark:text-red-400">
+                              {updateErrorMessage}
+                            </div>
+                          )}
+                          <button
+                            onClick={handleDownloadUpdate}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-md shadow-emerald-600/20"
+                          >
+                            <ArrowUpCircle className="w-4 h-4" />
+                            <span>تنزيل وتجهيز التحديث الآن</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

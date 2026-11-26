@@ -5,6 +5,7 @@ import { StandbyLogoScreen } from './components/common/StandbyLogoScreen';
 import { useConfirmStore } from './stores/useConfirmStore';
 import { popAndRunTopEscapeHandler } from './utils/useEscapeStack';
 import { useShiftStore } from './stores/useShiftStore';
+import { useUpdateStore } from './stores/useUpdateStore';
 import { AuthScreen } from './components/auth/AuthScreens';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -204,6 +205,14 @@ export const App: React.FC = () => {
       const interval = setInterval(fetchBadgeCounts, 15000);
       window.addEventListener('keydown', handleGlobalKeyDown);
 
+      // Silent automatic background check + fast download (~1 MB bundle)
+      const initUpdateTimer = setTimeout(() => {
+        useUpdateStore.getState().checkAndAutoDownload(true);
+      }, 3500);
+      const periodicUpdateTimer = setInterval(() => {
+        useUpdateStore.getState().checkAndAutoDownload(true);
+      }, 30 * 60 * 1000);
+
       let unsubZoom: (() => void) | undefined;
       if (window.tigerAPI?.onZoomChanged) {
         unsubZoom = window.tigerAPI.onZoomChanged((factor) => {
@@ -214,6 +223,8 @@ export const App: React.FC = () => {
 
       return () => {
         clearInterval(interval);
+        clearTimeout(initUpdateTimer);
+        clearInterval(periodicUpdateTimer);
         window.removeEventListener('keydown', handleGlobalKeyDown);
         if (unsubZoom) unsubZoom();
       };
