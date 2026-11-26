@@ -714,16 +714,51 @@ export class TigerRepository {
   }
 
   // ==================== POS, INVOICES & TRADE-IN ====================
+  private generateNextSequentialNumber(
+    table: 'invoices' | 'repair_tickets',
+    column: 'invoice_number' | 'ticket_number',
+    prefix: string,
+    startSeq: number,
+    padLength: number
+  ): string {
+    const rows = this.db.query(
+      `SELECT ${column} as doc_num FROM ${table} WHERE ${column} LIKE ?`,
+      [`${prefix}%`]
+    );
+    let maxSeq = startSeq - 1;
+    for (const row of rows) {
+      const raw = String(row.doc_num || '');
+      if (raw.startsWith(prefix)) {
+        const suffix = raw.slice(prefix.length);
+        const parsed = parseInt(suffix, 10);
+        if (!isNaN(parsed) && parsed > maxSeq) {
+          maxSeq = parsed;
+        }
+      }
+    }
+
+    let candidateSeq = maxSeq + 1;
+    while (true) {
+      const candidate = `${prefix}${padLength > 0 ? String(candidateSeq).padStart(padLength, '0') : String(candidateSeq)}`;
+      const exists = this.db.queryOne(
+        `SELECT 1 FROM ${table} WHERE ${column} = ? LIMIT 1`,
+        [candidate]
+      );
+      if (!exists) return candidate;
+      candidateSeq++;
+    }
+  }
+
   public createInvoice(
     invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'createdAt'>,
     items: Omit<InvoiceItem, 'id' | 'invoiceId'>[],
     tradeIn?: Omit<TradeInDevice, 'id' | 'invoiceId' | 'createdAt'> | null
   ): Invoice {
     return this.db.transaction(() => {
-      const invoiceId = `inv-${Date.now()}`;
+      const invoiceId = `inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const now = new Date().toISOString();
-      const countRes = this.db.queryOne('SELECT COUNT(*) as count FROM invoices');
-      const invoiceNumber = `INV-${new Date().getFullYear()}-${String((countRes?.count || 0) + 1).padStart(5, '0')}`;
+      const yearPrefix = `INV-${new Date().getFullYear()}-`;
+      const invoiceNumber = this.generateNextSequentialNumber('invoices', 'invoice_number', yearPrefix, 1, 5);
 
       // Check if invoice contains ONLY repair parts -> send directly to Reports (auto-post) without sitting in Daily Closing (الجرد النهائي)
       let allRepairParts = items.length > 0;
@@ -1187,10 +1222,9 @@ export class TigerRepository {
   }
 
   public createRepairTicket(data: Omit<RepairTicket, 'id' | 'ticketNumber' | 'createdAt'>): RepairTicket {
-    const id = `rep-${Date.now()}`;
+    const id = `rep-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const now = new Date().toISOString();
-    const countRes = this.db.queryOne('SELECT COUNT(*) as count FROM repair_tickets');
-    const ticketNumber = `TIG-REP-${String((countRes?.count || 0) + 1001)}`;
+    const ticketNumber = this.generateNextSequentialNumber('repair_tickets', 'ticket_number', 'TIG-REP-', 1001, 0);
 
     this.db.run(`
       INSERT INTO repair_tickets (

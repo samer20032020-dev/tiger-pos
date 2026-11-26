@@ -458,9 +458,9 @@ function registerIpcHandlers() {
       const settings = repository ? repository.getSettings() : null;
       const currentVersion = app.getVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.7.8';
       
-      let latestVersion = '0.9.5';
-      let releaseNotes = '✨ إصدار v0.9.5: حفظ أرقام حاسبة جرد الصندوق في التقارير تلقائياً بحيث لا تضيع عند التنقل بين الأقسام أو إعادة فتح النظام.';
-      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.5';
+      let latestVersion = '0.9.6';
+      let releaseNotes = '✨ إصدار v0.9.6: إصلاح منع تكرار أرقام الفواتير وتذاكر الصيانة بعد الحذف، وتخصيص رسائل واتساب الصيانة لآخر 3 حالات فقط.';
+      let releaseName = 'إصدار الترقية السحابي TIGER v0.9.6';
       let publishedAt = new Date().toISOString();
 
       try {
@@ -508,7 +508,7 @@ function registerIpcHandlers() {
       return {
         hasUpdate: false,
         currentVersion: curVer,
-        latestVersion: '0.9.5',
+        latestVersion: '0.9.6',
         error: err.message || 'حدث خطأ أثناء فحص التحديثات'
       };
     }

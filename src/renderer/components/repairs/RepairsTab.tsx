@@ -13,7 +13,7 @@ import { RepairDeviceStickerModal } from './RepairDeviceStickerModal';
 import { RepairInventoryModal } from './RepairInventoryModal';
 import { PatternLockInput } from '../common/PatternLockInput';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
-import { sendWhatsAppMessage, buildRepairWhatsAppMessage } from '../../utils/whatsapp';
+import { sendWhatsAppMessage, buildRepairWhatsAppMessage, RepairWhatsAppTemplate } from '../../utils/whatsapp';
 import { useAppStore } from '../../stores/useAppStore';
 import { useEscapeClose } from '../../utils/useEscapeStack';
 
@@ -95,7 +95,7 @@ export const RepairsTab: React.FC = () => {
     }
   };
 
-  const handleSendWhatsApp = async (t: RepairTicket, template: 'ready' | 'received' = 'ready') => {
+  const handleSendWhatsApp = async (t: RepairTicket, template: RepairWhatsAppTemplate = 'ready_for_pickup') => {
     if (!t.customerPhone) {
       addToast('رقم هاتف العميل غير متوفر في هذه التذكرة', 'warning');
       return;
@@ -426,37 +426,67 @@ export const RepairsTab: React.FC = () => {
                     );
                   })()}
 
-                  {/* WhatsApp Direct Notification Buttons + Settle Paid */}
-                  <div className="flex items-center gap-1.5 pt-0.5">
-                    <button
-                      onClick={() => handleSendWhatsApp(t, 'ready')}
-                      title="إرسال إشعار عبر واتساب بنقرة واحدة"
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-600/30 transition active:scale-[0.98]"
-                    >
-                      <WhatsAppIcon className="w-3.5 h-3.5 fill-white" />
-                      <span>إرسال للواتساب (جاهز)</span>
-                    </button>
-                    {!(t.isPaid || t.status === 'delivered' || Math.max(0, (t.finalCost || t.estimatedCost || 0) - (t.advancePayment || 0)) <= 0.005) && (
-                      <button
-                        onClick={() => {
-                          setSettleTicket(t);
-                          setSettleFinalCost(String(t.finalCost || t.estimatedCost || 0));
-                        }}
-                        title="تأكيد استلام كامل المبلغ وتصفير المتبقي"
-                        className="px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black flex items-center gap-1 shadow-sm transition"
-                      >
-                        <DollarSign className="w-3 h-3" />
-                        <span>تم الدفع</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleSendWhatsApp(t, 'received')}
-                      title="إرسال إشعار عبر واتساب: تم استلام جهازك للفحص والصيانة"
-                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold flex items-center gap-1 transition"
-                    >
-                      <span>استلام</span>
-                    </button>
-                  </div>
+                  {/* WhatsApp Direct Notification (Only for last 3 statuses) + Settle Paid */}
+                  {(() => {
+                    const isUnpaid = !(
+                      t.isPaid ||
+                      t.status === 'delivered' ||
+                      t.status === 'cancelled' ||
+                      Math.max(0, (t.finalCost || t.estimatedCost || 0) - (t.advancePayment || 0)) <= 0.005
+                    );
+                    const whatsappMeta =
+                      t.status === 'ready_for_pickup'
+                        ? {
+                            template: 'ready_for_pickup' as const,
+                            label: 'واتساب: جاهز للاستلام',
+                            btnClass: 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30',
+                          }
+                        : t.status === 'delivered'
+                        ? {
+                            template: 'delivered' as const,
+                            label: 'واتساب: تم التسليم والشكر',
+                            btnClass: 'bg-teal-600 hover:bg-teal-500 shadow-teal-600/30',
+                          }
+                        : t.status === 'cancelled'
+                        ? {
+                            template: 'cancelled' as const,
+                            label: 'واتساب: تعذر الإصلاح / استلام',
+                            btnClass: 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/30',
+                          }
+                        : null;
+
+                    if (!whatsappMeta && !isUnpaid) return null;
+
+                    return (
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        {whatsappMeta && (
+                          <button
+                            onClick={() => handleSendWhatsApp(t, whatsappMeta.template)}
+                            title="إرسال رسالة واتساب مخصصة للحالة الحالية"
+                            className={`flex-1 text-white font-bold py-1.5 px-2.5 rounded-xl text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition active:scale-[0.98] ${whatsappMeta.btnClass}`}
+                          >
+                            <WhatsAppIcon className="w-3.5 h-3.5 fill-white" />
+                            <span>{whatsappMeta.label}</span>
+                          </button>
+                        )}
+                        {isUnpaid && (
+                          <button
+                            onClick={() => {
+                              setSettleTicket(t);
+                              setSettleFinalCost(String(t.finalCost || t.estimatedCost || 0));
+                            }}
+                            title="تأكيد استلام كامل المبلغ وتصفير المتبقي"
+                            className={`px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black flex items-center justify-center gap-1 shadow-sm transition ${
+                              whatsappMeta ? '' : 'flex-1'
+                            }`}
+                          >
+                            <DollarSign className="w-3 h-3" />
+                            <span>تم الدفع</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex items-center justify-between gap-1.5 pt-1">
                     {/* Status Changer */}
