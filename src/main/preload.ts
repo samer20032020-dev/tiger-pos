@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { 
   User, Shift, Phone, Accessory, Invoice, InvoiceItem, 
   TradeInDevice, RepairTicket, RepairPartReportEntry, InstallmentPlan, Customer, 
-  Supplier, Expense, AuditLog, DashboardStats, ImeiHistory,
+  Supplier, Expense, AuditLog, OpeningBalanceEntry, DashboardStats, ImeiHistory,
   SystemSettings, DamagedItem, CustomerStatement, CustomerDebtPayment,
   UpdateCheckResult, UpdateProgressEvent
 } from '../shared/types';
@@ -53,6 +53,15 @@ export interface TigerAPI {
   getInvoiceDetails: (invoiceId: string) => Promise<Invoice | null>;
   postInvoices: (invoiceIds: string[]) => Promise<{ count: number }>;
   settleAndResetDailyDrawer: () => Promise<{ invoiceCount: number; repairCount: number; expenseCount: number }>;
+  addOpeningBalanceEntry: (entry: {
+    amount: number;
+    previousAmount?: number | null;
+    salesAdded?: number | null;
+    source: 'manual' | 'settlement' | 'reset';
+    note?: string | null;
+    actorName?: string;
+  }) => Promise<OpeningBalanceEntry>;
+  getOpeningBalanceHistory: (limit?: number) => Promise<OpeningBalanceEntry[]>;
 
   // Repair Center
   getAllRepairTickets: (status?: string) => Promise<RepairTicket[]>;
@@ -171,6 +180,8 @@ const tigerAPI: TigerAPI = {
   getInvoiceDetails: (invoiceId) => ipcRenderer.invoke('db:getInvoiceDetails', invoiceId),
   postInvoices: (invoiceIds) => ipcRenderer.invoke('db:postInvoices', invoiceIds),
   settleAndResetDailyDrawer: () => ipcRenderer.invoke('db:settleAndResetDailyDrawer'),
+  addOpeningBalanceEntry: (entry) => ipcRenderer.invoke('db:addOpeningBalanceEntry', entry),
+  getOpeningBalanceHistory: (limit) => ipcRenderer.invoke('db:getOpeningBalanceHistory', limit),
 
   // Repair
   getAllRepairTickets: (status) => ipcRenderer.invoke('db:getAllRepairTickets', status),

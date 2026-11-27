@@ -330,6 +330,19 @@ CREATE TABLE IF NOT EXISTS system_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS opening_balance_history (
+  id TEXT PRIMARY KEY,
+  amount REAL NOT NULL,
+  previous_amount REAL,
+  sales_added REAL,
+  source TEXT NOT NULL DEFAULT 'manual',
+  note TEXT,
+  actor_name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_opening_balance_created ON opening_balance_history(created_at DESC);
 `;
 
 export const SAFE_MIGRATIONS_SQL = [

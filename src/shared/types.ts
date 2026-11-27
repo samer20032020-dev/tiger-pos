@@ -340,6 +340,17 @@ export interface AuditLog {
   createdAt: string;
 }
 
+export interface OpeningBalanceEntry {
+  id: string;
+  amount: number;
+  previousAmount?: number | null;
+  salesAdded?: number | null;
+  source: 'manual' | 'settlement' | 'reset';
+  note?: string | null;
+  actorName: string;
+  createdAt: string;
+}
+
 export interface DashboardStats {
   todaySales: number;
   todayNetProfit: number;

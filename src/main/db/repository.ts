@@ -3,7 +3,7 @@ import {
   User, Shift, Phone, Accessory, Invoice, InvoiceItem, 
   TradeInDevice, RepairTicket, RepairPart, RepairPartReportEntry, InstallmentPlan, 
   InstallmentPayment, Customer, CustomerStatement, CustomerDebtPayment,
-  DamagedItem, Supplier, SupplierInvoice, Expense, AuditLog, 
+  DamagedItem, Supplier, SupplierInvoice, Expense, AuditLog, OpeningBalanceEntry, 
   DashboardStats, ImeiHistory, SystemSettings, PaymentMethod 
 } from '../../shared/types';
 import { isRepairCategory, isUnlimitedCategory } from '../../shared/constants';
@@ -1826,5 +1826,57 @@ export class TigerRepository {
       todayInvoicesCount: Number(salesRow?.invoice_count || 0) + Number(repairRevRow?.repair_count || 0),
       activeShift: this.getActiveShift()
     };
+  }
+
+  // ==================== OPENING BALANCE HISTORY ====================
+  public addOpeningBalanceEntry(params: {
+    amount: number;
+    previousAmount?: number | null;
+    salesAdded?: number | null;
+    source: 'manual' | 'settlement' | 'reset';
+    note?: string | null;
+    actorName?: string;
+  }): OpeningBalanceEntry {
+    const id = `ob-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const now = new Date().toISOString();
+    const actor = (params.actorName && params.actorName.trim()) || 'الكاشير';
+    const amt = Number(params.amount) || 0;
+    const prev = params.previousAmount !== undefined && params.previousAmount !== null ? Number(params.previousAmount) : null;
+    const sales = params.salesAdded !== undefined && params.salesAdded !== null ? Number(params.salesAdded) : null;
+    const note = params.note || null;
+
+    this.db.run(
+      `INSERT INTO opening_balance_history (id, amount, previous_amount, sales_added, source, note, actor_name, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, amt, prev, sales, params.source, note, actor, now]
+    );
+
+    return {
+      id,
+      amount: amt,
+      previousAmount: prev,
+      salesAdded: sales,
+      source: params.source,
+      note,
+      actorName: actor,
+      createdAt: now
+    };
+  }
+
+  public getOpeningBalanceHistory(limit = 200): OpeningBalanceEntry[] {
+    const rows = this.db.query(
+      'SELECT * FROM opening_balance_history ORDER BY created_at DESC LIMIT ?',
+      [limit]
+    );
+    return rows.map(r => ({
+      id: r.id,
+      amount: Number(r.amount) || 0,
+      previousAmount: r.previous_amount !== null && r.previous_amount !== undefined ? Number(r.previous_amount) : null,
+      salesAdded: r.sales_added !== null && r.sales_added !== undefined ? Number(r.sales_added) : null,
+      source: (r.source || 'manual') as 'manual' | 'settlement' | 'reset',
+      note: r.note || null,
+      actorName: r.actor_name || 'الكاشير',
+      createdAt: r.created_at
+    }));
   }
 }

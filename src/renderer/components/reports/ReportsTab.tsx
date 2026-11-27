@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { tigerConfirm } from '../../stores/useConfirmStore';
 import {
   FileSpreadsheet, Download, Calendar, DollarSign,
@@ -6,16 +6,17 @@ import {
   CreditCard, Wallet, Banknote, Search, Layers,
   ChevronDown, CheckSquare, Square, ArrowDownToLine,
   Lock, AlertTriangle, Sparkles, RefreshCw, Eye,
-  RotateCcw, Trash2
+  RotateCcw, Trash2, Clock
 } from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
 import { useDailyCalculatorStore } from '../../stores/useDailyCalculatorStore';
-import { Invoice, RepairTicket, Expense, RepairPartReportEntry } from '../../../shared/types';
+import { Invoice, RepairTicket, Expense, RepairPartReportEntry, OpeningBalanceEntry } from '../../../shared/types';
 import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
 import { parseDbDate, getLocalTodayDateString, formatLocalShortDateTime } from '../../../shared/dateUtils';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { sendWhatsAppMessage, buildInvoiceWhatsAppMessage } from '../../utils/whatsapp';
 import { InvoiceDetailsModal } from './InvoiceDetailsModal';
+import { OpeningBalanceHistoryModal } from './OpeningBalanceHistoryModal';
 
 type ReportTabMode = 'settlement' | 'monthly';
 type PostingFilter = 'unposted' | 'posted' | 'refunded' | 'all';
@@ -53,7 +54,7 @@ export const ReportsTab: React.FC = () => {
     setReceiptsOverride,
     setExpectedOverride,
     setActualCashInput,
-    resetAllToZero,
+    carryOverStartingCash,
   } = useDailyCalculatorStore();
 
   const startingCash = parseNumberInput(startingCashInput);
@@ -78,6 +79,14 @@ export const ReportsTab: React.FC = () => {
   // Search in transactions
   const [searchQuery, setSearchQuery] = useState('');
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
+
+  // Opening Balance History Modal & input commit tracking
+  const [openingHistoryOpen, setOpeningHistoryOpen] = useState<boolean>(false);
+  const [openingHistory, setOpeningHistory] = useState<OpeningBalanceEntry[]>([]);
+  const [openingHistoryLoading, setOpeningHistoryLoading] = useState<boolean>(false);
+  const startingInputDirtyRef = useRef<boolean>(false);
+  const lastLoggedStartingRef = useRef<number>(parseNumberInput(startingCashInput));
+  const startingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const months = [
     { num: 1, name: 'يناير (شهر 1)' },
@@ -122,6 +131,96 @@ export const ReportsTab: React.FC = () => {
   useEffect(() => {
     loadReportData();
   }, []);
+
+  const recordOpeningBalance = async (params: {
+    amount: number;
+    previousAmount?: number | null;
+    salesAdded?: number | null;
+    source: 'manual' | 'settlement' | 'reset';
+    note?: string | null;
+  }) => {
+    startingInputDirtyRef.current = false;
+    lastLoggedStartingRef.current = params.amount;
+    if (!window.tigerAPI?.addOpeningBalanceEntry) return;
+    try {
+      const saved = await window.tigerAPI.addOpeningBalanceEntry({
+        ...params,
+        actorName: currentUser?.fullName || 'الكاشير',
+      });
+      setOpeningHistory(prev => [saved, ...prev]);
+    } catch (err) {
+      console.error('Failed to record opening balance entry:', err);
+    }
+  };
+
+  const flushManualStartingBalance = async (valOverride?: string) => {
+    if (startingDebounceRef.current) {
+      clearTimeout(startingDebounceRef.current);
+      startingDebounceRef.current = null;
+    }
+    const rawVal = valOverride !== undefined ? valOverride : startingCashInput;
+    if (!startingInputDirtyRef.current || rawVal.trim() === '') return;
+
+    const amt = parseNumberInput(rawVal);
+    const prevAmt = lastLoggedStartingRef.current;
+    if (Math.abs(amt - prevAmt) < 0.0001) {
+      startingInputDirtyRef.current = false;
+      return;
+    }
+    await recordOpeningBalance({
+      amount: amt,
+      previousAmount: prevAmt,
+      source: 'manual',
+      note: `تعديل يدوي (${formatJOD(prevAmt)} ⬅ ${formatJOD(amt)})`,
+    });
+  };
+
+  // Auto-commit manual starting cash 1.8s after user pauses typing so navigating away never drops an entry
+  useEffect(() => {
+    if (!startingInputDirtyRef.current || startingCashInput.trim() === '') return;
+    if (startingDebounceRef.current) clearTimeout(startingDebounceRef.current);
+    const snapshot = startingCashInput;
+    startingDebounceRef.current = setTimeout(() => {
+      flushManualStartingBalance(snapshot);
+    }, 1800);
+    return () => {
+      if (startingDebounceRef.current) {
+        clearTimeout(startingDebounceRef.current);
+        startingDebounceRef.current = null;
+      }
+    };
+  }, [startingCashInput]);
+
+  const handleResetStartingCashZero = async () => {
+    if (startingDebounceRef.current) {
+      clearTimeout(startingDebounceRef.current);
+      startingDebounceRef.current = null;
+    }
+    const prevAmt = parseNumberInput(startingCashInput);
+    startingInputDirtyRef.current = false;
+    setStartingCashInput('0.000', true);
+    await recordOpeningBalance({
+      amount: 0,
+      previousAmount: prevAmt,
+      source: 'reset',
+      note: prevAmt > 0 ? `تصفير الرصيد من ${formatJOD(prevAmt)} إلى 0.000 د.أ` : 'تصفير الرصيد إلى 0.000 د.أ',
+    });
+  };
+
+  const handleOpenBalanceHistory = async () => {
+    await flushManualStartingBalance();
+    setOpeningHistoryOpen(true);
+    if (!window.tigerAPI?.getOpeningBalanceHistory) return;
+    setOpeningHistoryLoading(true);
+    try {
+      const list = await window.tigerAPI.getOpeningBalanceHistory(200);
+      setOpeningHistory(list || []);
+    } catch (err) {
+      console.error('Failed to load opening balance history:', err);
+    } finally {
+      setOpeningHistoryLoading(false);
+    }
+  };
 
   // Filter items by time range (Audios 4 & 7: Supports midnight shifts, 48 hours & custom dates)
   const filterByDate = (dateStr?: string | null) => {
@@ -354,7 +453,22 @@ export const ReportsTab: React.FC = () => {
   };
 
   const handleSettleAndResetDrawer = async () => {
-    const confirmedReset = await tigerConfirm('هل أنت متأكد من ترحيل وإغلاق الصندوق وتصفير اليومية بالكامل؟\nسيتم نقل كافة العمليات وتذاكر الصيانة للأرشيف وتصفير الصندوق والمؤشرات بالكامل لبدء يوم جديد.', { title: 'تأكيد إغلاق وتصفير اليومية', tone: 'danger', confirmText: 'تصفير وترحيل اليومية' });
+    await flushManualStartingBalance();
+    const currentOpening = parseNumberInput(startingCashInput);
+    const salesToAdd = effectiveReceipts;
+    const nextOpeningTotal = Math.max(0, currentOpening + salesToAdd);
+
+    const confirmMessage =
+      `سيتم ترحيل وإغلاق العمليات الحالية وتحديث الرصيد الافتتاحي تلقائياً:\n\n` +
+      `• الرصيد الافتتاحي الحالي: ${formatJOD(currentOpening)}\n` +
+      `• + مبيعات ومقبوضات اليوم: ${formatJOD(salesToAdd)}\n` +
+      `• = الرصيد الافتتاحي الجديد بعد الترحيل: ${formatJOD(nextOpeningTotal)}`;
+
+    const confirmedReset = await tigerConfirm(confirmMessage, {
+      title: 'تأكيد الترحيل وجمع الرصيد الافتتاحي',
+      tone: 'warning',
+      confirmText: `ترحيل وتحويل إلى ${formatJOD(nextOpeningTotal)}`
+    });
     if (!confirmedReset) {
       return;
     }
@@ -362,12 +476,22 @@ export const ReportsTab: React.FC = () => {
     setPostingLoading(true);
     try {
       const res = await window.tigerAPI.settleAndResetDailyDrawer();
-      addToast(`تم ترحيل الصندوق بنجاح (${res.invoiceCount} فواتير، ${res.repairCount} صيانة)! تم تصفير كافة المؤشرات والأرقام بالكامل لبدء يوم جديد.`, 'success');
-      resetAllToZero();
+      await recordOpeningBalance({
+        amount: nextOpeningTotal,
+        previousAmount: currentOpening,
+        salesAdded: salesToAdd,
+        source: 'settlement',
+        note: `ترحيل الصندوق (${formatJOD(currentOpening)} + ${formatJOD(salesToAdd)} مبيعات)`,
+      });
+      carryOverStartingCash(nextOpeningTotal.toFixed(3));
       setSelectedInvoiceIds([]);
+      addToast(
+        `تم الترحيل (${res.invoiceCount} فواتير، ${res.repairCount} صيانة)! الرصيد الافتتاحي الجديد: ${formatJOD(nextOpeningTotal)}`,
+        'success'
+      );
       await loadReportData();
     } catch (err: any) {
-      addToast(err.message || 'فشل ترحيل وتصفير الصندوق', 'error');
+      addToast(err.message || 'فشل ترحيل الصندوق', 'error');
     } finally {
       setPostingLoading(false);
     }
@@ -603,8 +727,8 @@ export const ReportsTab: React.FC = () => {
                 <ArrowDownToLine className="w-4 h-4" />
                 <span>
                   {postingLoading
-                    ? 'جاري الترحيل وتصفير الصندوق...'
-                    : `ترحيل الصندوق وتصفير اليومية بالكامل (${unpostedInvoices.length} فواتير${unpostedRepairs.length > 0 ? ` + ${unpostedRepairs.length} صيانة` : ''})`}
+                    ? 'جاري الترحيل وإغلاق اليومية...'
+                    : `ترحيل الصندوق وإغلاق اليومية (${unpostedInvoices.length} فواتير${unpostedRepairs.length > 0 ? ` + ${unpostedRepairs.length} صيانة` : ''})`}
                 </span>
               </button>
             </div>
@@ -614,15 +738,26 @@ export const ReportsTab: React.FC = () => {
 
               {/* 1. Starting Cash */}
               <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-1.5 shadow-sm">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-1">
                   <label className="text-xs font-bold text-slate-300 block">الرصيد الافتتاحي (الصبح):</label>
-                  <button
-                    type="button"
-                    onClick={() => setStartingCashInput('0.000', true)}
-                    className="text-[10px] text-slate-400 hover:text-red-400 font-bold"
-                  >
-                    تصفير (0)
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleOpenBalanceHistory}
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-slate-700 hover:bg-orange-500/20 text-orange-300 border border-slate-600 hover:border-orange-500/50 font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="عرض سجل أرقام الرصيد الافتتاحي والساعة"
+                    >
+                      <Clock className="w-2.5 h-2.5" />
+                      <span>سجل</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetStartingCashZero}
+                      className="text-[10px] text-slate-400 hover:text-red-400 font-bold cursor-pointer"
+                    >
+                      تصفير (0)
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -637,12 +772,22 @@ export const ReportsTab: React.FC = () => {
                         requestAnimationFrame(() => el.select());
                       }
                     }}
-                    onChange={(e) => setStartingCashInput(cleanNumberInput(e.target.value), true)}
+                    onChange={(e) => {
+                      startingInputDirtyRef.current = true;
+                      setStartingCashInput(cleanNumberInput(e.target.value), true);
+                    }}
+                    onBlur={() => flushManualStartingBalance()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        flushManualStartingBalance();
+                        e.currentTarget.blur();
+                      }
+                    }}
                     className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-black text-white focus:outline-none focus:border-orange-500 select-text text-left"
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block">المبلغ الذي بدأ به الدرج (عدله بحرية)</span>
+                <span className="text-[10px] text-slate-400 block">يتجمع تلقائياً مع المبيعات عند الترحيل</span>
               </div>
 
               {/* 2. Today's Cash Flow (Editable / Overridable) */}
@@ -687,7 +832,7 @@ export const ReportsTab: React.FC = () => {
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block">مبيعات الكاشير بالجرد ({formatJOD(unpostedCash)}) — الصيانة للتقارير مباشرة</span>
+                <span className="text-[10px] text-slate-400 block">مجموع مبيعات وصيانة غير المرحل ({formatJOD(unpostedCash)})</span>
               </div>
 
               {/* 3. Expected Total (Glowing Prominent / Editable) */}
@@ -732,7 +877,7 @@ export const ReportsTab: React.FC = () => {
                   />
                   <span className="text-xs text-slate-400 font-bold shrink-0">د.أ</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block">المجموع الحسابي المطلوب (افتتاحي + مقبوضات)</span>
+                <span className="text-[10px] text-slate-400 block">الناتج الكامل ({formatJOD(startingCash)} + {formatJOD(effectiveReceipts)}) يتحول للافتتاحي عند الترحيل</span>
               </div>
 
               {/* 4. Actual Cash Input & Difference (Glowing Status) */}
@@ -1298,8 +1443,8 @@ export const ReportsTab: React.FC = () => {
                 <ArrowDownToLine className="w-4 h-4" />
                 <span>
                   {postingLoading
-                    ? 'جاري الترحيل وتصفير الصندوق...'
-                    : `ترحيل الصندوق وتصفير اليومية بالكامل (${unpostedInvoices.length} فواتير${unpostedRepairs.length > 0 ? ` + ${unpostedRepairs.length} صيانة` : ''})`}
+                    ? 'جاري الترحيل وإغلاق اليومية...'
+                    : `ترحيل الصندوق وإغلاق اليومية (${unpostedInvoices.length} فواتير${unpostedRepairs.length > 0 ? ` + ${unpostedRepairs.length} صيانة` : ''})`}
                 </span>
               </button>
             </div>
@@ -1774,6 +1919,13 @@ export const ReportsTab: React.FC = () => {
 
         </div>
       )}
+
+      <OpeningBalanceHistoryModal
+        isOpen={openingHistoryOpen}
+        entries={openingHistory}
+        loading={openingHistoryLoading}
+        onClose={() => setOpeningHistoryOpen(false)}
+      />
 
       <InvoiceDetailsModal
         invoice={detailInvoice}

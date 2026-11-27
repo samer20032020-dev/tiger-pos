@@ -427,6 +427,14 @@ function registerIpcHandlers() {
     return repository!.settleAndResetDailyDrawer();
   });
 
+  ipcMain.handle('db:addOpeningBalanceEntry', async (_, entry) => {
+    return repository!.addOpeningBalanceEntry(entry);
+  });
+
+  ipcMain.handle('db:getOpeningBalanceHistory', async (_, limit?: number) => {
+    return repository!.getOpeningBalanceHistory(limit);
+  });
+
   // ==================== PRINTING & CASH DRAWER ====================
   ipcMain.handle('print:silentHtml', async (_, htmlContent: string, isBarcode?: boolean, silent = true) => {
     const result = await PrintService.printSilentHtml(htmlContent, isBarcode, silent);
@@ -454,9 +462,9 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.11';
+      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.12';
     } catch {
-      return '0.9.11';
+      return '0.9.12';
     }
   });
 
@@ -486,15 +494,15 @@ function registerIpcHandlers() {
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.11';
-      let releaseNotes = '✨ إصدار v0.9.11: إصلاح التوقيت المحلي وترتيب السجل، إبقاء مبيعات صافي الصيانة وجميع الفواتير في غير مرحل حتى الترحيل اليدوي، وإضافة النسخ الاحتياطي التلقائي المضغوط كل 24 ساعة.';
+      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.12';
+      let releaseNotes = '✨ إصدار v0.9.12: تحويل ناتج الرصيد الافتتاحي + المبيعات تلقائياً إلى الرصيد الافتتاحي عند الترحيل وإضافة زر ونافذة سجل أرقام الرصيد الافتتاحي بالساعة والتاريخ.';
       const repo = (repoOverride && repoOverride.trim()) || (settings?.githubRepo && settings.githubRepo.trim()) || 'samer20032020-dev/tiger-pos';
 
       return await checkLatestGitHubRelease(repo, currentVersion, releaseNotes);
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.11';
+      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.12';
       return {
         hasUpdate: false,
         currentVersion: curVer,
