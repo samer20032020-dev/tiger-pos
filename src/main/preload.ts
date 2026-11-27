@@ -96,7 +96,16 @@ export interface TigerAPI {
 
   // Backups
   createBackup: (folder?: string) => Promise<{ success: boolean; filePath: string; size: number }>;
-  listBackups: (folder?: string) => Promise<{ filename: string; filePath: string; size: number; date: string }[]>;
+  listBackups: (folder?: string) => Promise<{ filename: string; filePath: string; size: number; date: string; isAuto?: boolean }[]>;
+  getAutoBackupStatus: () => Promise<{
+    enabled: boolean;
+    intervalHours: number;
+    lastAutoBackupAt: string | null;
+    lastAutoBackupSize: number | null;
+    lastAutoBackupPath: string | null;
+    autoBackupCount: number;
+    backupDir: string;
+  }>;
   restoreBackup: (filePath: string) => Promise<boolean>;
   selectBackupFolder: () => Promise<string | null>;
   selectBackupFile: () => Promise<string | null>;
@@ -206,6 +215,7 @@ const tigerAPI: TigerAPI = {
   // Backups
   createBackup: (folder) => ipcRenderer.invoke('backup:create', folder),
   listBackups: (folder) => ipcRenderer.invoke('backup:list', folder),
+  getAutoBackupStatus: () => ipcRenderer.invoke('backup:getAutoStatus'),
   restoreBackup: (filePath) => ipcRenderer.invoke('backup:restore', filePath),
   selectBackupFolder: () => ipcRenderer.invoke('backup:selectFolder'),
   selectBackupFile: () => ipcRenderer.invoke('backup:selectFile'),

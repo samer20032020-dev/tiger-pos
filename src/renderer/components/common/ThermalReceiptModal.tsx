@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Printer, X, MessageSquare } from 'lucide-react';
 import { Invoice } from '../../../shared/types';
 import { formatJOD } from '../../../shared/constants';
+import { formatLocalDateTime } from '../../../shared/dateUtils';
 import { WhatsAppIcon } from './WhatsAppIcon';
 import { sendWhatsAppMessage, buildInvoiceWhatsAppMessage } from '../../utils/whatsapp';
 import { useAppStore } from '../../stores/useAppStore';
@@ -187,7 +188,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               </div>
               <div className="flex justify-between">
                 <span>التاريخ والوقت:</span>
-                <span>{invoice.createdAt.replace('T', ' ').substring(0, 16)}</span>
+                <span>{formatLocalDateTime(invoice.createdAt)}</span>
               </div>
               <div className="flex justify-between">
                 <span>الكاشير:</span>

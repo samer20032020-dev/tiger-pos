@@ -2,6 +2,7 @@ import * as ExcelJS from 'exceljs';
 import * as path from 'path';
 import { app } from 'electron';
 import { LocalDatabase } from '../db/database';
+import { formatLocalDate, formatLocalDateTime24, getLocalTodayDateString } from '../../shared/dateUtils';
 
 export interface ExcelExportOptions {
   startDate?: string;
@@ -53,13 +54,16 @@ export class ExcelService {
         periodLabel = `شهر ${monthStr}/${opts.year}`;
         filePrefix = `تقرير_شهر_${monthStr}_${opts.year}`;
       } else {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalTodayDateString();
         startDate = today;
         endDate = today;
         periodLabel = `يوم ${today}`;
         filePrefix = `تقرير_يوم_${today}`;
       }
     }
+
+    const startUtcIso = new Date(`${startDate}T00:00:00.000`).toISOString();
+    const endUtcIso = new Date(`${endDate}T23:59:59.999`).toISOString();
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'TIGER';
@@ -106,14 +110,14 @@ export class ExcelService {
         COALESCE(SUM(trade_in_discount), 0) as total_trade_in,
         COUNT(*) as invoice_count
       FROM invoices 
-      WHERE status = 'completed' AND date(created_at) >= ? AND date(created_at) <= ?
-    `, [startDate, endDate]);
+      WHERE status = 'completed' AND REPLACE(created_at, ' ', 'T') >= ? AND REPLACE(created_at, ' ', 'T') <= ?
+    `, [startUtcIso, endUtcIso]);
 
     const cogsStats = this.db.queryOne(`
       SELECT COALESCE(SUM(cost_price * quantity), 0) as total_cogs
       FROM invoice_items
-      WHERE invoice_id IN (SELECT id FROM invoices WHERE status = 'completed' AND date(created_at) >= ? AND date(created_at) <= ?)
-    `, [startDate, endDate]);
+      WHERE invoice_id IN (SELECT id FROM invoices WHERE status = 'completed' AND REPLACE(created_at, ' ', 'T') >= ? AND REPLACE(created_at, ' ', 'T') <= ?)
+    `, [startUtcIso, endUtcIso]);
 
     const repairStats = this.db.queryOne(`
       SELECT 
@@ -122,9 +126,9 @@ export class ExcelService {
       FROM repair_tickets
       WHERE status != 'cancelled'
         AND (status = 'delivered' OR is_paid = 1)
-        AND date(COALESCE(delivered_at, created_at)) >= ?
-        AND date(COALESCE(delivered_at, created_at)) <= ?
-    `, [startDate, endDate]);
+        AND REPLACE(COALESCE(delivered_at, created_at), ' ', 'T') >= ?
+        AND REPLACE(COALESCE(delivered_at, created_at), ' ', 'T') <= ?
+    `, [startUtcIso, endUtcIso]);
 
     const repairPartsCost = this.db.queryOne(`
       SELECT COALESCE(SUM(total_cost), 0) as parts_cost
@@ -133,10 +137,10 @@ export class ExcelService {
         SELECT id FROM repair_tickets
         WHERE status != 'cancelled'
           AND (status = 'delivered' OR is_paid = 1)
-          AND date(COALESCE(delivered_at, created_at)) >= ?
-          AND date(COALESCE(delivered_at, created_at)) <= ?
+          AND REPLACE(COALESCE(delivered_at, created_at), ' ', 'T') >= ?
+          AND REPLACE(COALESCE(delivered_at, created_at), ' ', 'T') <= ?
       )
-    `, [startDate, endDate]);
+    `, [startUtcIso, endUtcIso]);
 
     const expenseStats = this.db.queryOne(`
       SELECT COALESCE(SUM(amount), 0) as total_expenses
@@ -147,8 +151,8 @@ export class ExcelService {
     const damagedLossStats = this.db.queryOne(`
       SELECT COALESCE(SUM(total_loss), 0) as total_write_off
       FROM damaged_items
-      WHERE action_taken = 'write_off' AND date(created_at) >= ? AND date(created_at) <= ?
-    `, [startDate, endDate]);
+      WHERE action_taken = 'write_off' AND REPLACE(created_at, ' ', 'T') >= ? AND REPLACE(created_at, ' ', 'T') <= ?
+    `, [startUtcIso, endUtcIso]);
 
     const totalSales = Number(salesStats?.total_sales || 0);
     const totalCogs = Number(cogsStats?.total_cogs || 0);
@@ -283,9 +287,9 @@ export class ExcelService {
       FROM invoice_items it
       JOIN invoices i ON it.invoice_id = i.id
       LEFT JOIN users u ON i.cashier_id = u.id
-      WHERE i.status = 'completed' AND date(i.created_at) >= ? AND date(i.created_at) <= ?
+      WHERE i.status = 'completed' AND REPLACE(i.created_at, ' ', 'T') >= ? AND REPLACE(i.created_at, ' ', 'T') <= ?
       ORDER BY i.created_at DESC, it.name ASC
-    `, [startDate, endDate]);
+    `, [startUtcIso, endUtcIso]);
 
     let sumQty = 0;
     let sumTotalSales = 0;
@@ -327,7 +331,7 @@ export class ExcelService {
         row.getCell(7).value = qty;
         row.getCell(8).value = unitP;
         row.getCell(9).value = totalP;
-        row.getCell(10).value = (it.sale_date || '').replace('T', ' ').substring(0, 19);
+        row.getCell(10).value = formatLocalDateTime24(it.sale_date);
         row.getCell(11).value = it.invoice_number;
         row.getCell(12).value = sellerStr;
         row.getCell(13).value = payStr;
@@ -409,16 +413,16 @@ export class ExcelService {
         COALESCE(u.role, 'employee') as cashier_role
       FROM invoices i
       LEFT JOIN users u ON i.cashier_id = u.id
-      WHERE date(i.created_at) >= ? AND date(i.created_at) <= ?
+      WHERE REPLACE(i.created_at, ' ', 'T') >= ? AND REPLACE(i.created_at, ' ', 'T') <= ?
       ORDER BY i.created_at DESC
-    `, [startDate, endDate]);
+    `, [startUtcIso, endUtcIso]);
 
     invoices.forEach(inv => {
       const roleTitle = inv.cashier_role === 'admin' ? 'مدير' : 'موظف';
       const sellerStr = inv.cashier_name ? `${inv.cashier_name} (${roleTitle})` : roleTitle;
       const addedRow = salesSheet.addRow({
         invoice_number: inv.invoice_number,
-        created_at: inv.created_at.replace('T', ' ').substring(0, 19),
+        created_at: formatLocalDateTime24(inv.created_at),
         customer_name: inv.customer_name,
         customer_phone: inv.customer_phone || '-',
         payment_method: inv.payment_method,
@@ -476,7 +480,7 @@ export class ExcelService {
       const sellerStr = item.cashier_name ? `${item.cashier_name} (${roleTitle})` : roleTitle;
       const addedRow = itemsSheet.addRow({
         invoice_number: item.invoice_number,
-        created_at: (item.sale_date || '').replace('T', ' ').substring(0, 19),
+        created_at: formatLocalDateTime24(item.sale_date),
         seller: sellerStr,
         item_type: item.item_type === 'phone' ? 'هاتف ذكي' : item.item_type === 'repair_part' ? 'قطع صيانة' : 'إكسسوار',
         item_name: item.item_name,
@@ -532,9 +536,9 @@ export class ExcelService {
         t.*,
         COALESCE((SELECT SUM(rp.total_cost) FROM repair_parts rp WHERE rp.ticket_id = t.id), 0) as parts_cost
       FROM repair_tickets t
-      WHERE date(COALESCE(t.delivered_at, t.created_at)) >= ? AND date(COALESCE(t.delivered_at, t.created_at)) <= ?
+      WHERE REPLACE(COALESCE(t.delivered_at, t.created_at), ' ', 'T') >= ? AND REPLACE(COALESCE(t.delivered_at, t.created_at), ' ', 'T') <= ?
       ORDER BY COALESCE(t.delivered_at, t.created_at) DESC
-    `, [startDate, endDate]);
+    `, [startUtcIso, endUtcIso]);
 
     tickets.forEach(t => {
       const finalCost = Number(t.final_cost || 0);
@@ -542,7 +546,7 @@ export class ExcelService {
       const rProfit = finalCost - pCost;
       const addedRow = repairsSheet.addRow({
         ticket_number: t.ticket_number,
-        created_at: t.created_at.substring(0, 10),
+        created_at: formatLocalDate(t.created_at),
         customer_name: t.customer_name,
         customer_phone: t.customer_phone,
         device_model: t.device_model,
@@ -612,14 +616,14 @@ export class ExcelService {
 
     const damagedItems = this.db.query(`
       SELECT * FROM damaged_items
-      WHERE date(created_at) >= ? AND date(created_at) <= ?
+      WHERE REPLACE(created_at, ' ', 'T') >= ? AND REPLACE(created_at, ' ', 'T') <= ?
       ORDER BY created_at DESC
-    `, [startDate, endDate]);
+    `, [startUtcIso, endUtcIso]);
 
     damagedItems.forEach(d => {
       const addedRow = expensesSheet.addRow({
         entry_type: d.action_taken === 'write_off' ? 'تالف مشطوب (خسارة)' : 'مرتجع للمورد',
-        date: d.created_at.substring(0, 10),
+        date: formatLocalDate(d.created_at),
         title: d.name,
         category: `${d.item_type === 'phone' ? 'هاتف' : 'إكسسوار'} (${d.barcode_or_imei})`,
         amount: d.total_loss,
@@ -721,9 +725,9 @@ export class ExcelService {
         rt.ticket_number, rt.customer_name, rt.device_model
       FROM repair_parts rp
       LEFT JOIN repair_tickets rt ON rp.ticket_id = rt.id
-      WHERE date(rp.added_at) >= ? AND date(rp.added_at) <= ?
+      WHERE REPLACE(rp.added_at, ' ', 'T') >= ? AND REPLACE(rp.added_at, ' ', 'T') <= ?
       ORDER BY rp.added_at DESC
-    `, [startDate, endDate]);
+    `, [startUtcIso, endUtcIso]);
 
     directRepairParts.forEach(rp => {
       const tCost = Number(rp.total_cost || 0);
@@ -737,7 +741,7 @@ export class ExcelService {
         total_cost: tCost,
         total_price: tPrice,
         profit: tPrice - tCost,
-        added_at: (rp.added_at || '').replace('T', ' ').substring(0, 19)
+        added_at: formatLocalDateTime24(rp.added_at)
       });
       [6, 7, 8].forEach(col => {
         addedRow.getCell(col).numFmt = currencyNumFmt;

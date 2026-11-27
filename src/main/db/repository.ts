@@ -760,21 +760,7 @@ export class TigerRepository {
       const yearPrefix = `INV-${new Date().getFullYear()}-`;
       const invoiceNumber = this.generateNextSequentialNumber('invoices', 'invoice_number', yearPrefix, 1, 5);
 
-      // Check if invoice contains ONLY repair parts -> send directly to Reports (auto-post) without sitting in Daily Closing (الجرد النهائي)
-      let allRepairParts = items.length > 0;
-      for (const item of items) {
-        if (item.itemType !== 'accessory') {
-          allRepairParts = false;
-          break;
-        }
-        const accMeta = this.db.queryOne('SELECT category, name FROM accessories WHERE id = ?', [item.itemId]);
-        if (!accMeta || !isRepairCategory(accMeta.category, accMeta.name)) {
-          allRepairParts = false;
-          break;
-        }
-      }
-
-      // Insert invoice
+      // Every POS invoice always starts unposted (غير مرحل) so every item appears in detail before manual settlement
       this.db.run(`
         INSERT INTO invoices (
           id, invoice_number, shift_id, customer_id, customer_name, customer_phone,
@@ -791,7 +777,7 @@ export class TigerRepository {
         invoiceData.paymentMethod, invoiceData.cashAmount, invoiceData.cardAmount,
         invoiceData.cliqAmount, invoiceData.creditAmount, 'completed',
         invoiceData.notes || null, invoiceData.cashierId, invoiceData.cashierName,
-        allRepairParts ? 1 : 0, allRepairParts ? now : null, now
+        0, null, now
       ]);
 
       // Insert Items & adjust stock

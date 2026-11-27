@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Invoice } from '../../../shared/types';
 import { formatJOD } from '../../../shared/constants';
+import { formatLocalDateTime } from '../../../shared/dateUtils';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { useEscapeClose } from '../../utils/useEscapeStack';
 
@@ -86,7 +87,7 @@ export const InvoiceDetailsModal: React.FC<InvoiceDetailsModalProps> = ({
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
                   <span className="font-mono">
-                    {invoice.createdAt ? invoice.createdAt.replace('T', ' ').substring(0, 16) : '-'}
+                    {formatLocalDateTime(invoice.createdAt)}
                   </span>
                 </span>
                 <span className="flex items-center gap-1">

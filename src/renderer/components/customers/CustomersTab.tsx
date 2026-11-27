@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Customer, CustomerStatement, PaymentMethod } from '../../../shared/types';
 import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
+import { formatLocalDate } from '../../../shared/dateUtils';
 import { useAppStore } from '../../stores/useAppStore';
 import { useEscapeClose } from '../../utils/useEscapeStack';
 
@@ -395,7 +396,7 @@ export const CustomersTab: React.FC = () => {
                       {cust.notes || '-'}
                     </td>
                     <td className="p-3.5 text-slate-400 font-mono">
-                      {cust.createdAt.substring(0, 10)}
+                      {formatLocalDate(cust.createdAt)}
                     </td>
                     <td className="p-3.5 text-center">
                       <div className="flex items-center justify-center gap-1.5">
@@ -702,7 +703,7 @@ export const CustomersTab: React.FC = () => {
                           {statementData.invoices.map((inv) => (
                             <tr key={inv.id}>
                               <td className="p-2 font-bold">{inv.invoiceNumber}</td>
-                              <td className="p-2">{inv.createdAt.substring(0, 10)}</td>
+                              <td className="p-2">{formatLocalDate(inv.createdAt)}</td>
                               <td className="p-2 font-sans">{inv.paymentMethod}</td>
                               <td className="p-2">{formatJOD(inv.totalAmount)}</td>
                               <td className="p-2 text-emerald-600">{formatJOD(inv.paidAmount)}</td>
@@ -773,7 +774,7 @@ export const CustomersTab: React.FC = () => {
                           {statementData.debtPayments.map((dp) => (
                             <tr key={dp.id}>
                               <td className="p-2 font-bold">{dp.voucherNumber}</td>
-                              <td className="p-2">{dp.createdAt.substring(0, 10)}</td>
+                              <td className="p-2">{formatLocalDate(dp.createdAt)}</td>
                               <td className="p-2 font-black text-emerald-600">{formatJOD(dp.amount)}</td>
                               <td className="p-2 font-sans">{dp.paymentMethod}</td>
                               <td className="p-2 font-sans">{dp.receivedBy}</td>

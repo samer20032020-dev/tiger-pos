@@ -12,6 +12,7 @@ import { useAppStore } from '../../stores/useAppStore';
 import { useDailyCalculatorStore } from '../../stores/useDailyCalculatorStore';
 import { Invoice, RepairTicket, Expense, RepairPartReportEntry } from '../../../shared/types';
 import { formatJOD, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
+import { parseDbDate, getLocalTodayDateString, formatLocalShortDateTime } from '../../../shared/dateUtils';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { sendWhatsAppMessage, buildInvoiceWhatsAppMessage } from '../../utils/whatsapp';
 import { InvoiceDetailsModal } from './InvoiceDetailsModal';
@@ -62,20 +63,13 @@ export const ReportsTab: React.FC = () => {
 
   // Date Filter states (Audios 4 & 7)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('yesterday_today');
-  const [startDate, setStartDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState<string>(() => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
-  });
+  const [startDate, setStartDate] = useState<string>(() => getLocalTodayDateString(-1));
+  const [endDate, setEndDate] = useState<string>(() => getLocalTodayDateString(0));
 
   // Export states
   const [exportMode, setExportMode] = useState<'custom_range' | 'specific_month'>('custom_range');
-  const [exportStartDate, setExportStartDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
-  const [exportEndDate, setExportEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [exportStartDate, setExportStartDate] = useState<string>(() => getLocalTodayDateString(0));
+  const [exportEndDate, setExportEndDate] = useState<string>(() => getLocalTodayDateString(0));
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [exporting, setExporting] = useState<boolean>(false);
@@ -132,7 +126,8 @@ export const ReportsTab: React.FC = () => {
   // Filter items by time range (Audios 4 & 7: Supports midnight shifts, 48 hours & custom dates)
   const filterByDate = (dateStr?: string | null) => {
     if (!dateStr || timeFilter === 'all') return true;
-    const itemDate = new Date(dateStr);
+    const itemDate = parseDbDate(dateStr);
+    if (!itemDate) return true;
     const now = new Date();
 
     if (timeFilter === 'today') {
@@ -214,7 +209,7 @@ export const ReportsTab: React.FC = () => {
   const totalRepairPartsSalesValue = filteredRepairParts.reduce((s, rp) => s + rp.totalPrice, 0);
   const totalRepairPartsProfit = filteredRepairParts.reduce((s, rp) => s + rp.profit, 0);
 
-  // Daily Drawer Settlement keeps purely retail POS cash (repair parts go straight to Reports)
+  // Daily Drawer Settlement includes all unposted POS sales & settled repairs
   const autoReceipts = unpostedCash;
   const effectiveReceipts = isManualReceipts
     ? (parseFloat(receiptsOverrideInput) || 0)
@@ -299,6 +294,24 @@ export const ReportsTab: React.FC = () => {
       0
     ) + displayedRepairs.length;
   const tableTotalOpsCount = activeDisplayedInvoices.length + displayedRepairs.length;
+
+  // Unified ledger rows sorted newest-first by local chronological timestamp
+  type LedgerEntry =
+    | { kind: 'repair'; sortTs: number; rep: RepairTicket }
+    | { kind: 'invoice'; sortTs: number; inv: Invoice };
+
+  const combinedLedgerRows: LedgerEntry[] = [
+    ...displayedRepairs.map((rep): LedgerEntry => ({
+      kind: 'repair',
+      sortTs: parseDbDate(rep.deliveredAt || rep.createdAt)?.getTime() || 0,
+      rep,
+    })),
+    ...displayedInvoices.slice(0, 300).map((inv): LedgerEntry => ({
+      kind: 'invoice',
+      sortTs: parseDbDate(inv.createdAt)?.getTime() || 0,
+      inv,
+    })),
+  ].sort((a, b) => b.sortTs - a.sortTs);
 
   const handleSelectAll = () => {
     const visibleUnpostedIds = displayedInvoices.filter(i => !i.isPosted).map(i => i.id);
@@ -907,81 +920,84 @@ export const ReportsTab: React.FC = () => {
                     </tr>
                   ) : (
                     <>
-                    {displayedRepairs.map(rep => {
-                      const effCost = rep.finalCost || rep.estimatedCost || 0;
-                      const partsC = rep.partsCost || 0;
-                      const repProfit = effCost - partsC;
-                      const effDate = rep.deliveredAt || rep.createdAt;
-                      return (
-                        <tr
-                          key={`rep-row-${rep.id}`}
-                          className="hover:bg-blue-50/40 dark:hover:bg-blue-950/20 bg-blue-50/20 dark:bg-blue-950/10 transition"
-                        >
-                          <td className="p-3 text-center">
-                            {rep.isPosted ? (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
-                            ) : (
-                              <Wrench className="w-4 h-4 text-blue-500 mx-auto" />
-                            )}
-                          </td>
-                          <td className="p-3 font-mono font-bold text-blue-700 dark:text-blue-400">
-                            <div>{rep.ticketNumber}</div>
-                            <span className="inline-block text-[9px] font-black bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
-                              صيانة مسلّمة
-                            </span>
-                          </td>
-                          <td className="p-3 font-mono text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap">
-                            <div>{effDate ? effDate.replace('T', ' ').substring(5, 16) : '-'}</div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex flex-wrap items-center gap-1 max-w-xs">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-200 border border-blue-200/70 dark:border-blue-800/70">
-                                <Wrench className="w-3 h-3 shrink-0" />
-                                <span>{rep.deviceModel}</span>
-                                <span className="text-slate-500 dark:text-slate-400">({rep.customerName})</span>
+                    {combinedLedgerRows.map((entry) => {
+                      if (entry.kind === 'repair') {
+                        const rep = entry.rep;
+                        const effCost = rep.finalCost || rep.estimatedCost || 0;
+                        const partsC = rep.partsCost || 0;
+                        const repProfit = effCost - partsC;
+                        const effDate = rep.deliveredAt || rep.createdAt;
+                        return (
+                          <tr
+                            key={`rep-row-${rep.id}`}
+                            className="hover:bg-blue-50/40 dark:hover:bg-blue-950/20 bg-blue-50/20 dark:bg-blue-950/10 transition"
+                          >
+                            <td className="p-3 text-center">
+                              {rep.isPosted ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
+                              ) : (
+                                <Wrench className="w-4 h-4 text-blue-500 mx-auto" />
+                              )}
+                            </td>
+                            <td className="p-3 font-mono font-bold text-blue-700 dark:text-blue-400">
+                              <div>{rep.ticketNumber}</div>
+                              <span className="inline-block text-[9px] font-black bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                                صيانة مسلّمة
                               </span>
-                            </div>
-                          </td>
-                          <td className="p-3 font-mono font-semibold text-slate-500">
-                            {formatJOD(partsC)}
-                          </td>
-                          <td className="p-3 font-mono font-black text-slate-900 dark:text-white">
-                            {formatJOD(effCost)}
-                          </td>
-                          <td className="p-3 font-mono font-bold">
-                            <span className="text-slate-400">-</span>
-                          </td>
-                          <td className="p-3 font-mono font-bold">
-                            <span className="text-emerald-600 dark:text-emerald-400">+{formatJOD(repProfit)}</span>
-                          </td>
-                          <td className="p-3">
-                            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
-                              نقدي / صيانة
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            {rep.isPosted ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>مرحّل للأرشيف</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                            </td>
+                            <td className="p-3 font-mono text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap">
+                              <div>{formatLocalShortDateTime(effDate)}</div>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-wrap items-center gap-1 max-w-xs">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-200 border border-blue-200/70 dark:border-blue-800/70">
+                                  <Wrench className="w-3 h-3 shrink-0" />
+                                  <span>{rep.deviceModel}</span>
+                                  <span className="text-slate-500 dark:text-slate-400">({rep.customerName})</span>
                                 </span>
-                                <span>غير مرحّل (نشط)</span>
+                              </div>
+                            </td>
+                            <td className="p-3 font-mono font-semibold text-slate-500">
+                              {formatJOD(partsC)}
+                            </td>
+                            <td className="p-3 font-mono font-black text-slate-900 dark:text-white">
+                              {formatJOD(effCost)}
+                            </td>
+                            <td className="p-3 font-mono font-bold">
+                              <span className="text-slate-400">-</span>
+                            </td>
+                            <td className="p-3 font-mono font-bold">
+                              <span className="text-emerald-600 dark:text-emerald-400">+{formatJOD(repProfit)}</span>
+                            </td>
+                            <td className="p-3">
+                              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
+                                نقدي / صيانة
                               </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-center text-slate-400 text-[10px]">
-                            تذكرة صيانة
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {displayedInvoices.slice(0, 300).map(inv => {
+                            </td>
+                            <td className="p-3 text-center">
+                              {rep.isPosted ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>مرحّل للأرشيف</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                                  </span>
+                                  <span>غير مرحّل (نشط)</span>
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-center text-slate-400 text-[10px]">
+                              تذكرة صيانة
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      const inv = entry.inv;
                       const isSelected = selectedInvoiceIds.includes(inv.id);
                       const isPriorShift = !inv.isPosted && !filterByDate(inv.createdAt);
                       const isRefunded = inv.status === 'refunded';
@@ -1031,7 +1047,7 @@ export const ReportsTab: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3 font-mono text-slate-700 dark:text-slate-200 text-xs font-bold whitespace-nowrap">
-                            <div className="font-bold">{inv.createdAt ? inv.createdAt.replace('T', ' ').substring(5, 16) : '-'}</div>
+                            <div className="font-bold">{formatLocalShortDateTime(inv.createdAt)}</div>
                             {isPriorShift && (
                               <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200 text-[10px] font-black">
                                 شفت سابق
@@ -1524,8 +1540,8 @@ export const ReportsTab: React.FC = () => {
                         <td className="p-3 font-mono text-slate-500">{formatJOD(rp.totalCost)}</td>
                         <td className="p-3 font-mono font-bold text-orange-600 dark:text-orange-400">{formatJOD(rp.totalPrice)}</td>
                         <td className="p-3 font-mono font-black text-emerald-600 dark:text-emerald-400">+{formatJOD(rp.profit)}</td>
-                        <td className="p-3 font-mono text-[11px] text-slate-400">
-                          {rp.createdAt ? rp.createdAt.replace('T', ' ').substring(5, 16) : '-'}
+                        <td className="p-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">
+                          {formatLocalShortDateTime(rp.createdAt)}
                         </td>
                       </tr>
                     ))
@@ -1586,11 +1602,11 @@ export const ReportsTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      const today = new Date().toISOString().split('T')[0];
+                      const today = getLocalTodayDateString(0);
                       setExportStartDate(today);
                       setExportEndDate(today);
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${exportStartDate === exportEndDate && exportStartDate === new Date().toISOString().split('T')[0]
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${exportStartDate === exportEndDate && exportStartDate === getLocalTodayDateString(0)
                         ? 'bg-emerald-500 text-white shadow-sm'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                       }`}
@@ -1600,9 +1616,7 @@ export const ReportsTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      const y = new Date();
-                      y.setDate(y.getDate() - 1);
-                      const ys = y.toISOString().split('T')[0];
+                      const ys = getLocalTodayDateString(-1);
                       setExportStartDate(ys);
                       setExportEndDate(ys);
                     }}
@@ -1613,10 +1627,8 @@ export const ReportsTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      const d1 = new Date();
-                      d1.setDate(d1.getDate() - 1);
-                      setExportStartDate(d1.toISOString().split('T')[0]);
-                      setExportEndDate(new Date().toISOString().split('T')[0]);
+                      setExportStartDate(getLocalTodayDateString(-1));
+                      setExportEndDate(getLocalTodayDateString(0));
                     }}
                     className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition"
                   >
@@ -1625,10 +1637,8 @@ export const ReportsTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      const d7 = new Date();
-                      d7.setDate(d7.getDate() - 7);
-                      setExportStartDate(d7.toISOString().split('T')[0]);
-                      setExportEndDate(new Date().toISOString().split('T')[0]);
+                      setExportStartDate(getLocalTodayDateString(-7));
+                      setExportEndDate(getLocalTodayDateString(0));
                     }}
                     className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition"
                   >
@@ -1640,7 +1650,7 @@ export const ReportsTab: React.FC = () => {
                       const now = new Date();
                       const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
                       setExportStartDate(firstDay);
-                      setExportEndDate(now.toISOString().split('T')[0]);
+                      setExportEndDate(getLocalTodayDateString(0));
                     }}
                     className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition"
                   >

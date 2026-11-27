@@ -10,6 +10,7 @@ import {
 import { DashboardStats, Invoice } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
 import { formatJOD } from '../../../shared/constants';
+import { formatLocalTime } from '../../../shared/dateUtils';
 
 export const DashboardTab: React.FC = () => {
   const { setActiveTab, currentUser } = useAppStore();
@@ -248,7 +249,7 @@ export const DashboardTab: React.FC = () => {
                   </div>
                   <div className="text-left font-mono">
                     <div className="font-bold text-orange-600 dark:text-orange-400">{formatJOD(inv.totalAmount)}</div>
-                    <div className="text-[9px] text-slate-400">{inv.createdAt.substring(11, 16)}</div>
+                    <div className="text-[9px] text-slate-400">{formatLocalTime(inv.createdAt)}</div>
                   </div>
                 </div>
               ))

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, RotateCcw, Search, AlertTriangle, CheckCircle2, Receipt, Clock, User } from 'lucide-react';
 import { Invoice } from '../../../shared/types';
 import { formatJOD } from '../../../shared/constants';
+import { formatLocalDateTime } from '../../../shared/dateUtils';
 import { useAppStore } from '../../stores/useAppStore';
 import { useEscapeClose } from '../../utils/useEscapeStack';
 
@@ -191,7 +192,7 @@ export const ReturnsModal: React.FC<ReturnsModalProps> = ({ isOpen, onClose, onS
                   {selectedInvoice.invoiceNumber}
                 </span>
                 <div className="text-[11px] text-slate-500">
-                  {selectedInvoice.createdAt.replace('T', ' ').substring(0, 16)} | العميل: {selectedInvoice.customerName}
+                  {formatLocalDateTime(selectedInvoice.createdAt)} | العميل: {selectedInvoice.customerName}
                 </div>
               </div>
               <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${

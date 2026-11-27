@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Tag, Printer, X, Plus, Minus, Smartphone } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import { RepairTicket } from '../../../shared/types';
+import { formatLocalDate } from '../../../shared/dateUtils';
 import { useAppStore } from '../../stores/useAppStore';
 import { useEscapeClose } from '../../utils/useEscapeStack';
 
@@ -66,7 +67,7 @@ export const RepairDeviceStickerModal: React.FC<RepairDeviceStickerModalProps> =
     ? `نمط: ${ticket.lockPattern}`
     : 'بدون قفل';
 
-  const dateStr = ticket.createdAt ? ticket.createdAt.substring(0, 10) : '';
+  const dateStr = ticket.createdAt ? formatLocalDate(ticket.createdAt) : '';
 
   const handlePrint = async () => {
     if (quantity < 1) {

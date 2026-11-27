@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { RepairTicket, RepairStatus, Accessory } from '../../../shared/types';
 import { REPAIR_STATUS_LABELS, formatJOD, isRepairCategory, cleanNumberInput, parseNumberInput } from '../../../shared/constants';
+import { formatLocalDateTime } from '../../../shared/dateUtils';
 import { RepairTicketModal } from './RepairTicketModal';
 import { RepairPartsModal } from './RepairPartsModal';
 import { RepairDeviceStickerModal } from './RepairDeviceStickerModal';
@@ -159,7 +160,7 @@ export const RepairsTab: React.FC = () => {
         </div>
         <div class="border-b">
           <div class="row"><span>رقم التذكرة:</span><span class="bold">${t.ticketNumber}</span></div>
-          <div class="row"><span>التاريخ:</span><span>${t.createdAt.replace('T', ' ').substring(0, 16)}</span></div>
+          <div class="row"><span>التاريخ:</span><span>${formatLocalDateTime(t.createdAt)}</span></div>
           <div class="row"><span>اسم العميل:</span><span class="bold">${t.customerName}</span></div>
           <div class="row"><span>الهاتف:</span><span>${t.customerPhone}</span></div>
           <div class="row"><span>الجهاز:</span><span class="bold">${t.deviceModel}</span></div>

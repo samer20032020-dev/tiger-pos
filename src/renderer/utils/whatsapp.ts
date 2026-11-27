@@ -1,5 +1,6 @@
 import { RepairTicket, Invoice } from '../../shared/types';
 import { formatJOD } from '../../shared/constants';
+import { formatLocalDate, getLocalTodayDateString } from '../../shared/dateUtils';
 
 /**
  * Normalizes phone numbers, specifically for Jordanian mobile formats (079, 078, 077).
@@ -124,7 +125,7 @@ export function buildInvoiceWhatsAppMessage(
     ? 'بك'
     : rawCustomer;
 
-  const dateStr = invoice.createdAt ? invoice.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10);
+  const dateStr = invoice.createdAt ? formatLocalDate(invoice.createdAt) : getLocalTodayDateString();
 
   const itemsText = (invoice.items || [])
     .map(i => `${i.name} × ${i.quantity} = ${formatJOD(i.total || (i.unitPrice * i.quantity))}`)

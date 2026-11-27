@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Search, AlertCircle, Clock, User } from 'lucide-react';
 import { AuditLog } from '../../../shared/types';
+import { formatLocalDateTime24 } from '../../../shared/dateUtils';
 
 export const AuditLogTab: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -74,7 +75,7 @@ export const AuditLogTab: React.FC = () => {
                   return (
                     <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20">
                       <td className="p-3.5 font-mono text-slate-500 whitespace-nowrap">
-                        {log.createdAt.replace('T', ' ').substring(0, 19)}
+                        {formatLocalDateTime24(log.createdAt)}
                       </td>
                       <td className="p-3.5">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${meta.color}`}>

@@ -15,6 +15,7 @@ import { User, SystemSettings } from '../../../shared/types';
 import { useAppStore } from '../../stores/useAppStore';
 import { playCashDrawerSound } from '../../utils/soundUtils';
 import { cleanNumberInput, parseNumberInput } from '../../../shared/constants';
+import { formatLocalDateTime } from '../../../shared/dateUtils';
 
 const POPULAR_CURRENCIES = [
   { symbol: 'د.أ', label: 'د.أ (دينار أردني)' },
@@ -28,14 +29,23 @@ export const SettingsTab: React.FC = () => {
   const { addToast } = useAppStore();
   const [activeSection, setActiveSection] = useState<SettingTabType>('store');
 
-  const [backups, setBackups] = useState<{ filename: string; filePath: string; size: number; date: string }[]>([]);
+  const [backups, setBackups] = useState<{ filename: string; filePath: string; size: number; date: string; isAuto?: boolean }[]>([]);
+  const [autoBackupStatus, setAutoBackupStatus] = useState<{
+    enabled: boolean;
+    intervalHours: number;
+    lastAutoBackupAt: string | null;
+    lastAutoBackupSize: number | null;
+    lastAutoBackupPath: string | null;
+    autoBackupCount: number;
+    backupDir: string;
+  } | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingBackup, setCreatingBackup] = useState(false);
 
   // GitHub Auto-Update State (shared background store)
   const [githubRepo, setGithubRepo] = useState('samer20032020-dev/tiger-pos');
-  const [appVersion, setAppVersion] = useState('0.9.10');
+  const [appVersion, setAppVersion] = useState('0.9.11');
   const {
     status: updateStatus,
     updateInfo,
@@ -141,6 +151,11 @@ export const SettingsTab: React.FC = () => {
       window.tigerAPI.listBackups()
         .then((bks) => setBackups(bks || []))
         .catch(() => setBackups([]));
+      if (window.tigerAPI.getAutoBackupStatus) {
+        window.tigerAPI.getAutoBackupStatus()
+          .then((st) => setAutoBackupStatus(st))
+          .catch(() => {});
+      }
     }
   }, [activeSection]);
 
@@ -952,6 +967,27 @@ export const SettingsTab: React.FC = () => {
               </div>
             </div>
 
+            {/* Automatic 24h Lightweight Backup Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 text-xs">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-black text-emerald-900 dark:text-emerald-200">
+                    النسخ الاحتياطي التلقائي مفعّل كل 24 ساعة بالخلفية (ملف مضغوط .sqlite.gz لحالات الطوارئ)
+                  </span>
+                  <p className="text-[11px] text-emerald-700/90 dark:text-emerald-300/80">
+                    يعمل بهدوء بدون التأثير على سرعة البرنامج ويحتفظ تلقائياً بآخر 30 نسخة مضغوطة.
+                  </p>
+                </div>
+              </div>
+              {autoBackupStatus?.lastAutoBackupAt && (
+                <div className="text-[11px] font-mono font-bold text-emerald-800 dark:text-emerald-200 bg-white/80 dark:bg-slate-900/70 px-3 py-1.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800 shrink-0">
+                  آخر نسخة تلقائية: {formatLocalDateTime(autoBackupStatus.lastAutoBackupAt)}
+                  {autoBackupStatus.lastAutoBackupSize !== null ? ` (${(autoBackupStatus.lastAutoBackupSize / 1024).toFixed(1)} KB)` : ''}
+                </div>
+              )}
+            </div>
+
             {/* Existing Backups List */}
             <div>
               <span className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">
@@ -971,7 +1007,14 @@ export const SettingsTab: React.FC = () => {
                       <div className="flex items-center gap-2.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                         <div>
-                          <div className="font-bold font-mono text-slate-800 dark:text-slate-200">{b.filename}</div>
+                          <div className="font-bold font-mono text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <span>{b.filename}</span>
+                            {b.isAuto && (
+                              <span className="font-sans text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 px-1.5 py-0.5 rounded-md">
+                                تلقائي
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-slate-400 truncate max-w-sm">{b.filePath}</div>
                         </div>
                       </div>
@@ -979,7 +1022,7 @@ export const SettingsTab: React.FC = () => {
                         <span className="text-[10px] bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg font-bold">
                           {(b.size / 1024).toFixed(1)} KB
                         </span>
-                        <div className="text-[9px] text-slate-400 mt-0.5">{b.date.substring(0, 10)}</div>
+                        <div className="text-[9px] text-slate-400 mt-0.5">{formatLocalDateTime(b.date)}</div>
                       </div>
                     </div>
                   ))

@@ -63,7 +63,16 @@ export interface TigerAPI {
   getAuditLogs: (limit?: number) => Promise<AuditLog[]>;
   exportMonthlyExcel: (yearOrOptions: number | any, month?: number, targetPath?: string) => Promise<{ success: boolean; filePath: string }>;
   createBackup: (folder?: string) => Promise<{ success: boolean; filePath: string; size: number }>;
-  listBackups: (folder?: string) => Promise<{ filename: string; filePath: string; size: number; date: string }[]>;
+  listBackups: (folder?: string) => Promise<{ filename: string; filePath: string; size: number; date: string; isAuto?: boolean }[]>;
+  getAutoBackupStatus: () => Promise<{
+    enabled: boolean;
+    intervalHours: number;
+    lastAutoBackupAt: string | null;
+    lastAutoBackupSize: number | null;
+    lastAutoBackupPath: string | null;
+    autoBackupCount: number;
+    backupDir: string;
+  }>;
   restoreBackup: (filePath: string) => Promise<boolean>;
   selectBackupFolder: () => Promise<string | null>;
   selectBackupFile: () => Promise<string | null>;

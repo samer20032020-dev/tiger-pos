@@ -33,6 +33,8 @@ let dbInstance: LocalDatabase | null = null;
 let repository: TigerRepository | null = null;
 let excelService: ExcelService | null = null;
 let backupService: BackupService | null = null;
+let autoBackupStartupTimer: NodeJS.Timeout | null = null;
+let autoBackupIntervalTimer: NodeJS.Timeout | null = null;
 
 async function createWindow() {
   const localIcon = path.join(__dirname, '../../build/icon.png');
@@ -370,6 +372,21 @@ function registerIpcHandlers() {
     }
   });
 
+  ipcMain.handle('backup:getAutoStatus', async () => {
+    if (!backupService) {
+      return {
+        enabled: true,
+        intervalHours: 24,
+        lastAutoBackupAt: null,
+        lastAutoBackupSize: null,
+        lastAutoBackupPath: null,
+        autoBackupCount: 0,
+        backupDir: ''
+      };
+    }
+    return await backupService.getAutoBackupStatus();
+  });
+
   ipcMain.handle('backup:restore', async (_, filePath: string) => {
     return backupService!.restoreBackup(filePath);
   });
@@ -390,8 +407,8 @@ function registerIpcHandlers() {
   ipcMain.handle('backup:selectFile', async () => {
     if (!mainWindow) return null;
     const res = await dialog.showOpenDialog(mainWindow, {
-      title: 'اختر ملف النسخة الاحتياطية للاسترجاع (.sqlite)',
-      filters: [{ name: 'SQLite Database', extensions: ['sqlite', 'db'] }],
+      title: 'اختر ملف النسخة الاحتياطية للاسترجاع (.sqlite / .sqlite.gz)',
+      filters: [{ name: 'TIGER Backups', extensions: ['sqlite', 'db', 'gz'] }],
       properties: ['openFile']
     });
     if (!mainWindow.isDestroyed()) {
@@ -437,9 +454,9 @@ function registerIpcHandlers() {
   ipcMain.handle('system:getAppVersion', async () => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.10';
+      return getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.11';
     } catch {
-      return '0.9.10';
+      return '0.9.11';
     }
   });
 
@@ -469,15 +486,15 @@ function registerIpcHandlers() {
   ipcMain.handle('system:checkGithubUpdate', async (_, repoOverride?: string) => {
     try {
       const settings = repository ? repository.getSettings() : null;
-      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.10';
-      let releaseNotes = '✨ إصدار v0.9.10: إضافة صندوق الإجماليات التراكمية أسفل سجل العمليات بعد الترحيل (البيع، التكلفة، الأرباح، عدد القطع) ونافذة تفاصيل كل قطعة داخل الفواتير متعددة الأصناف.';
+      const currentVersion = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.11';
+      let releaseNotes = '✨ إصدار v0.9.11: إصلاح التوقيت المحلي وترتيب السجل، إبقاء مبيعات صافي الصيانة وجميع الفواتير في غير مرحل حتى الترحيل اليدوي، وإضافة النسخ الاحتياطي التلقائي المضغوط كل 24 ساعة.';
       const repo = (repoOverride && repoOverride.trim()) || (settings?.githubRepo && settings.githubRepo.trim()) || 'samer20032020-dev/tiger-pos';
 
       return await checkLatestGitHubRelease(repo, currentVersion, releaseNotes);
     } catch (err: any) {
       console.error('[Update Check Error]:', err);
       const settings = repository ? repository.getSettings() : null;
-      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.10';
+      const curVer = getEffectiveAppVersion() || (settings?.installedVersion && settings.installedVersion.trim()) || '0.9.11';
       return {
         hasUpdate: false,
         currentVersion: curVer,
@@ -686,6 +703,18 @@ app.whenReady().then(async () => {
     registerIpcHandlers();
     await createWindow();
 
+    // Non-blocking background auto-backup every 24h (waits 30s after startup so boot has 0ms overhead)
+    const runAutoBackupCheck = () => {
+      if (!backupService) return;
+      backupService.createAutoBackupIfDue().catch((err) => {
+        console.warn('[AutoBackup] Background check error:', err);
+      });
+    };
+    autoBackupStartupTimer = setTimeout(runAutoBackupCheck, 30 * 1000);
+    autoBackupStartupTimer.unref();
+    autoBackupIntervalTimer = setInterval(runAutoBackupCheck, 60 * 60 * 1000);
+    autoBackupIntervalTimer.unref();
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
@@ -693,6 +722,17 @@ app.whenReady().then(async () => {
     });
   } catch (err) {
     console.error('[Main] Failed to initialize application:', err);
+  }
+});
+
+app.on('will-quit', () => {
+  if (autoBackupStartupTimer) {
+    clearTimeout(autoBackupStartupTimer);
+    autoBackupStartupTimer = null;
+  }
+  if (autoBackupIntervalTimer) {
+    clearInterval(autoBackupIntervalTimer);
+    autoBackupIntervalTimer = null;
   }
 });
 

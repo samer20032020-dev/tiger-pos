@@ -1,8 +1,12 @@
 import initSqlJs, { Database, SqlValue } from 'sql.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as zlib from 'zlib';
+import { promisify } from 'util';
 import { app } from 'electron';
 import { CREATE_TABLES_SQL } from './schema';
+
+const gunzipAsync = promisify(zlib.gunzip);
 
 export class LocalDatabase {
   private db: Database | null = null;
@@ -128,6 +132,13 @@ export class LocalDatabase {
         INSERT OR IGNORE INTO accessories (id, barcode, sku, name, category, cost_price, retail_price, wholesale_price, current_stock, min_stock_alert, is_unlimited, description, created_at)
         VALUES ('srv-net-repair', 'SRV-002', 'SRV-REP', 'صافي الصيانة', 'حوالات وخدمات مفتوحة', 0, 0, 0, 999999, 0, 1, 'صافي الصيانة - التكلفة 0 والكمية لا نهائية مع سعر حر', ?)
       `, [nowIso]);
+      this.run(`
+        UPDATE accessories
+        SET category = 'حوالات وخدمات مفتوحة',
+            is_unlimited = 1,
+            current_stock = CASE WHEN current_stock < 999999 THEN 999999 ELSE current_stock END
+        WHERE id = 'srv-net-repair'
+      `);
       this.isDirty = true;
     } catch {
       // Ignore if already seeded
@@ -232,11 +243,29 @@ export class LocalDatabase {
     };
   }
 
+  /**
+   * Returns a clean DB snapshot Buffer without unnecessary double SQLite exports when disk copy is already synced.
+   */
+  public async getSnapshotBufferAsync(): Promise<Buffer> {
+    if (!this.db) throw new Error('Database not initialized');
+    if (this.isDirty || !fs.existsSync(this.dbPath)) {
+      this.saveToDiskSync();
+    }
+    try {
+      return await fs.promises.readFile(this.dbPath);
+    } catch {
+      return Buffer.from(this.db.export());
+    }
+  }
+
   public async restoreFromBackup(backupPath: string): Promise<boolean> {
     if (!fs.existsSync(backupPath)) {
       throw new Error('ملف النسخة الاحتياطية غير موجود!');
     }
-    const fileBuffer = fs.readFileSync(backupPath);
+    let fileBuffer: Buffer = await fs.promises.readFile(backupPath);
+    if (backupPath.toLowerCase().endsWith('.gz')) {
+      fileBuffer = await gunzipAsync(fileBuffer);
+    }
     const SQL = await initSqlJs();
     const newDb = new SQL.Database(fileBuffer);
     

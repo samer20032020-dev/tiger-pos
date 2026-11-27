@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, History, Clock, ArrowRight, ShieldCheck, Tag } from 'lucide-react';
 import { ImeiHistory } from '../../../shared/types';
+import { formatLocalDateTime } from '../../../shared/dateUtils';
 import { useEscapeClose } from '../../utils/useEscapeStack';
 
 interface ImeiHistoryModalProps {
@@ -76,7 +77,7 @@ export const ImeiHistoryModal: React.FC<ImeiHistoryModalProps> = ({
                         {act.label}
                       </span>
                       <span className="text-[10px] text-slate-400 font-mono">
-                        {item.createdAt.replace('T', ' ').substring(0, 16)}
+                        {formatLocalDateTime(item.createdAt)}
                       </span>
                     </div>
                     <div className="text-xs text-slate-800 dark:text-slate-200 font-medium">
